@@ -1868,8 +1868,6 @@ const get_instance = () => {
 
     Pixel_Buffer_Enh.get_instance = get_instance;
     return Pixel_Buffer_Enh;
-
-
 }
 
 module.exports = get_instance();

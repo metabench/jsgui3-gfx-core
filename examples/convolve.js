@@ -210,6 +210,9 @@ const run_examples = (gfx_server, erte_ale, westminster_bridge) => obs((next, co
                     //console.log('res_eg instanceof Pixel_Buffer', res_eg instanceof Pixel_Buffer);
                     if (res_eg instanceof Pixel_Buffer) {
                         await fnlfs.ensure_directory_exists('./output/' + eg_mod_name + '/');
+
+                        
+
                         await gfx_server.save_pixel_buffer('./output/' + eg_mod_name + '/' + eg_name + '.png', res_eg, {
                             format: 'png'
                         });

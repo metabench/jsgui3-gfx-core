@@ -36,17 +36,6 @@ const { PerformanceObserver, performance } = require('perf_hooks');
 //  Or have bitmap format included???
 
 
-const formats = require('jsgui3-gfx-formats');
-
-
-const {
-    jpeg
-} = formats;
-
-console.log('pre load gfx_server');
-const gfx_server = require('jsgui3-gfx-server');
-console.log('post load gfx_server');
-
 
 // or ta-math
 // Copy the data over to and from a standard pixel buffer (non-server version)?
@@ -717,6 +706,10 @@ module.exports = {
 
 if (require.main === module) {
     (async() => {
+
+        const fnlfs = require('fnlfs');
+        const sharp = require('sharp');
+
         // Set file paths here...?
 
         // The inversion is really fast even just in JS at about 15ms.
@@ -748,10 +741,86 @@ if (require.main === module) {
         // looks OK so far....
 
         await fnlfs.ensure_directory_exists('./output/create_eg_pbs/');
-        await gfx.save_pixel_buffer('./output/create_eg_pbs/patch1.png', tp1, {
+
+
+        const save_pixel_buffer_png = (path, pb) => {
+
+            // Would work with other formats depending on the path.
+
+            return new Promise((solve, jettison) => {
+
+
+                console.log('pb', pb);
+                console.log('Object.keys(pb)',  Object.keys(pb));
+
+                console.log('pb.ta.length', pb.ta.length);
+
+                const {meta} = pb;
+                console.log('meta', meta);
+
+                let channels;
+
+                if (meta.bytes_per_pixel === 3 || meta.bytes_per_pixel === 4) {
+                    channels = meta.bytes_per_pixel;
+                }
+
+                if (!channels) {
+                    console.trace();
+                    throw 'stop';
+                }
+
+
+                sharp(pb.ta, {
+                    raw: {
+                        width: meta.size[0],
+                        height: meta.size[1],
+                        channels: channels
+                    }
+                })
+                    //.resize(320, 240)
+                    .toFile(path, (err, info) => { 
+                        if (err) {
+                            throw err;
+                        } else {
+                            console.log('sharp save info', info);
+                            console.log('should have saved to path: ' + path);
+
+                            solve(true);
+                        }
+
+                    });
+
+                //console.trace();
+                //throw 'stop';
+
+
+            });
+            
+            
+
+
+
+        }
+
+        const save_pixel_buffer = async(path, pb, options = {}) => {
+            const {format} = options;
+
+            if (format === 'png') {
+                return save_pixel_buffer_png(path, pb);
+            } else {
+                console.trace();
+
+                throw 'NYI';
+            }
+
+        }
+
+
+
+        await save_pixel_buffer('./output/create_eg_pbs/patch1.png', tp1, {
             format: 'png'
         });
-        await gfx.save_pixel_buffer('./output/create_eg_pbs/color_square.png', color_square, {
+        await save_pixel_buffer('./output/create_eg_pbs/color_square.png', color_square, {
             format: 'png'
         });
 
@@ -762,17 +831,12 @@ if (require.main === module) {
 
 
         tp1.bypp = 1;
-        await gfx.save_pixel_buffer('./output/create_eg_pbs/gs_patch1.png', tp1, {
+        await save_pixel_buffer('./output/create_eg_pbs/gs_patch1.png', tp1, {
             format: 'png'
         });
-        await gfx.save_pixel_buffer('./output/create_eg_pbs/square_32_pastel.png', square_32_pastel, {
+        await save_pixel_buffer('./output/create_eg_pbs/square_32_pastel.png', square_32_pastel, {
             format: 'png'
         });
-
-
-
-
-        
 
 
         //let res = await eg_win_to();

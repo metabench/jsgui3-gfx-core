@@ -6,6 +6,7 @@
 const gfx_core = {
     Pixel_Pos_List: require('./pixel-pos-list'),
     Pixel_Buffer: require('./pixel-buffer'),
+    Pixel_Buffer_Painter: require('./Pixel_Buffer_Painter'),
     convolution_kernels: require('./convolution-kernels/kernels'),
     ta_math: require('./ta-math')
 }
