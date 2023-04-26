@@ -62,6 +62,8 @@ if (require.main === module) {
                     const pb24 = pb.to_24bipp();
                     console.log('pb24.ta', pb24.ta);
 
+                    // See about giving Sharp a 1 bit per pixel image.
+
                     // Want to use this as a result for thresholding an image.
                     //  new_pb_threshold(threshold value)
 
