@@ -30,6 +30,12 @@ function generateGaussianKernel(dimension, sigma) {
 
     */
 
+    function hypotenuse(x1, y1, x2, y2) {
+      var xSquare = Math.pow(x1 - x2, 2);
+      var ySquare = Math.pow(y1 - y2, 2);
+      return Math.sqrt(xSquare + ySquare);
+    }
+
     if (!(dimension % 2) || Math.floor(dimension) !== dimension || dimension<3) {
       throw new Error(
         'The dimension must be an odd integer greater than or equal to 3'
