@@ -2537,8 +2537,6 @@ const get_instance = () => {
 
             } else {
 
-
-
                 console.trace();
                 throw 'Unsupported bipp: ' + bipp;
 
@@ -2550,8 +2548,6 @@ const get_instance = () => {
             const {bipp} = this;
 
             if (bipp === 1) {
-
-
                 // No, not cloned.
 
                 // invert self here.
@@ -2560,24 +2556,70 @@ const get_instance = () => {
                 const l = ta.length;
 
                 for (let i = 0; i < l; i++) {
-                
                     //console.log('ta[i]', ta[i]);
-                    
                     ta[i] = ~ta[i] & 255;
                 }
-                
                 // 
-
-
                 // Make a clone, then do not on every byte.
                 //  Could go faster and do it on 4 bytes at once.
 
-                
+            } else {
+                console.trace();
+                throw 'NYI (unsupported bipp) ' + bipp;
+            }
 
+        }
+
+        // boolean logic
+        'or'(other_pb) {
+            const {bipp} = this;
+
+            if (bipp === 1) {
+                // No, not cloned.
+
+                const other_bipp = other_pb.bipp;
+
+                if (other_bipp === 1) {
+
+                    const {ta} = this;
+                    const l_my_ta = ta.length;
+
+                    const other_ta = other_pb.ta;
+                    const l_other_ta = other_ta.length;
+
+                    if (l_other_ta === l_my_ta) {
+
+                        for (let i = 0; i < l_my_ta; i++) {
+                            //console.log('ta[i]', ta[i]);
+                            ta[i] = ta[i] | other_ta[i];
+                        }
+
+
+                    } else {
+                        console.trace();
+                        throw 'lengths of pixel buffer typed arrays must match';
+                    }
+
+                    
+
+
+                } else {
+                    console.trace();
+                    throw 'bipp values must match (other_pb expected to have bipp: 1)'
+                }
+
+
+
+                // invert self here.
+
+                
+                // 
+                // Make a clone, then do not on every byte.
+                //  Could go faster and do it on 4 bytes at once.
 
             } else {
                 console.trace();
-                throw 'NYI';
+                throw 'NYI (unsupported bipp) ' + bipp;
             }
 
         }

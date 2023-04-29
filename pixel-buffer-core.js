@@ -3857,7 +3857,7 @@ return a.every((val, i) => val === b[i]);
         var res = new this.constructor({
             'size': this.size,
             'bits_per_pixel': this.bits_per_pixel,
-            'buffer': this.buffer.constructor(this.buffer)
+            'buffer': new this.buffer.constructor(this.buffer)
         });
         if (this.pos) res.pos = this.pos;
         //this.buffer.copy(res.buffer);

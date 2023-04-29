@@ -170,12 +170,15 @@ if (require.main === module) {
 
                     const pb = new Pixel_Buffer({
                         bits_per_pixel: 1,
-                        size: [16, 16]
+                        size: [21, 21]
                     });
 
                     // But if we fill it...?
 
-                    pb.draw_polygon([[4, 4,], [8, 4], [8, 8], [4, 8]], 1);
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1);
+
+                    const pb_polygon_edge = pb.clone();
+
 
                     pb.flood_fill(0, 0, 1);
 
@@ -183,7 +186,7 @@ if (require.main === module) {
                     //  can simply apply not to all bytes when 1bipp
 
                     pb.invert();
-
+                    pb.or(pb_polygon_edge);
 
 
                     const pb8 = pb.to_8bipp();
