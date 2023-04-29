@@ -11,6 +11,15 @@ class Pixel_Buffer_Painter {
 
 
 
+        /*
+        // Draw line
+        // pos1, pos2, color
+
+        // And weight???
+        this.line = (pos1, pos2, color) => {
+
+        }
+        */
 
         this.rect = (pos, size, color) => {
             // call the lower level ta_math function.

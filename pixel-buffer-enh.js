@@ -106,12 +106,379 @@ const get_instance = () => {
     const Core = require('./pixel-buffer-core');
         
     class Pixel_Buffer_Enh extends Core {
+
+        // Has some decent functions, but want some more useful / intelligent flood fills.
+        //  Flood fill the inside parts of a 1 bipp image.
+        //   So it fills in the line drawing (allowing for holes)
+
+        // For each pixel, checking how many contiguous pixel it crosses to reach the edge of the image.
+
+        //  Be able to get / iterate through the pixels in each direction from that pixel...?
+
+        // .each_pixel_moving_up_down_left_right_from_pixel().
+
+        // .each_pixel_horiz_left_of_pixel
+        // 
+
+
+
+
+
+
+
+
+
         // Setting bits per pixel to 8
         //  greyscale 256
         constructor(spec) {
             //spec.__type_name = spec.__type_name || 'pixel_buffer';
             super(spec);
         }
+
+
+        'each_pixel_horiz_left_of_pixel'(pos, callback) {
+            for (let x = pos[0] - 1; x >= 0; x--) {
+              const pixel = this.get_pixel([x, pos[1]]);
+              callback(pixel, [x, pos[1]]);
+            }
+          }
+
+          'each_pixel_vert_above_pixel'(pos, callback) {
+            for (let y = pos[1] - 1; y >= 0; y--) {
+              const pixel = this.get_pixel([pos[0], y]);
+              callback(pixel, [pos[0], y]);
+            }
+          }
+
+          'each_pixel_horiz_right_of_pixel'(pos, callback) {
+            const w = this.size[0];
+            for (let x = pos[0] + 1; x < w; x++) {
+              const pixel = this.get_pixel([x, pos[1]]);
+              callback(pixel, [x, pos[1]]);
+            }
+          }
+
+          'each_pixel_vert_below_pixel'(pos, callback) {
+            const h = this.size[1];
+            for (let y = pos[1] + 1; y < h; y++) {
+              const pixel = this.get_pixel([pos[0], y]);
+              callback(pixel, [pos[0], y]);
+            }
+          }
+
+        // each_pixel_in_4_directions_from_pos()
+
+        /*
+        'each_pixel_in_4_directions_from_pos'(pos, callback) {
+            this.each_pixel_horiz_left_of_pixel(pos, callback);
+            this.each_pixel_vert_above_pixel(pos, callback);
+            this.each_pixel_horiz_right_of_pixel(pos, callback);
+            this.each_pixel_vert_below_pixel(pos, callback);
+        }
+        */
+
+        // Or collect those pixels?
+
+
+        // count the color boundaries (in each of those directions).
+
+
+        // Can we reach the outside border of the image from that pixel with a flood-fill-like movement?
+        //  
+
+
+        // A flood fill separate areas strategy?
+
+        // Flood fill from outside?
+        //  Flood fill that can flood past the image borders too (as in flood out then back in, assumed contiguity of pixels)
+
+        // Yes, so may as well have it rendered smaller, leaving a border around.
+
+
+
+
+        'count_directional_color_edges'(pixel_pos, edge_color) {
+            // Groups of contig pxls of the edge color.
+
+            // Need to flood fill edges separate colors to identify them?
+            //  Have a bit of a problem with the edge odd / even count logic.
+
+            // Possibly do flood fill in places definitely inside (even if we don't find all inside places)
+            //  Identify contiguous / flood fillable areas.
+
+
+
+
+
+
+
+
+
+
+
+
+            // Not sure about this.
+            //  Perhaps the color boundaries is needed instead....
+
+
+
+
+        }
+
+        '__maybe_broken_count_directional_color_boundaries'(pixel_pos, default_color = 0) {
+
+            // No, count the directional edges
+
+
+
+            // But better to count edges / contiguous color pixels.
+
+
+
+            let [l, u, r, b] = [0, 0, 0, 0];
+
+            const central_pixel = this.get_pixel(pixel_pos);
+
+            //console.log('central_pixel', central_pixel);
+            //throw 'stop';
+
+            let prev_pixel_color = central_pixel;
+
+
+            this.each_pixel_horiz_left_of_pixel(pixel_pos, (pixel, pos) => {
+
+                //console.log('pixel', pixel);
+
+                if (pixel !== prev_pixel_color) {
+
+                    l++;
+                    prev_pixel_color = pixel;
+                }
+
+
+
+                // Is it different color from the pixel?
+
+                //console.log('(pixel, pos)', [pixel, pos]);
+            });
+            if (prev_pixel_color !== default_color) l++;
+
+            prev_pixel_color = central_pixel;
+            this.each_pixel_vert_above_pixel(pixel_pos, (pixel, pos) => {
+
+                //console.log('pixel', pixel);
+
+                if (pixel !== prev_pixel_color) {
+                    u++;
+                    prev_pixel_color = pixel;
+                }
+
+                // Is it different color from the pixel?
+
+                //console.log('(pixel, pos)', [pixel, pos]);
+            });
+            if (prev_pixel_color !== default_color) u++;
+
+
+            prev_pixel_color = central_pixel;
+            this.each_pixel_horiz_right_of_pixel(pixel_pos, (pixel, pos) => {
+
+                //console.log('pixel', pixel);
+
+                if (pixel !== prev_pixel_color) {
+
+                    r++;
+                    prev_pixel_color = pixel;
+                }
+                // Is it different color from the pixel?
+                //console.log('(pixel, pos)', [pixel, pos]);
+            });
+            if (prev_pixel_color !== default_color) r++;
+
+
+            prev_pixel_color = central_pixel;
+            this.each_pixel_vert_below_pixel(pixel_pos, (pixel, pos) => {
+                if (pixel !== prev_pixel_color) {
+                    b++;
+                    prev_pixel_color = pixel;
+                }
+            });
+            if (prev_pixel_color !== default_color) b++;
+
+
+            return [Math.ceil(l / 2), Math.ceil(u / 2), Math.ceil(r / 2), Math.ceil(b / 2)];
+
+            //return [l, u, r, b];
+        }
+
+
+        // Basically not working....
+
+        // Want better identification of inner pixels.
+        //  
+
+
+
+        // A flood-fill way would work.
+        //  When looking out from a pixel, think we need to flood fill the edges so that a specific edge gets identified.
+        //  And the very tops of the objects?
+
+        // Not so easy right now...
+
+        //  Need to try some other means....
+
+        // Identifying flood fill regions....
+        //  
+
+        // A flood fill on the outer area?
+        //  Or just could scan from the left and detect how many edges have been crossed....
+        //  odd then paint the pixel.
+        //   however, need to properly handle the kinds of (non-edge?) but it's hard to tell like this.
+
+        // A map of flood fill sections could help a lot.
+        //  The detection of contiguous pixels of color does not find the shape edges / boundaries properly.
+
+        // Flood fill tech seems much better here.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        'color_inner_pixels'(color = 1) {
+
+            if (this.bipp === 1) {
+                
+                const pb2 = this.clone();
+
+
+                // but add border space around it....
+                //  clone_with_extra_borders?
+
+
+
+                // then flood fill in a place that's definitely outside it.
+                //  but add borders too?
+
+
+
+
+
+            } else {
+                console.trace();
+                throw 'NYI';
+            }
+
+        }
+
+
+
+
+
+
+
+        // No, this older way has not worked properly
+
+        '__attempt_color_inner_pixels'(color = 1) {
+
+            if (this.bipp === 1) {
+                const ta_pos = new Uint16Array(2);
+                const ta_px_value = new Uint8ClampedArray(3);
+                const ta_info = new Uint32Array(4);
+                this.each_px(ta_pos, ta_px_value, ta_info, px => {
+                    //console.log('ta_pos', ta_pos);
+
+                    // check if it is an inner pixel.
+
+
+                    const dcbs = this.count_directional_color_boundaries(ta_pos, 0);
+                    // Treating the edge as a boundary if the last pixel is not the specified color?
+
+
+                    const [l, u, r, b] = dcbs;
+
+                    // Divide them by 2?
+
+
+
+                    
+
+                    console.log('[l, u, r, b]', ta_pos, [l, u, r, b]);
+
+
+                    /*
+                    const isAllEven = dcbs.every(num => num % 2 === 0);
+
+                    if (isAllEven) {
+                        this.set_pixel_1bipp(ta_pos, color);
+                    }
+                    */
+
+                    /*
+
+                    if (l === 2 && u === 2 && r === 2 && b === 2) {
+                        this.set_pixel_1bipp(ta_pos, color);
+                    }
+                    if (l === 4 && u === 4 && r === 4 && b === 4) {
+                        this.set_pixel_1bipp(ta_pos, color);
+                    }
+                    */
+
+                    // all even and > 0
+
+                    //const isAllEvenAbove0 = dcbs.every(num => num > 0 && num % 2 === 0);
+                    const isAllOddAbove0 = dcbs.every(num => num > 0 && num % 2 === 1);
+
+                    if (isAllOddAbove0) {
+                        this.set_pixel_1bipp(ta_pos, color);
+                    }
+
+
+
+
+
+
+                });
+            } else {
+                console.trace();
+                throw 'NYI';
+            }
+
+            
+
+        }
+
+
+
+        // Number of contiguous pixels in each of those directions...?
+        //  Count contiguous pixel zones.
+
+        // Could use these to find the filled in areas.
+        //  is_pixel_inner(pixel_pos)
+
+
+
+
+
+
+
+
+        // Then could go over every pixel, 
 
         /*
         process(fn) {
@@ -999,6 +1366,8 @@ const get_instance = () => {
         // Pos better as a ta.
         //  That should be the default.
 
+        // An outer flood fill may be all that's needed....
+
         'measure_color_region_size'(x, y, max) {
             const buffer = this.buffer;
 
@@ -1286,6 +1655,8 @@ const get_instance = () => {
         //  probably best not here.
 
         'get_pixel_pos_list_of_pixels_with_color'(color) {
+            // would be the pixel positions of all the boundaries / outlines.
+
             let res = new Pixel_Pos_List();
             if (this.pos) {
                 console.log('this.pos', this.pos);
@@ -1327,6 +1698,10 @@ const get_instance = () => {
 
         }
 
+        // Maybe try a (much) simpler flood fill algorithm to start with.
+
+
+
 
         // 
         'flood_fill_self_get_pixel_pos_list'(pos, color) {
@@ -1340,6 +1715,8 @@ const get_instance = () => {
             if (this.bytes_per_pixel === 4) {
                 throw 'NYI'
             } else if (this.bytes_per_pixel === 1) {
+
+
 
                 const using_ta_pixels_visited = () => {
                     const res = new Pixel_Pos_List();
@@ -1574,12 +1951,208 @@ const get_instance = () => {
             // TODO: Local let variables are quite performant, when they are numbers. Consider using them more. Would clarify code, may even improve perf.
 
 
+
+            // 3 bytes per pixel too....
+
+
+
+
+
             // stack of pixels to visit
             // map of pixels visited
             // Could optimize this with typed arrays
             //const [w, h] = this.size;
 
-            if (this.bytes_per_pixel === 4) {
+            // 3 bytes per pixel....
+
+            // Can we try a simpler algorithm, at least to start with???
+
+
+
+
+            if (this.bytes_per_pixel === 3) {
+
+                const [w, h] = this.size;
+                let fast_stacked_mapped_flood_fill = () => {
+                    //const map_pixels_visited = {};
+                    //const arr_pixels_to_visit = [[x, y]];
+                    //let c_visited = 0;
+                    const buffer = this.buffer;
+                    // or .ta?
+
+
+
+                    //let pixel_buffer_pos = this.bytes_per_pixel * (x + y * this.size[0]);
+                    // Could make a large typed array buffer of pixels to visit
+                    // An already visited typed array.
+                    const scratch_32 = new Uint32Array(16);
+                    // w, h
+                    scratch_32[0] = this.size[0]; // w
+                    scratch_32[1] = this.size[1]; // h
+                    scratch_32[2] = scratch_32[0] * scratch_32[1];
+                    scratch_32[3] = this.bytes_per_pixel;
+                    // 4 x, 5 y
+
+                    scratch_32[6] = 0 // position within visiting pixels
+                    scratch_32[7] = 0 // Maximum pixel pos starting index
+                    scratch_32[8] = 0 // pixel_buffer_pos
+                    scratch_32[9] = 0 // c_visited
+
+                    const ta8_pixels = new Uint8Array(12);
+
+                    // 0, 1, 2, 3    start color
+                    // 4, 5, 6, 7    px color
+                    // 8, 9, 10, 11  fill color
+
+                    ta8_pixels[8] = r;
+                    ta8_pixels[9] = g;
+                    ta8_pixels[10] = b;
+                    //ta8_pixels[11] = a;
+
+                    //console.log('r, g, b', r, g, b);
+
+                    //console.log('ta8_pixels[8]', ta8_pixels[8]);
+                    //        console.log('ta8_pixels[9]', ta8_pixels[9]);
+                    //        console.log('ta8_pixels[10]', ta8_pixels[10]);
+
+                    //throw 'stop1';
+
+                    //const ta16_pixels = new Uint8Array(4);
+                    //console.log('scratch_32[2]', scratch_32[2]);
+                    const ta_pixels_visited = new Uint8Array(scratch_32[2]);
+                    // Initialise a sequence position buffer that's as long as the whole image
+                    const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
+                    // x y coords
+
+                    scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
+
+                    //const c_start = new Uint8Array([buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++)]);
+                    ta8_pixels[0] = buffer[scratch_32[8]++];
+                    ta8_pixels[1] = buffer[scratch_32[8]++];
+                    ta8_pixels[2] = buffer[scratch_32[8]++];
+                    //ta8_pixels[3] = buffer[scratch_32[8]++];
+
+                    //console.log('c_start', c_start);
+
+
+                    // add the first pixel
+                    ta_visiting_pixels[0] = x;
+                    ta_visiting_pixels[1] = y;
+                    scratch_32[7] = 2;
+
+                    //console.log('scratch_32[6]', scratch_32[6]);
+                    //console.log('scratch_32[7]', scratch_32[7]);
+
+                    //c_visited < 
+
+                    // Looks like the wrong stop condition here.
+                    while (scratch_32[9] <= scratch_32[2]) {
+                        // 
+                        //console.log('scratch_32[6]', scratch_32[6]);
+                        //[x, y] = arr_pixels_to_visit[c_visited];
+                        scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; // x
+                        scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; // y
+
+                        // x + (w * y)
+                        //ta_pixels_visited[scratch_32[4] + (scratch_32[0] * scratch_32[5])] = 255;
+
+                        //console.log('c_visited', c_visited);
+                        //map_pixels_visited[[x, y]] = true;
+                        //console.log('[x, y]', [x, y]);
+
+                        // Check this pixel...
+                        //let pixel_buffer_pos = this.bytes_per_pixel * (x + y * this.size[0]);
+                        scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
+
+
+                        //const [pr, pg, pb, pa] = 
+                        //const c_px = new Uint8Array([buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++), buffer.readUInt8(pixel_buffer_pos++)]);
+                        //ta8_pixels[4] = buffer.readUInt8(scratch_32[8]++);
+                        //ta8_pixels[5] = buffer.readUInt8(scratch_32[8]++);
+                        //ta8_pixels[6] = buffer.readUInt8(scratch_32[8]++);
+                        //ta8_pixels[7] = buffer.readUInt8(scratch_32[8]++);
+
+                        //ta8_pixels[4] = buffer[scratch_32[8]++];
+                        //ta8_pixels[5] = buffer[scratch_32[8]++];
+                        //ta8_pixels[6] = buffer[scratch_32[8]++];
+                        //ta8_pixels[7] = buffer[scratch_32[8]++];
+
+                        //console.log('c_px', c_px);
+                        // then the difference from the start colors
+
+                        //const c_diff = new Uint8Array([c_start[0] - c_px[0], c_start[1] - c_px[1], c_start[2] - c_px[2], c_start[3] - c_px[3]]);
+                        //ta16_pixels[0] = buffer[scratch_32[8]++] - ta8_pixels[0];
+                        //ta16_pixels[1] = buffer[scratch_32[8]++] - ta8_pixels[1];
+                        //ta16_pixels[2] = buffer[scratch_32[8]++] - ta8_pixels[2];
+                        //ta16_pixels[3] = buffer[scratch_32[8]++] - ta8_pixels[3];
+
+
+
+                        //console.log('c_diff', c_diff);
+                        //if (ta16_pixels[0] === 0 && ta16_pixels[1] === 0 && ta16_pixels[2] === 0 && ta16_pixels[3] === 0) {
+                        if (buffer[scratch_32[8]++] - ta8_pixels[0] === 0 && buffer[scratch_32[8]++] - ta8_pixels[1] === 0 && buffer[scratch_32[8]++] - ta8_pixels[2] === 0) {
+                            // No color change
+                            //  So change the color
+                            scratch_32[8] -= 3;
+                            //buffer.writeUInt8(ta8_pixels[8], scratch_32[8]++);
+                            //buffer.writeUInt8(ta8_pixels[9], scratch_32[8]++);
+                            //buffer.writeUInt8(ta8_pixels[10], scratch_32[8]++);
+                            //buffer.writeUInt8(ta8_pixels[11], scratch_32[8]++);
+                            //console.log('ta8_pixels[8]', ta8_pixels[8]);
+                            //console.log('ta8_pixels[9]', ta8_pixels[9]);
+                            //console.log('ta8_pixels[10]', ta8_pixels[10]);
+                            buffer[scratch_32[8]++] = ta8_pixels[8];
+                            buffer[scratch_32[8]++] = ta8_pixels[9];
+                            buffer[scratch_32[8]++] = ta8_pixels[10];
+                            //buffer[scratch_32[8]++] = ta8_pixels[11];
+
+                            // Add adjacent pixels to the queue
+                            //  if they've not been visited before.
+
+                            // ta_pixels_visited[scratch_32[4] + (scratch_32[0] * scratch_32[5])]
+
+                            if (scratch_32[4] - 1 >= 0 && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
+
+                                ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] = 255;
+
+                                //arr_pixels_to_visit.push([scratch_32[4] - 1, scratch_32[5]]);
+                            }
+                            if (scratch_32[5] - 1 >= 0 && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] === 0) {
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] - 1;
+                                //arr_pixels_to_visit.push([scratch_32[4], scratch_32[5] - 1]);
+                                ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] = 255;
+                            }
+                            if (scratch_32[4] + 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] === 0) {
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] + 1;
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
+                                //arr_pixels_to_visit.push([scratch_32[4] + 1, scratch_32[5]]);
+                                ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] = 255;
+                            }
+                            if (scratch_32[5] + 1 < scratch_32[1] && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] === 0) {
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
+                                ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] + 1;
+                                //arr_pixels_to_visit.push([scratch_32[4], scratch_32[5] + 1]);
+                                ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255;
+                            }
+                        }
+                        scratch_32[9]++;
+                        // compare these arrays
+                        // Add adjacent pixels to the stack?
+                        //c_visited++;
+                        //scratch_32[7] += 2;
+                    }
+                    return this;
+                    //console.log('scratch_32[6]', scratch_32[6]);
+                    //console.log('scratch_32[6] / 2', scratch_32[6] / 2);
+                    // 787812
+                    //console.log('c_visited', c_visited);
+                }
+                return fast_stacked_mapped_flood_fill();
+
+            } else if (this.bytes_per_pixel === 4) {
 
                 const [w, h] = this.size;
                 let fast_stacked_mapped_flood_fill = () => {
@@ -1740,7 +2313,6 @@ const get_instance = () => {
                         //scratch_32[7] += 2;
                     }
                     return this;
-
                     //console.log('scratch_32[6]', scratch_32[6]);
                     //console.log('scratch_32[6] / 2', scratch_32[6] / 2);
                     // 787812
@@ -1860,6 +2432,8 @@ const get_instance = () => {
 
 
             } else {
+
+                console.trace();
                 throw 'Unsupported bytes_per_pixel: ' + this.bytes_per_pixel;
             }
         }

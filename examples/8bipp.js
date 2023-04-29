@@ -2,8 +2,6 @@
 
 const Pixel_Buffer_Core = require('../pixel-buffer-core');
 
-const sharp = require('sharp');
-
 if (require.main === module) {
     const lg = console.log;
 
@@ -12,82 +10,6 @@ if (require.main === module) {
     (async() => {
         const run_examples = async() => {
             lg('Begin run examples');
-
-
-            const save_pixel_buffer_png = (path, pb) => {
-
-                // Would work with other formats depending on the path.
-    
-                return new Promise((solve, jettison) => {
-    
-    
-                    console.log('pb', pb);
-                    console.log('Object.keys(pb)',  Object.keys(pb));
-    
-                    console.log('pb.ta.length', pb.ta.length);
-    
-                    const {meta} = pb;
-                    console.log('meta', meta);
-    
-                    let channels;
-    
-                    if (meta.bytes_per_pixel === 3 || meta.bytes_per_pixel === 4) {
-                        channels = meta.bytes_per_pixel;
-                    }
-                    if (meta.bytes_per_pixel === 1) {
-                        channels = meta.bytes_per_pixel;
-                    }
-    
-                    if (!channels) {
-                        console.trace();
-                        throw 'stop';
-                    }
-    
-    
-                    sharp(pb.ta, {
-                        raw: {
-                            width: meta.size[0],
-                            height: meta.size[1],
-                            channels: channels
-                        }
-                    })
-                        //.resize(320, 240)
-                        .toFile(path, (err, info) => { 
-                            if (err) {
-                                throw err;
-                            } else {
-                                console.log('sharp save info', info);
-                                console.log('should have saved to path: ' + path);
-    
-                                solve(true);
-                            }
-    
-                        });
-    
-                    //console.trace();
-                    //throw 'stop';
-    
-    
-                });
-                
-                
-    
-    
-    
-            }
-    
-            const save_pixel_buffer = async(path, pb, options = {}) => {
-                const {format} = options;
-    
-                if (format === 'png') {
-                    return save_pixel_buffer_png(path, pb);
-                } else {
-                    console.trace();
-    
-                    throw 'NYI';
-                }
-    
-            }
 
             // A list of example functions. array.
 
@@ -103,7 +25,7 @@ if (require.main === module) {
                     //  Then could work on expanding the scale once some maths has been better implemented and understood.
 
                     const pb = new Pixel_Buffer_Core({
-                        bits_per_pixel: 1,
+                        bits_per_pixel: 8,
                         size: [8, 8]
                     });
 
@@ -116,7 +38,7 @@ if (require.main === module) {
 
                     ta_pos[0] = 0;
                     ta_pos[1] = 0;
-                    pb.set_pixel(ta_pos, 1);
+                    pb.set_pixel(ta_pos, 127);
 
                     ta_pos[0] = 3;
                     ta_pos[1] = 3;
@@ -125,9 +47,9 @@ if (require.main === module) {
                     //  Reference an array of bit signigicances. Modify the number. Don't try to directly access the bits.
                     //  Will have simpler JS code this way. Could then maybe make bit manipulation system.
 
-                    pb.set_pixel(ta_pos, 1);
+                    pb.set_pixel(ta_pos, 127);
                     ta_pos[0] = 4;
-                    pb.set_pixel(ta_pos, 1);
+                    pb.set_pixel(ta_pos, 127);
 
                     // output as PNG?
                     //  as bmp?
@@ -137,22 +59,8 @@ if (require.main === module) {
 
                     // then try changing it to 24bpp...
 
-                    //const pb24 = pb.to_24bipp();
-                    //console.log('pb24.ta', pb24.ta);
-
                     const pb24 = pb.to_24bipp();
-                    console.log('pb24.ta.length', pb24.ta.length);
-
-                    const pb8 = pb.to_8bipp();
-                    console.log('pb8.ta.length', pb8.ta.length);
-
-                    await save_pixel_buffer('./pb1_pb8.png', pb8, {format: 'png'});
-
-                    // Nice, this works. Could soon use this for come image composition.
-
-
-                    // Could save it here with sharp.
-
+                    console.log('pb24.ta', pb24.ta);
 
                     // See about giving Sharp a 1 bit per pixel image.
 

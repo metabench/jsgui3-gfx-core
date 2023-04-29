@@ -2596,6 +2596,59 @@ class Pixel_Buffer_Core {
 
     }
 
+    to_8bipp() {
+        const bipp = this.bits_per_pixel;
+
+
+        if (bipp === 1) {
+            const res = new this.constructor({
+                size: this.size,
+                bits_per_pixel: 8
+            })
+            // 0 or 255 for all values...
+
+            // set_pixel_by_index should work...?
+
+            let i_px = 0;
+
+            let i_byte = 0;
+            const num_bytes = this.ta.length;
+            // iterate through the bits?
+            // could have a fast processing algorithm that's written out a bit longer, using &.
+            // go through it byte by byte makes sense in a way.
+
+            while (i_byte < num_bytes) {
+                // iterate through pixel numbers too...
+                // need to set the result points.
+                // do this 8 times...
+                for (var b = 0; b < 8; b++) {
+                    const color = this.get_pixel_by_idx_1bipp(i_px) === 1 ? 255 : 0;
+                    res.set_pixel_by_idx_8bipp(i_px++, color);
+                }
+                i_byte++;
+                // pixel by pixel... not as efficient this way.
+            }
+
+            return res;
+
+
+
+
+        } else if (bipp === 8) {
+            return this.clone();
+        } else if (bipp === 24) {
+            console.trace();
+            throw 'NYI';
+        } else if (bipp === 32) {
+            console.trace();
+            throw 'NYI';
+        }
+
+
+        // Could make greyscale of higher bipp images.
+
+    }
+
     to_24bipp() {
 
         // Creates another one
@@ -2637,9 +2690,26 @@ class Pixel_Buffer_Core {
                 bits_per_pixel: 24
             });
 
+            // Greyscale.
+            //  Simple algotithm being going through the ta and writing 3 pixels of the value for each of the 1 pixels.
+
+            const ta_res = res.ta;
+
+            const ta = this.ta, l = ta.length;
+
+            // check that the res ta is 3 times longer.... ? (or assumue it is)
+
+            let pos_w = 0, c = 0;
+
+            for (c = 0; c < l; c++) {
+                ta_res[pos_w++] = ta[c];
+                ta_res[pos_w++] = ta[c];
+                ta_res[pos_w++] = ta[c];
+            }
+
             // r, g, b all the same.
-            console.trace();
-            throw 'NYI';
+            //console.trace();
+            //throw 'NYI';
 
 
 
@@ -2992,10 +3062,127 @@ class Pixel_Buffer_Core {
 
 
     }
+
+
+    // no need for the ta px value.
+    //  could ignore it, or use the first item in the array.
+
+
+    each_ta_1bipp(ta_pos, ta_px_value, ta_info, callback) {
+        // worth doing an x and y loop?
+        //  and then also do integer incrementing
+
+        // Can we set details of the array view for the ta px value?
+        //  Lets copy the pixel values for the moment.
+
+        const bipp = this.bipp;
+        if (bipp === 1) {
+
+            // do get_pixel etc.
+
+            const [w, h] = this.size;
+            //let pos = new Array(2);
+
+            for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
+
+                for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
+
+                
+                    const px = this.get_pixel_1bipp(ta_pos);
+                    callback(px);
+
+                }
+
+            }
+            
+
+
+            const _for_24bipp = () => {
+                if (ta_pos instanceof Int16Array || ta_pos instanceof Int32Array && ta_pos.length >= 2) {
+
+                    // only accept clamped ui8 array for the moment?
+    
+                    if (ta_px_value instanceof Uint8ClampedArray && ta_px_value.length >= 3) {
+    
+                        // r, g, b
+    
+                        // these values stored as 32 bit.
+                        //  can still have quite large bit addresses. 512mb limit???
+    
+                        // or use larger float ta type?
+                        //  32 bit int for the moment?
+                        //  bigint?
+    
+                        if (ta_info instanceof Uint32Array && ta_info.length >= 4) {
+                            // img w, img h, pixel index (num), bipp
+    
+                            // for loop over all...
+                            //  set these two to the size.
+    
+    
+    
+                            const ta = this.ta;
+    
+                            ta_info[0] = this.size[0];
+                            ta_info[1] = this.size[1];
+                            ta_info[2] = 0;
+                            ta_info[3] = 24; // bipp;
+    
+                            const update = () => {
+                                ta[ta_info[2] * 3] = ta_px_value[0];
+                                ta[ta_info[2] * 3 + 1] = ta_px_value[1];
+                                ta[ta_info[2] * 3 + 2] = ta_px_value[2];
+    
+                            }
+    
+                            for (ta_pos[1] = 0; ta_pos[1] < ta_info[1]; ta_pos[1]++) {
+                                for (ta_pos[0] = 0; ta_pos[0] < ta_info[0]; ta_pos[0]++) {
+                                    ta_px_value[0] = ta[ta_info[2] * 3];
+                                    ta_px_value[1] = ta[ta_info[2] * 3 + 1];
+                                    ta_px_value[2] = ta[ta_info[2] * 3 + 2];
+                                    
+                                    callback(update);
+                                    ta_info[2]++;
+                                }
+                            }
+    
+                            //  pixel num = bit index / bipp
+                            //   have a pixel num variable too?
+                            //    could be convenient.
+                            //     maybe more convenient than bit index.
+                            //  pixel num would be simpler / easier than bit_index in many cases.
+    
+                        }
+    
+    
+    
+                        // ta_info
+                        //  width
+                        //  height
+                        //  bit index of current pixel
+                        //  bipp (but we know that's 24???)
+                        //   nice to set a value for it.
+    
+                    }
+                }
+            }
+
+
+            
+
+
+
+        } else {
+            throw 'each_ta_24bipp error: bipp must be 1, bipp: ' + bipp;
+        }
+
+
+    }
     //  
 
 
 
+    // Maybe could do with simpler default version of this.
     each_px(ta_pos, ta_px_value, ta_info, callback) {
 
 
@@ -3015,8 +3202,6 @@ class Pixel_Buffer_Core {
             console.trace();
             throw 'Unsupported bipp: ' + bipp;
         }
-
-
     }
 
 
@@ -3103,14 +3288,16 @@ class Pixel_Buffer_Core {
         // get the pixel index....
 
         const idx = pos[1] * this.size[0] + pos[0];
+
+
         const byte = idx * 3;
         //const bit = idx % 8;
 
         //console.log('byte, bit', [byte, bit]);
 
-        this.ta[idx] = color[0];
-        this.ta[idx + 1] = color[1];
-        this.ta[idx + 2] = color[2];
+        this.ta[byte] = color[0];
+        this.ta[byte + 1] = color[1];
+        this.ta[byte + 2] = color[2];
     }
     'set_pixel_32bipp'(pos, color) {
         // color should be 1 or 0
@@ -3125,10 +3312,10 @@ class Pixel_Buffer_Core {
 
         //console.log('byte, bit', [byte, bit]);
 
-        this.ta[idx] = color[0];
-        this.ta[idx + 1] = color[1];
-        this.ta[idx + 2] = color[2];
-        this.ta[idx + 2] = color[3];
+        this.ta[byte] = color[0];
+        this.ta[byte + 1] = color[1];
+        this.ta[byte + 2] = color[2];
+        this.ta[byte + 2] = color[3];
     }
     'set_pixel_by_idx_1bipp'(idx, color) {
         const byte = Math.floor(idx / 8);
@@ -3267,8 +3454,45 @@ class Pixel_Buffer_Core {
             if (l === 2) {
                 return(this.set_pixel_32bipp(a[0], a[1]));
             }
+        } else {
+            console.trace();
+
+            throw 'unsupported bipp: ' + bipp;
         }
     }
+
+    'draw_line'(pos1, pos2, color) {
+        let x0 = pos1[0];
+        let y0 = pos1[1];
+        let x1 = pos2[0];
+        let y1 = pos2[1];
+      
+        let dx = Math.abs(x1 - x0);
+        let dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1;
+        let sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+      
+        while (true) {
+          this.set_pixel([x0, y0], color);
+      
+          if (x0 === x1 && y0 === y1) {
+            break;
+          }
+      
+          let e2 = 2 * err;
+          if (e2 > -dy) {
+            err -= dy;
+            x0 += sx;
+          }
+      
+          if (e2 < dx) {
+            err += dx;
+            y0 += sy;
+          }
+        }
+      }
+      
 
 
     'get_pixel_by_idx_1bipp'(idx) {
@@ -3427,11 +3651,8 @@ class Pixel_Buffer_Core {
         } else {
             console.trace();
             throw 'NYI';
-
         }
-
     }
-
 
     process(fn) {
         let res = this.clone();
@@ -3664,14 +3885,20 @@ return a.every((val, i) => val === b[i]);
         if (this.bytes_per_pixel === 1) {
             // Then go over each of this pixel
             //  take average rgb values
-            let i = 0;
+            let i = 0, new_v;
             this.each_pixel((x, y, v) => {
+
+                //new_v = v === 1 ? 255 : 0;
+
                 bres[i++] = v;
                 bres[i++] = v;
                 bres[i++] = v;
                 bres[i++] = 255;
                 //i++;
             });
+        } else {
+            console.trace();
+            throw 'NYI';
         }
         return res;
     }
