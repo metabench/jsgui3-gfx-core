@@ -368,6 +368,11 @@ let ta_math = require('./ta-math')
 
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
 
+
+// Want to be able to easily use pixel buffers as compositors for other pixel buffers.
+
+
+
 class Pixel_Buffer_Core {
     // Setting bits per pixel to 8
     //  greyscale 256
@@ -496,11 +501,6 @@ class Pixel_Buffer_Core {
             }
 
 
-
-
-
-
-
             // num_pixels property...
             //  bring into constructor?
 
@@ -532,28 +532,18 @@ class Pixel_Buffer_Core {
                     // specific fn call...?
                     //  probably most optimized to do a specific fn call....
 
-
-
                 } else {
 
                     console.trace();
                     throw 'NYI';
                 }
-
-
             } else {
 
                 console.trace();
                 throw 'NYI';
 
             }
-
             // will do some low level stuff here.
-
-
-
-
-
         }
 
 
@@ -679,7 +669,6 @@ class Pixel_Buffer_Core {
         const pos_bounds = new Int16Array(4);
         //  pos_within_source / pos_within_container / pos_within_parent / pos_within
 
-
         const pos_center = new Int16Array(2);
         const edge_offsets_from_center = new Int16Array(4);
 
@@ -739,7 +728,6 @@ class Pixel_Buffer_Core {
             configurable: false
         });
 
-
         const minus_pos = new Int16Array(2);
 
         Object.defineProperty(this, 'minus_pos', {
@@ -757,7 +745,6 @@ class Pixel_Buffer_Core {
             enumerable: true,
             configurable: false
         });
-
 
         Object.defineProperty(this, 'size', {
             // Using shorthand method names (ES2015 feature).
@@ -783,7 +770,6 @@ class Pixel_Buffer_Core {
             enumerable: true,
             configurable: false
         });
-
 
         // ta_colorspace
 
@@ -1628,7 +1614,6 @@ class Pixel_Buffer_Core {
             console.trace();
             throw 'NYI';
         }
-
     }
 
     calc_source_target_valid_bounds_overlap() {
@@ -2433,9 +2418,6 @@ class Pixel_Buffer_Core {
             console.trace();
             throw 'NYI';
         }
-
-
-
     }
     each_px_convolution(ta_size, pb_conv_window, ta_pos, callback) {
 
@@ -3461,7 +3443,87 @@ class Pixel_Buffer_Core {
         }
     }
 
+
+
+    'draw_polygon'(arr_points, color) {
+
+        // But a filled polygon is more complex to draw.
+
+
+        // go through the points doing draw_line.
+
+        let x, y;
+
+        let prev_x, prev_y;
+
+        let is_first = true;
+
+        for ([x, y] of arr_points) {
+
+            //console.log('[x, y]', [x, y]);
+
+            if (!is_first) {
+                this.draw_line([prev_x, prev_y], [x, y], color);
+            }
+
+
+            [prev_x, prev_y] = [x, y];
+
+
+            is_first = false;
+        }
+        this.draw_line([prev_x, prev_y], arr_points[0], color);
+        // then back to the start.
+    }
+
+    // Maybe a 'shapes' class that will render shapes ready for composition.
+
+    // Palette itself would be a typed array or pixel buffer?
+    //  Palette as a pixel buffer could be simple in some ways.
+    //   In terms of the features being made use of... but pb should probably have its own palette object.
+    //   For avoidance of circular refs, making it its own class with own implementation would prob work best.
+    
+    // Or palette is in enhanced pixel buffer, but itself uses / is only a core pixel buffer.
+    //  Though integrating it on the core level would have advantages with being able to reference palette colors more easily.
+
+    
+
+
+
+
+
+
+
+
+
+
+
+    // drawing a filled polygon...
+    //  could create a separate / new pixelbuffer just to represent the data within that polygon.
+    //   And a pixel_pos_list could be a useful data structure.
+    //    Maybe could have more efficient internal representation.
+
+
+
+
+
+
+
+
+
+
+
     'draw_line'(pos1, pos2, color) {
+
+
+
+        // options would help....
+        //  or it could just be color here.
+
+        // And maybe use different bipp options.
+
+
+
         let x0 = pos1[0];
         let y0 = pos1[1];
         let x1 = pos2[0];
@@ -3492,6 +3554,8 @@ class Pixel_Buffer_Core {
           }
         }
       }
+
+    
       
 
 
@@ -3539,6 +3603,8 @@ class Pixel_Buffer_Core {
     'get_pixel_1bipp'(pos) {
         // work out the pixel index...
 
+        //console.log('pos', pos);
+
         const idx = pos[1] * this.size[0] + pos[0];
         const byte = Math.floor(idx / 8);
         const bit = 7 - (idx % 8);
@@ -3572,6 +3638,7 @@ class Pixel_Buffer_Core {
     }
 
     'get_pixel'(pos) {
+        //console.log('get_pixel pos', pos);
         const bipp = this.bits_per_pixel;
         if (bipp === 1) {
             return this.get_pixel_1bipp(pos);

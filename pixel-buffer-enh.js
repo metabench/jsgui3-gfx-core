@@ -361,6 +361,8 @@ const get_instance = () => {
 
 
         'color_inner_pixels'(color = 1) {
+            console.trace();
+            throw 'NYI'
 
             if (this.bipp === 1) {
                 
@@ -1931,6 +1933,10 @@ const get_instance = () => {
                     return res;
                 }
                 return using_ta_pixels_visited();
+            } else {
+                console.trace();
+                throw 'NYI';
+
             }
         }
 
@@ -1945,14 +1951,25 @@ const get_instance = () => {
         // This is a good flood fill.
         //  May be better to update with different version for different bipp.
 
+        // And a general high level flood fill algorithm for other bipp values.
+
+        
+
         'flood_fill'(x, y, r, g, b, a) {
 
+            const {bipp} = this;
+
+            // Want to use bipp.
+
+            // And have it work with 1 bipp images too.
 
             // TODO: Local let variables are quite performant, when they are numbers. Consider using them more. Would clarify code, may even improve perf.
 
 
+            // Worth trying 1 bipp flood fills.
 
-            // 3 bytes per pixel too....
+
+
 
 
 
@@ -1970,7 +1987,7 @@ const get_instance = () => {
 
 
 
-            if (this.bytes_per_pixel === 3) {
+            if (bipp === 24) {
 
                 const [w, h] = this.size;
                 let fast_stacked_mapped_flood_fill = () => {
@@ -2152,7 +2169,7 @@ const get_instance = () => {
                 }
                 return fast_stacked_mapped_flood_fill();
 
-            } else if (this.bytes_per_pixel === 4) {
+            } else if (bipp === 32) {
 
                 const [w, h] = this.size;
                 let fast_stacked_mapped_flood_fill = () => {
@@ -2320,7 +2337,7 @@ const get_instance = () => {
                 }
                 return fast_stacked_mapped_flood_fill();
 
-            } else if (this.bytes_per_pixel === 1) {
+            } else if (bipp === 8) {
 
                 // r
                 const [w, h] = this.size;
@@ -2431,12 +2448,140 @@ const get_instance = () => {
                 return fast_stacked_mapped_flood_fill();
 
 
+            } else if (bipp === 1) { 
+                // could try a much simpler algorithm.
+
+                const new_color = r;
+
+                const target_color = this.get_pixel(x, y);
+
+                const [width, height] = this.size;
+
+                //console.log('target_color', target_color);
+                //console.log('new_color', new_color);
+
+                if (target_color === new_color) {
+                // No need to fill if the new color is the same as the target color
+                    return;
+                }
+
+                const stack = [];
+                stack.push([x, y]);
+
+                const dict_already = {};
+
+                while (stack.length > 0) {
+                    const [curr_x, curr_y] = stack.pop();
+
+                    //console.log('[curr_x, curr_y]', [curr_x, curr_y]);
+
+                    const px = this.get_pixel([curr_x, curr_y]);
+                    //console.log('px', px);
+                    //console.log('target_color', target_color);
+
+                    if (px === target_color) {
+                        //console.log('px match');
+
+                        this.set_pixel([curr_x, curr_y], new_color);
+
+
+                        // Check neighbors
+                        if (curr_x > 0) {
+                            // if that px is not on the stack already though...
+
+                            if (!dict_already[[curr_x - 1, curr_y]]) {
+                                stack.push([curr_x - 1, curr_y]);
+                            }
+
+                            
+                        }
+                        if (curr_x < width - 1) {
+                            //stack.push([curr_x + 1, curr_y]);
+
+                            if (!dict_already[[curr_x + 1, curr_y]]) {
+                                stack.push([curr_x + 1, curr_y]);
+                            }
+
+                        }
+                        if (curr_y > 0) {
+                            if (!dict_already[[curr_x, curr_y - 1]]) {
+                                stack.push([curr_x, curr_y - 1]);
+                            }
+
+                            
+                        }
+                        if (curr_y < height - 1) {
+
+                            if (!dict_already[[curr_x, curr_y + 1]]) {
+                                stack.push([curr_x, curr_y + 1]);
+                            }
+
+                            
+                        }
+                        dict_already[[curr_x, curr_y]] = true;
+
+
+                    }
+
+                    
+
+
+
+                    //console.log('stack.length', stack.length);
+
+                    //console.log('dict_already', dict_already);
+                }
+
+
+
+
             } else {
 
+
+
                 console.trace();
-                throw 'Unsupported bytes_per_pixel: ' + this.bytes_per_pixel;
+                throw 'Unsupported bipp: ' + bipp;
+
+
             }
         }
+
+        'invert'() {
+            const {bipp} = this;
+
+            if (bipp === 1) {
+
+
+                // No, not cloned.
+
+                // invert self here.
+
+                const {ta} = this;
+                const l = ta.length;
+
+                for (let i = 0; i < l; i++) {
+                
+                    //console.log('ta[i]', ta[i]);
+                    
+                    ta[i] = ~ta[i] & 255;
+                }
+                
+                // 
+
+
+                // Make a clone, then do not on every byte.
+                //  Could go faster and do it on 4 bytes at once.
+
+                
+
+
+            } else {
+                console.trace();
+                throw 'NYI';
+            }
+
+        }
+
         // regional flood fill
     }
 

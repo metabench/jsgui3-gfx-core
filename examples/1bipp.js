@@ -1,6 +1,6 @@
 
 
-const Pixel_Buffer_Core = require('../pixel-buffer-core');
+const Pixel_Buffer = require('../pixel-buffer');
 
 const sharp = require('sharp');
 
@@ -21,13 +21,13 @@ if (require.main === module) {
                 return new Promise((solve, jettison) => {
     
     
-                    console.log('pb', pb);
-                    console.log('Object.keys(pb)',  Object.keys(pb));
+                    //console.log('pb', pb);
+                    //console.log('Object.keys(pb)',  Object.keys(pb));
     
                     console.log('pb.ta.length', pb.ta.length);
     
                     const {meta} = pb;
-                    console.log('meta', meta);
+                    //console.log('meta', meta);
     
                     let channels;
     
@@ -56,7 +56,7 @@ if (require.main === module) {
                             if (err) {
                                 throw err;
                             } else {
-                                console.log('sharp save info', info);
+                                //console.log('sharp save info', info);
                                 console.log('should have saved to path: ' + path);
     
                                 solve(true);
@@ -102,7 +102,7 @@ if (require.main === module) {
                     // Can also try and test some set pixel and get pixel methods. See that it works with code on a small scale.
                     //  Then could work on expanding the scale once some maths has been better implemented and understood.
 
-                    const pb = new Pixel_Buffer_Core({
+                    const pb = new Pixel_Buffer({
                         bits_per_pixel: 1,
                         size: [8, 8]
                     });
@@ -140,20 +140,17 @@ if (require.main === module) {
                     //const pb24 = pb.to_24bipp();
                     //console.log('pb24.ta', pb24.ta);
 
-                    const pb24 = pb.to_24bipp();
-                    console.log('pb24.ta.length', pb24.ta.length);
+                    //const pb24 = pb.to_24bipp();
+                    //console.log('pb24.ta.length', pb24.ta.length);
 
                     const pb8 = pb.to_8bipp();
-                    console.log('pb8.ta.length', pb8.ta.length);
+                    //console.log('pb8.ta.length', pb8.ta.length);
 
-                    await save_pixel_buffer('./pb1_pb8.png', pb8, {format: 'png'});
+                    await save_pixel_buffer('./pb1_pb8_eg1.png', pb8, {format: 'png'});
 
                     // Nice, this works. Could soon use this for come image composition.
 
-
                     // Could save it here with sharp.
-
-
                     // See about giving Sharp a 1 bit per pixel image.
 
                     // Want to use this as a result for thresholding an image.
@@ -170,6 +167,29 @@ if (require.main === module) {
                 async() => {
                     // just lg for log???
                     lg('Begin example 1');
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [16, 16]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[4, 4,], [8, 4], [8, 8], [4, 8]], 1);
+
+                    pb.flood_fill(0, 0, 1);
+
+                    // then invert it.
+                    //  can simply apply not to all bytes when 1bipp
+
+                    pb.invert();
+
+
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg2.png', pb8, {format: 'png'});
                     
 
 

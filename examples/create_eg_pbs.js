@@ -782,7 +782,7 @@ if (require.main === module) {
                         if (err) {
                             throw err;
                         } else {
-                            console.log('sharp save info', info);
+                            //console.log('sharp save info', info);
                             console.log('should have saved to path: ' + path);
 
                             solve(true);
