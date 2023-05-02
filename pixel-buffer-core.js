@@ -666,6 +666,11 @@ class Pixel_Buffer_Core {
             enumerable: true,
             configurable: false
         });
+
+
+        // This does have a 'bounds' option.
+        //  Is that like an offset?
+
         const pos_bounds = new Int16Array(4);
         //  pos_within_source / pos_within_container / pos_within_parent / pos_within
 
@@ -800,6 +805,16 @@ class Pixel_Buffer_Core {
             enumerable: true,
             configurable: false
         });
+
+
+        // This.pos....
+
+        //  this.pos seems to complicate things.
+        //   Not sure it's fully implements in some inner functions, not sure it should be.
+
+        
+
+
 
         const bounds_within_source = new Int16Array(4);
         // Using shorthand method names (ES2015 feature).
@@ -987,7 +1002,11 @@ class Pixel_Buffer_Core {
                 //this.ta = this.buffer = new Uint8ClampedArray(bytes_per_pixel * this.size[0] * this.size[1]);
                 //console.log('ta_bpp[0]', ta_bpp[0]);
 
-                ta = new Uint8ClampedArray((ta_bpp[0] / 8) * this.size[0] * this.size[1]);
+                // Need to round up the number of bytes to nearest byte...
+
+
+
+                ta = new Uint8ClampedArray(Math.ceil((ta_bpp[0] / 8) * this.size[0] * this.size[1]));
 
 
 
@@ -2406,6 +2425,8 @@ class Pixel_Buffer_Core {
         }
     }
 
+    // want to copy whole other pb to a pos.
+
     copy_rect_by_bounds_to(ta_bounds, pb_target) {
 
         console.log('pb.copy_rect_by_bounds_to');
@@ -3065,13 +3086,17 @@ class Pixel_Buffer_Core {
             const [w, h] = this.size;
             //let pos = new Array(2);
 
-            for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
+            for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
 
-                for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
+                for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
 
-                
+                    
                     const px = this.get_pixel_1bipp(ta_pos);
-                    callback(px);
+                    //console.log('px', px);
+                    ta_px_value[0] = px;
+                    //console.log('ta_pos', ta_pos);
+
+                    callback(px, ta_pos);
 
                 }
 
@@ -3079,6 +3104,7 @@ class Pixel_Buffer_Core {
             
 
 
+            /*
             const _for_24bipp = () => {
                 if (ta_pos instanceof Int16Array || ta_pos instanceof Int32Array && ta_pos.length >= 2) {
 
@@ -3149,6 +3175,8 @@ class Pixel_Buffer_Core {
                 }
             }
 
+            */
+
 
             
 
@@ -3187,6 +3215,11 @@ class Pixel_Buffer_Core {
     }
 
 
+    // May be a good way to write 'objects'?
+    //  Though a faster, more optimised way to copy bitmap data over may work better.
+
+
+    
 
     paint_pixel_list(pixel_pos_list, color) {
         pixel_pos_list.each_pixel(pos => {
@@ -3204,27 +3237,52 @@ class Pixel_Buffer_Core {
 
     // set_pixel_1bipp, set_pixel_8bipp, set_pixel_24bipp, set_pixel_32bipp
 
+    // 
+
+
+    // Or it's reading them wrong elsewhere????
+
+
     'set_pixel_1bipp'(pos, color) {
         // color should be 1 or 0
         // on or off.
+
+
+        // Not so sure this works.
+
         
-        //console.log('set_pixel_1bipp');
+        //console.log('set_pixel_1bipp [pos, color]', pos, color);
         //console.log('pos', pos);
 
         const val = !!color;
         // get the pixel index....
 
         const idx = pos[1] * this.size[0] + pos[0];
+
+
         const byte = Math.floor(idx / 8);
+
+        //console.log('byte', byte);
 
         // 7 - idx % 8 ???
         const bit = 7 - (idx % 8);
 
         //console.log('byte, bit', [byte, bit]);
+        //console.log('color', color);
+
+        //console.log('');
 
         // use roots of some sort?
 
-        const pow = Math.pow(2, bit);
+
+        // 
+
+
+
+        //let mask = (~(1 << (bit - 1))) & 255;
+        //const pow = Math.pow(2, bit);
+
+        
         //console.log('pow', pow);
 
         const byte_val = this.ta[byte];
@@ -3239,12 +3297,44 @@ class Pixel_Buffer_Core {
         }
         */
 
-        if (val) {
-            this.ta[byte] = this.ta[byte] | pow;
+        //console.log('val', val);
+        //console.log('a) this.ta[byte]', this.ta[byte]);
+        if (val === true) {
+
+            //let mask = (1 << (bit - 1));
+            //let mask = Math.pow(2, bit);
+
+            let mask = 1 << bit;
+
+            //console.log('this.ta[byte] | pow', this.ta[byte] | pow);
+
+            this.ta[byte] = this.ta[byte] | mask;
         } else {
-            this.ta[byte] = this.ta[byte] & pow;
+            // xor I think???
+
+            // hmmm not so sure...
+
+            // No, not &
+            //  & not pow?
+
+
+            //console.log('255 | pow', 255 | pow);
+            //console.log('this.ta[byte]', this.ta[byte]);
+
+            //this.ta[byte] = this.ta[byte] | (255 & ~pow);
+
+            // This line here is wrong....
+
+            // let mask = ~(1 << 3);
+
+            //let mask = (~(1 << (bit - 1))) & 255;
+            let mask = (~(1 << (bit))) & 255;
+            this.ta[byte] = this.ta[byte] & mask;
+
+
+            //this.ta[byte] = this.ta[byte] | (255 & pow);
         }
-        //console.log('this.ta[byte]', this.ta[byte]);
+        //console.log('b) this.ta[byte]', this.ta[byte]);
         // 0: 
         // Think this works now :)
     }
@@ -3444,119 +3534,13 @@ class Pixel_Buffer_Core {
     }
 
 
+    // Maybe should be higher level.
 
-    'draw_polygon'(arr_points, color) {
-
-        // But a filled polygon is more complex to draw.
-
-
-        // go through the points doing draw_line.
-
-        let x, y;
-
-        let prev_x, prev_y;
-
-        let is_first = true;
-
-        for ([x, y] of arr_points) {
-
-            //console.log('[x, y]', [x, y]);
-
-            if (!is_first) {
-                this.draw_line([prev_x, prev_y], [x, y], color);
-            }
+    // core, ?, enhanced?
 
 
-            [prev_x, prev_y] = [x, y];
-
-
-            is_first = false;
-        }
-        this.draw_line([prev_x, prev_y], arr_points[0], color);
-        // then back to the start.
-    }
-
-    // Maybe a 'shapes' class that will render shapes ready for composition.
-
-    // Palette itself would be a typed array or pixel buffer?
-    //  Palette as a pixel buffer could be simple in some ways.
-    //   In terms of the features being made use of... but pb should probably have its own palette object.
-    //   For avoidance of circular refs, making it its own class with own implementation would prob work best.
-    
-    // Or palette is in enhanced pixel buffer, but itself uses / is only a core pixel buffer.
-    //  Though integrating it on the core level would have advantages with being able to reference palette colors more easily.
-
-    
-
-
-
-
-
-
-
-
-
-
-
-    // drawing a filled polygon...
-    //  could create a separate / new pixelbuffer just to represent the data within that polygon.
-    //   And a pixel_pos_list could be a useful data structure.
-    //    Maybe could have more efficient internal representation.
-
-
-
-
-
-
-
-
-
-
-
-    'draw_line'(pos1, pos2, color) {
-
-
-
-        // options would help....
-        //  or it could just be color here.
-
-        // And maybe use different bipp options.
-
-
-
-        let x0 = pos1[0];
-        let y0 = pos1[1];
-        let x1 = pos2[0];
-        let y1 = pos2[1];
-      
-        let dx = Math.abs(x1 - x0);
-        let dy = Math.abs(y1 - y0);
-        let sx = (x0 < x1) ? 1 : -1;
-        let sy = (y0 < y1) ? 1 : -1;
-        let err = dx - dy;
-      
-        while (true) {
-          this.set_pixel([x0, y0], color);
-      
-          if (x0 === x1 && y0 === y1) {
-            break;
-          }
-      
-          let e2 = 2 * err;
-          if (e2 > -dy) {
-            err -= dy;
-            x0 += sx;
-          }
-      
-          if (e2 < dx) {
-            err += dx;
-            y0 += sy;
-          }
-        }
-      }
-
-    
-      
+    // May be worth having the lowest level functions.
+    //  Then some more functions in the core.
 
 
     'get_pixel_by_idx_1bipp'(idx) {
@@ -3602,20 +3586,46 @@ class Pixel_Buffer_Core {
 
     'get_pixel_1bipp'(pos) {
         // work out the pixel index...
+        //  Possibly this part is not working correctly.
+
+
+
 
         //console.log('pos', pos);
 
         const idx = pos[1] * this.size[0] + pos[0];
         const byte = Math.floor(idx / 8);
+
+
+        // Are the bits backwards?
+        //  Big endian???
+
         const bit = 7 - (idx % 8);
+
+        // Bit shifting to the right then comparing with 1 may be best.
+
+
 
         //console.log('byte, bit', [byte, bit]);
 
         // use roots of some sort?
+
+        // bit shift left instead???
+
         const pow = Math.pow(2, bit);
         // use AND with POW
         //console.log('get_pixel_1bipp 1 ? 0 : (this.ta[byte] & pow) === pow', 1 ? 0 : (this.ta[byte] & pow) === pow);
-        return ((this.ta[byte] & pow) === pow) ? 1 : 0;
+
+        //console.log('');
+        //console.log('this.ta[byte]', this.ta[byte]);
+        //console.log('pow', pow);
+        //console.log('this.ta[byte] & pow) !== 0', (this.ta[byte] & pow) !== 0);
+        //console.log('');
+        
+
+        return ((this.ta[byte] & pow) !== 0) ? 1 : 0;
+
+        //return ((this.ta[byte] & pow) === pow) ? 1 : 0;
         //return 1 ? 0 : (this.ta[byte] & pow) === pow;
     }
     'get_pixel_8bipp'(pos) {
@@ -3802,8 +3812,23 @@ return a.every((val, i) => val === b[i]);
     //  Could be very fast for convolutions. Not sure.
 
 
+    // Seems like a good function for placing 1bipp pbs....
 
-    'place_image_from_pixel_buffer'(pixel_buffer, dest_pos) {
+
+
+
+    // Do an 'or' placement???
+    //  Seems the way when placing some 1bipp pbs in some cases.
+    
+
+
+    'place_image_from_pixel_buffer'(pixel_buffer, dest_pos, options = {}) {
+
+        const {bipp} = this;
+
+        
+
+
         // can do a fast copy.
         //  or can do pixel iteration.
         // function to get a line from a buffer?
@@ -3816,7 +3841,7 @@ return a.every((val, i) => val === b[i]);
         const source_buffer = pixel_buffer.buffer;
         //console.log('dest_pos ' + stringify(dest_pos));
         // It's also worth making RGB->RGBA and RGBA->RGB
-        if (this.bits_per_pixel === 32 && pixel_buffer.bits_per_pixel === 32) {
+        if (bipp === 32 && pixel_buffer.bits_per_pixel === 32) {
             const dest_w = this.size[0];
             const dest_h = this.size[1];
             const dest_buffer_line_length = dest_w * 4;
@@ -3838,6 +3863,104 @@ return a.every((val, i) => val === b[i]);
                 // buf.copy(targetBuffer, [targetStart], [sourceStart], [sourceEnd])
                 source_buffer.copy(dest_buffer, dest_buffer_subline_start_pos + dest_buffer_start_offset, source_buffer_line_start_pos, source_buffer_line_end_pos);
             }
+        } else if (bipp === 1) {
+            // Let's just do this simply for the moment ... not using 'or' though that would be a lot quicker if done right.
+            //  ???
+
+            // Doing it line by line makes most sense.
+            //  Can then make use of 'or' I think...
+            //   However, bitmaps may be out of line at 1 bpp.
+
+            // Do it the simple, reliable way to start with.
+
+            // 
+
+            if (pixel_buffer.bipp === 1) {
+
+                console.log('options.or', options.or);
+
+                if (options.or === true) {
+                    const pb_source = pixel_buffer;
+
+                    //console.log('pb_source.meta', pb_source.meta);
+
+                    const ta_pos = new Int16Array(2);
+                    const ta_px_value = new Uint8ClampedArray(3);
+
+                    // make general int info array support +-? Better able to hold (memory) offsets that way.
+                    const ta_info = new Uint32Array(4);
+
+                    // should have each_pixel function I think....
+
+                    // pb.each_px(ta_pos, ta_px_value, ta_info,
+
+                    pb_source.each_px(ta_pos, ta_px_value, ta_info, (color, pos) => {
+
+                        console.log();
+                        //console.log('');
+                        //console.log('ta_pos', ta_pos);
+                        //console.log('1) pos', pos);
+                        //console.log('1) color', color);
+                        //console.trace();
+
+                        //throw 'stop';
+
+                        if (color === 1) {
+                            const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                            //console.log('px_dest_pos', px_dest_pos);
+                            this.set_pixel(px_dest_pos, color);
+                        }
+
+                    })
+                } else {
+                    const pb_source = pixel_buffer;
+
+                    const ta_pos = new Int16Array(2);
+                    const ta_px_value = new Uint8ClampedArray(3);
+                    // make general int info array support +-? Better able to hold (memory) offsets that way.
+                    const ta_info = new Uint32Array(4);
+
+                    // Not so sure the individual px reading of the 1bipp is working so well....
+                    // May be worth using some simplified algorithms here???
+
+
+                    pb_source.each_px(ta_pos, ta_px_value, ta_info, (color, pos) => {
+                        //console.log('');
+                        //console.log('2) pos', pos);
+                        //console.log('2) color', color);
+
+                        //console.log('[color, pos]', [color, pos]);
+
+                        const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+
+
+                        //console.log('2) px_dest_pos', px_dest_pos);
+                        //console.log('color', color);
+
+
+                        this.set_pixel(px_dest_pos, color);
+                    })
+                }
+
+                
+
+
+                
+
+
+            } else {
+                console.trace();
+
+                throw 'must have matching bipp values (expected: 1)';
+            }
+
+
+
+
+
+
+
+
         } else {
             console.trace();
             throw 'not currently supported';

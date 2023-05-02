@@ -146,7 +146,7 @@ if (require.main === module) {
                     const pb8 = pb.to_8bipp();
                     //console.log('pb8.ta.length', pb8.ta.length);
 
-                    await save_pixel_buffer('./pb1_pb8_eg1.png', pb8, {format: 'png'});
+                    await save_pixel_buffer('./pb1_pb8_eg0.png', pb8, {format: 'png'});
 
                     // Nice, this works. Could soon use this for come image composition.
 
@@ -192,11 +192,175 @@ if (require.main === module) {
                     const pb8 = pb.to_8bipp();
                     //console.log('pb8.ta.length', pb8.ta.length);
 
-                    await save_pixel_buffer('./pb1_pb8_eg2.png', pb8, {format: 'png'});
+                    await save_pixel_buffer('./pb1_pb8_eg1.png', pb8, {format: 'png'});
                     
 
 
                     lg('End example 1');
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 2');
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [21, 21]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, false);
+
+                    
+
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg2.png', pb8, {format: 'png'});
+                    
+
+
+                    lg('End example 2');
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 3');
+
+                    // Need to round the size of ta up to the nearest byte.
+
+
+                    // Seems like there may be a problem somewhere within get_pixel for 1bipp.
+
+
+
+
+                    /*
+
+                    
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [9, 9]
+                    });
+
+                    let p1;
+
+                    let pos = [1, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+
+                    pos = [2, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [1, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [2, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 1];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 8];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    */
+
+                    
+
+                    
+
+
+                    
+
+                    /*
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [21, 21]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, true);
+
+                    
+
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg3.png', pb8, {format: 'png'});
+                    
+                    */
+
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [5, 5]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [3, 1], [3, 3], [1, 3]], 1, false);
+
+                    
+
+
+                    let pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg3a.png', pb8, {format: 'png'});
+
+
+
+                    const pb2 = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [5, 5]
+                    });
+
+                    pb2.place_image_from_pixel_buffer(pb, [0, 0]);
+
+                    pb8 = pb2.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg3b.png', pb8, {format: 'png'});
+
+
+                    lg('End example 3');
                 }
                 // Thresholding image(s) to obtain 1bipp masks.
                 //  Then later will test the accelerated server versions of it. Will try WASM acceleration too.

@@ -104,7 +104,7 @@ const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
 const get_instance = () => {
 
     const Core = require('./pixel-buffer-core');
-        
+
     class Pixel_Buffer_Enh extends Core {
 
         // Has some decent functions, but want some more useful / intelligent flood fills.
@@ -135,7 +135,284 @@ const get_instance = () => {
             super(spec);
         }
 
+        // ll, core, ?, enhanced?
 
+
+
+        // Maybe a 'shapes' class that will render shapes ready for composition.
+
+        // Palette itself would be a typed array or pixel buffer?
+        //  Palette as a pixel buffer could be simple in some ways.
+        //   In terms of the features being made use of... but pb should probably have its own palette object.
+        //   For avoidance of circular refs, making it its own class with own implementation would prob work best.
+
+        // Or palette is in enhanced pixel buffer, but itself uses / is only a core pixel buffer.
+        //  Though integrating it on the core level would have advantages with being able to reference palette colors more easily.
+
+
+
+
+
+
+
+
+
+
+
+
+
+        // drawing a filled polygon...
+        //  could create a separate / new pixelbuffer just to represent the data within that polygon.
+        //   And a pixel_pos_list could be a useful data structure.
+        //    Maybe could have more efficient internal representation.
+
+
+
+
+
+
+
+
+
+
+
+        'draw_line'(pos1, pos2, color) {
+
+
+
+            // options would help....
+            //  or it could just be color here.
+
+            // And maybe use different bipp options.
+
+
+
+            let x0 = pos1[0];
+            let y0 = pos1[1];
+            let x1 = pos2[0];
+            let y1 = pos2[1];
+
+            let dx = Math.abs(x1 - x0);
+            let dy = Math.abs(y1 - y0);
+            let sx = (x0 < x1) ? 1 : -1;
+            let sy = (y0 < y1) ? 1 : -1;
+            let err = dx - dy;
+
+            while (true) {
+                this.set_pixel([x0, y0], color);
+
+                if (x0 === x1 && y0 === y1) {
+                    break;
+                }
+
+                let e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    x0 += sx;
+                }
+
+                if (e2 < dx) {
+                    err += dx;
+                    y0 += sy;
+                }
+            }
+        }
+
+        'draw_polygon'(arr_points, color, fill = false) {
+
+            // filled option...
+
+            // need filled shape compositing.
+            //  slightly more tricky.
+
+            // Need to find the bounding box for those points.
+
+
+            if (fill) {
+
+                const get_points_bounding_box = (points) => {
+
+                    let min_x = Number.POSITIVE_INFINITY;
+                    let min_y = Number.POSITIVE_INFINITY;
+                    let max_x = Number.NEGATIVE_INFINITY;
+                    let max_y = Number.NEGATIVE_INFINITY;
+
+                    for (const [x, y] of points) {
+                        if (x < min_x) min_x = x;
+                        if (x > max_x) max_x = x;
+                        if (y < min_y) min_y = y;
+                        if (y > max_y) max_y = y;
+                    }
+
+                    return [
+                        [min_x, min_y],
+                        [max_x, max_y]
+                    ];
+
+                }
+
+                const bb_points = get_points_bounding_box(arr_points);
+                // And want to get the size / range.
+
+                // Or, make a pixel_buffer that represents that space.
+                //  Having that pb handle offsets could be very useful.
+                //   Though maybe it would need some lower level changes?
+                //    Don't want to have to complicate code with offset handling all over the place.
+                //     Do offsets in the easiest way, then add further convenience features.
+
+                console.log('bb_points', bb_points);
+
+                const offset = bb_points[0];
+
+                const polygon_size = [
+                    [bb_points[1][0] - bb_points[0][0]],
+                    [bb_points[1][1] - bb_points[0][1]]
+                ];
+
+                console.log('polygon_size', polygon_size);
+
+                const pb_polygon = new this.constructor({
+                    'bits_per_pixel': 1,
+                    'size': polygon_size
+                })
+
+                console.log('pb_polygon.ta.length', pb_polygon.ta.length);
+
+                //throw 'stop';
+
+                // Then draw the polygon to there...
+
+                const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+
+                console.log('down_offsetted_points', down_offsetted_points);
+
+                // or draw the polygon here in color 1?
+                //  as it's going to be used as a mask-type object.
+                pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+
+                const pb_polygon_unfilled = pb_polygon.clone();
+
+
+
+                //pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+
+                // copy this pb polygon here?
+                
+
+                // Better to do it from the edges???
+
+                // flood_fill_from_image_outer_boundary ???
+
+
+                // pb_polygon.flood_fill(0, 0, 1);
+
+                // then invert it.
+                //  can simply apply not to all bytes when 1bipp
+
+                //pb_polygon.invert();
+                //pb_polygon.or(pb_polygon_unfilled);
+
+
+                // then copy this pb_polygon's data to this...
+                //   oring
+
+                //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
+
+                // This part seems broken...
+                this.place_image_from_pixel_buffer(pb_polygon, offset);
+
+
+
+                // Then do 'or' onto this.
+                //  Maybe copying px by px with the offset makes most sense.
+
+                //  Copy from pb, to pos....
+
+
+
+
+
+
+
+
+
+                // then flood fill the outside too?
+
+
+
+
+
+
+
+
+
+                // make a pb that represents them.
+                //  see if there is an easy way for that.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            } else {
+
+
+                let x, y;
+
+                let prev_x, prev_y;
+
+                let is_first = true;
+
+                for ([x, y] of arr_points) {
+
+                    //console.log('[x, y]', [x, y]);
+
+                    if (!is_first) {
+                        this.draw_line([prev_x, prev_y], [x, y], color);
+                    }
+
+
+                    [prev_x, prev_y] = [x, y];
+
+
+                    is_first = false;
+                }
+                this.draw_line([prev_x, prev_y], arr_points[0], color);
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+
+            // But a filled polygon is more complex to draw.
+
+
+            // go through the points doing draw_line.
+
+
+            // then back to the start.
+        }
+
+
+        /*
         'each_pixel_horiz_left_of_pixel'(pos, callback) {
             for (let x = pos[0] - 1; x >= 0; x--) {
               const pixel = this.get_pixel([x, pos[1]]);
@@ -165,6 +442,8 @@ const get_instance = () => {
               callback(pixel, [pos[0], y]);
             }
           }
+
+          */
 
         // each_pixel_in_4_directions_from_pos()
 
@@ -365,7 +644,7 @@ const get_instance = () => {
             throw 'NYI'
 
             if (this.bipp === 1) {
-                
+
                 const pb2 = this.clone();
 
 
@@ -418,7 +697,7 @@ const get_instance = () => {
 
 
 
-                    
+
 
                     console.log('[l, u, r, b]', ta_pos, [l, u, r, b]);
 
@@ -461,7 +740,7 @@ const get_instance = () => {
                 throw 'NYI';
             }
 
-            
+
 
         }
 
@@ -711,7 +990,7 @@ const get_instance = () => {
                     size: this.size,
                     bits_per_pixel: 8
                 })
-                while(i_byte < l) {
+                while (i_byte < l) {
                     res_channel_ta.set_pixel_by_idx(i_px, ta[i_byte]);
 
                     i_byte += bypp;
@@ -768,11 +1047,12 @@ const get_instance = () => {
                     i_byte += bypp;
                     i_px++;
                 }
-            } /* else if (bipp === 32) {
-                console.trace();
-                throw 'NYI';
+            }
+            /* else if (bipp === 32) {
+                           console.trace();
+                           throw 'NYI';
 
-            } */
+                       } */
 
             //console.log('res_mask.ta.length', res_mask.ta.length);
             //console.log('res_mask.ta', res_mask.ta);
@@ -1281,7 +1561,7 @@ const get_instance = () => {
             //  Then functions on a higher level named by what they do.
 
             // set_pixel_by_idx
-            
+
 
             const res_mask = new this.constructor({
                 size: this.size,
@@ -1293,12 +1573,14 @@ const get_instance = () => {
                 // could process it byte by byte
                 //  raising the pixel events one by one....
 
-                let byte = 0, bit = 0; //px index too?
+                let byte = 0,
+                    bit = 0; //px index too?
 
                 console.trace();
                 throw 'NYI'
 
-                const ta = this.ta, l = ta.length;
+                const ta = this.ta,
+                    l = ta.length;
                 while (byte < l) {
 
                 }
@@ -1328,7 +1610,8 @@ const get_instance = () => {
 
                 // basically, need to callback with the correct slices.
 
-                let byte_pos = 0, i_px = 0;
+                let byte_pos = 0,
+                    i_px = 0;
                 const l = this.ta.length;
 
                 while (byte_pos < l) {
@@ -1825,7 +2108,7 @@ const get_instance = () => {
                     // while read successful...
 
                     // Wrong stop condition.
-                    
+
                     while (scratch_32[9] <= scratch_32[2]) {
 
                         console.log('scratch_32[9]', scratch_32[9]);
@@ -1867,7 +2150,7 @@ const get_instance = () => {
 
                             //res.add(cpos.slice());
                             res.add(cpos);
-                            
+
                             // Should the pos_list be sorted in order?
                             //buffer[scratch_32[8]++] = ta8_pixels[9];
                             //buffer[scratch_32[8]++] = ta8_pixels[10];
@@ -1953,11 +2236,13 @@ const get_instance = () => {
 
         // And a general high level flood fill algorithm for other bipp values.
 
-        
+
 
         'flood_fill'(x, y, r, g, b, a) {
 
-            const {bipp} = this;
+            const {
+                bipp
+            } = this;
 
             // Want to use bipp.
 
@@ -2448,7 +2733,7 @@ const get_instance = () => {
                 return fast_stacked_mapped_flood_fill();
 
 
-            } else if (bipp === 1) { 
+            } else if (bipp === 1) {
                 // could try a much simpler algorithm.
 
                 const new_color = r;
@@ -2461,7 +2746,7 @@ const get_instance = () => {
                 //console.log('new_color', new_color);
 
                 if (target_color === new_color) {
-                // No need to fill if the new color is the same as the target color
+                    // No need to fill if the new color is the same as the target color
                     return;
                 }
 
@@ -2493,7 +2778,7 @@ const get_instance = () => {
                                 stack.push([curr_x - 1, curr_y]);
                             }
 
-                            
+
                         }
                         if (curr_x < width - 1) {
                             //stack.push([curr_x + 1, curr_y]);
@@ -2508,7 +2793,7 @@ const get_instance = () => {
                                 stack.push([curr_x, curr_y - 1]);
                             }
 
-                            
+
                         }
                         if (curr_y < height - 1) {
 
@@ -2516,14 +2801,14 @@ const get_instance = () => {
                                 stack.push([curr_x, curr_y + 1]);
                             }
 
-                            
+
                         }
                         dict_already[[curr_x, curr_y]] = true;
 
 
                     }
 
-                    
+
 
 
 
@@ -2545,14 +2830,16 @@ const get_instance = () => {
         }
 
         'invert'() {
-            const {bipp} = this;
+            const {
+                bipp
+            } = this;
 
             if (bipp === 1) {
                 // No, not cloned.
-
                 // invert self here.
-
-                const {ta} = this;
+                const {
+                    ta
+                } = this;
                 const l = ta.length;
 
                 for (let i = 0; i < l; i++) {
@@ -2567,21 +2854,21 @@ const get_instance = () => {
                 console.trace();
                 throw 'NYI (unsupported bipp) ' + bipp;
             }
-
         }
 
         // boolean logic
         'or'(other_pb) {
-            const {bipp} = this;
-
+            const {
+                bipp
+            } = this;
             if (bipp === 1) {
                 // No, not cloned.
-
                 const other_bipp = other_pb.bipp;
-
                 if (other_bipp === 1) {
 
-                    const {ta} = this;
+                    const {
+                        ta
+                    } = this;
                     const l_my_ta = ta.length;
 
                     const other_ta = other_pb.ta;
@@ -2600,7 +2887,7 @@ const get_instance = () => {
                         throw 'lengths of pixel buffer typed arrays must match';
                     }
 
-                    
+
 
 
                 } else {
@@ -2612,7 +2899,7 @@ const get_instance = () => {
 
                 // invert self here.
 
-                
+
                 // 
                 // Make a clone, then do not on every byte.
                 //  Could go faster and do it on 4 bytes at once.
@@ -2625,6 +2912,150 @@ const get_instance = () => {
         }
 
         // regional flood fill
+
+
+        // flood_fill_given_color_pixels_from_outer_boundary
+
+
+
+        each_outer_boundary_pixel(callback) {
+            let ta_pos = new Uint16Array(2);
+            const {size} = this;
+            console.log('size', size);
+    
+            //throw 'stop';
+            const [w, h] = size;
+    
+            console.log('[w, h]', [w, h]);
+    
+            //throw 'stop';
+    
+            // top row...
+    
+            ta_pos[0] = 0;
+            ta_pos[1] = 0;
+    
+            for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
+    
+                const px = this.get_pixel(ta_pos);
+                callback(px, ta_pos);
+    
+            }
+            ta_pos[0]--;
+    
+            
+    
+            for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
+    
+                const px = this.get_pixel(ta_pos);
+                callback(px, ta_pos);
+    
+            }
+            ta_pos[1]--;
+            //throw 'stop';
+    
+            // Seems to wrap around....
+    
+            for (ta_pos[0] = w - 1; ta_pos[0] > 0; ta_pos[0]--) {
+    
+                //console.log('ta_pos[0]', ta_pos[0]);
+    
+                
+    
+                const px = this.get_pixel(ta_pos);
+                callback(px, ta_pos);
+                //throw 'stop1';
+    
+            }
+            //throw 'stop';
+    
+            let px = this.get_pixel(ta_pos);
+            callback(px, ta_pos);
+    
+            for (ta_pos[1] = h - 1; ta_pos[1] > 0; ta_pos[1]--) {
+    
+                const px = this.get_pixel(ta_pos);
+                callback(px, ta_pos);
+    
+            }
+    
+            px = this.get_pixel(ta_pos);
+            callback(px, ta_pos);
+    
+    
+    
+            //throw 'stop';
+    
+    
+    
+    
+        }
+
+
+        flood_fill_given_color_pixels_from_outer_boundary(given_color, fill_color) {
+
+            const {
+                bits_per_pixel
+            } = this;
+
+            if (bits_per_pixel === 24) {
+                this.each_outer_boundary_pixel((b_color, pos) => {
+                    //console.log('[color, pos]', [color, pos]);
+
+                    // if color is 0, 0, 0
+
+                    const [r, g, b] = b_color;
+
+                    if (r === given_color[0] && g === given_color[1] && b === given_color[2]) {
+                        // flood fill this pos with the given color.
+
+
+                        // And will need a new flood fill function.
+
+                        this.flood_fill(pos[0], pos[1], fill_color[0], fill_color[1], fill_color[2]);
+
+                    }
+
+
+                });
+            } else if (bits_per_pixel === 1) {
+                this.each_outer_boundary_pixel((b_color, pos) => {
+                    //console.log('[color, pos]', [color, pos]);
+
+                    // if color is 0, 0, 0
+
+                    //const [r, g, b] = b_color;
+
+                    console.log('b_color', b_color);
+                    console.log('pos', pos);
+
+                    if (b_color === given_color) {
+                        // flood fill this pos with the given color.
+
+
+                        // And will need a new flood fill function.
+                        console.log('fill_color', fill_color);
+
+                        this.flood_fill(pos[0], pos[1], fill_color);
+
+                    }
+
+
+                });
+            } else {
+
+                console.log('not flood filling');
+                console.log('bits_per_pixel', bits_per_pixel);
+
+                throw 'NYI';
+                console.trace();
+            }
+
+
+
+
+        }
+
     }
 
     Pixel_Buffer_Enh.get_instance = get_instance;
