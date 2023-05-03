@@ -1,6 +1,8 @@
 
 
-const Pixel_Buffer_Core = require('../pixel-buffer-core');
+const Pixel_Buffer = require('../pixel-buffer');
+
+const sharp = require('sharp');
 
 if (require.main === module) {
     const lg = console.log;
@@ -8,6 +10,84 @@ if (require.main === module) {
     // go through list of functions....
 
     (async() => {
+
+
+        const save_pixel_buffer_png = (path, pb) => {
+
+            // Would work with other formats depending on the path.
+
+            return new Promise((solve, jettison) => {
+
+
+                //console.log('pb', pb);
+                //console.log('Object.keys(pb)',  Object.keys(pb));
+
+                //console.log('pb.ta.length', pb.ta.length);
+
+                const {meta} = pb;
+                //console.log('meta', meta);
+
+                let channels;
+
+                if (meta.bytes_per_pixel === 3 || meta.bytes_per_pixel === 4) {
+                    channels = meta.bytes_per_pixel;
+                }
+                if (meta.bytes_per_pixel === 1) {
+                    channels = meta.bytes_per_pixel;
+                }
+
+                if (!channels) {
+                    console.trace();
+                    throw 'stop';
+                }
+
+
+                sharp(pb.ta, {
+                    raw: {
+                        width: meta.size[0],
+                        height: meta.size[1],
+                        channels: channels
+                    }
+                })
+                    //.resize(320, 240)
+                    .toFile(path, (err, info) => { 
+                        if (err) {
+                            throw err;
+                        } else {
+                            //console.log('sharp save info', info);
+                            console.log('should have saved to path: ' + path);
+
+                            solve(true);
+                        }
+
+                    });
+
+                //console.trace();
+                //throw 'stop';
+
+
+            });
+            
+            
+
+
+
+        }
+
+        const save_pixel_buffer = async(path, pb, options = {}) => {
+            const {format} = options;
+
+            if (format === 'png') {
+                return save_pixel_buffer_png(path, pb);
+            } else {
+                console.trace();
+
+                throw 'NYI';
+            }
+
+        }
+
+
         const run_examples = async() => {
             lg('Begin run examples');
 
@@ -24,14 +104,16 @@ if (require.main === module) {
                     // Can also try and test some set pixel and get pixel methods. See that it works with code on a small scale.
                     //  Then could work on expanding the scale once some maths has been better implemented and understood.
 
-                    const pb = new Pixel_Buffer_Core({
-                        bits_per_pixel: 8,
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 24,
                         size: [8, 8]
                     });
 
                     // set_pixel(3, 3, 1);  // This could actually be faster though?
                     // set_pixel([3, 3], 1);
                     // set_pixel(ta_pos, 1);
+
+                    /*
 
                     const ta_pos = new Uint16Array(2);
                     //console.log('pb.ta', pb.ta);
@@ -57,10 +139,16 @@ if (require.main === module) {
 
                     //console.log('pb.num_px', pb.num_px);
 
+                    */
+
+                    pb.draw_polygon([[1, 1,], [5, 1], [5, 6], [1, 6]], [255, 80, 70], true);
+
+
+
                     // then try changing it to 24bpp...
 
-                    const pb24 = pb.to_24bipp();
-                    console.log('pb24.ta', pb24.ta);
+                    //const pb24 = pb.to_24bipp();
+                    //console.log('pb24.ta', pb24.ta);
 
                     // See about giving Sharp a 1 bit per pixel image.
 
@@ -68,6 +156,10 @@ if (require.main === module) {
                     //  new_pb_threshold(threshold value)
 
                     // or a more flexible functional mask.
+
+                    await save_pixel_buffer('./pb24_eg0.png', pb, {format: 'png'});
+
+
 
                     // Will do individual set pixel and get pixel functions.
                     //  Treat input using truthy or falsy.

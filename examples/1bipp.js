@@ -24,7 +24,7 @@ if (require.main === module) {
                     //console.log('pb', pb);
                     //console.log('Object.keys(pb)',  Object.keys(pb));
     
-                    console.log('pb.ta.length', pb.ta.length);
+                    //console.log('pb.ta.length', pb.ta.length);
     
                     const {meta} = pb;
                     //console.log('meta', meta);
@@ -361,6 +361,464 @@ if (require.main === module) {
 
 
                     lg('End example 3');
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 4');
+
+                    // Need to round the size of ta up to the nearest byte.
+
+
+                    // Seems like there may be a problem somewhere within get_pixel for 1bipp.
+
+
+
+
+                    /*
+
+                    
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [9, 9]
+                    });
+
+                    let p1;
+
+                    let pos = [1, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+
+                    pos = [2, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [1, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [2, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 1];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 8];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    */
+
+                    
+
+                    
+
+
+                    
+
+                    
+                    /*
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [21, 21]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, true);
+
+                    */
+
+
+
+                    let pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [5, 5]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [3, 1], [3, 3], [1, 3]], 1, false);
+                    
+
+
+                    let pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg4a.png', pb8, {format: 'png'});
+
+                    
+
+
+
+
+                    pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [5, 5]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [3, 1], [3, 3], [1, 3]], 1, true);
+                    
+
+
+                    pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg4b.png', pb8, {format: 'png'});
+
+                    
+                    
+
+
+                    
+
+
+                    lg('End example 4');
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 5');
+
+                    // Need to round the size of ta up to the nearest byte.
+
+
+                    // Seems like there may be a problem somewhere within get_pixel for 1bipp.
+
+
+
+
+                    /*
+
+                    
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [9, 9]
+                    });
+
+                    let p1;
+
+                    let pos = [1, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+
+                    pos = [2, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [1, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [2, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 1];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 8];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    */
+
+                    
+
+                    
+
+
+                    
+
+                    
+                    /*
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [21, 21]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, true);
+
+                    */
+
+
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [9, 9]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [5, 1], [5, 6], [1, 6]], 1, true);
+                    
+
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg5.png', pb8, {format: 'png'});
+                    
+                    
+
+
+                    
+
+
+                    lg('End example 5');
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 6');
+
+                    // Need to round the size of ta up to the nearest byte.
+
+
+                    // Seems like there may be a problem somewhere within get_pixel for 1bipp.
+
+
+
+
+                    /*
+
+                    
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [9, 9]
+                    });
+
+                    let p1;
+
+                    let pos = [1, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+
+                    pos = [2, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 0];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [1, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [2, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [3, 1];
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 1];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    pos = [8, 8];
+                    console.log('pos', pos);
+                    pb.set_pixel(pos, 1);
+                    console.log('pb.ta', pb.ta);
+                    p1 = pb.get_pixel(pos);
+                    console.log('p1', p1);
+
+                    */
+
+                    
+
+                    
+
+
+                    
+
+                    
+                    
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [21, 21]
+                    });
+
+                    // But if we fill it...?
+
+                    pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, true);
+
+                    
+
+
+
+                   
+                    
+
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg6.png', pb8, {format: 'png'});
+                    
+                    
+
+
+                    
+
+
+                    lg('End example 6');
+
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 7');
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [2000, 2000]
+                    });
+
+                    // But if we fill it...?
+
+                    // Drawing the mask of the polygon takes a little while.
+                    //  Flood fill from outside is nicely fast while drawing this polygon.
+                    //   That is because it is square.
+
+                    // A more radial-star shape would be slower.
+                    //  Or a more complex shape.
+
+                    pb.draw_polygon([[50, 50,], [1500, 50], [1500, 1500], [50, 1500]], 1, true);
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg7.png', pb8, {format: 'png'});
+                    
+                    
+
+
+                    
+
+
+                    lg('End example 7');
+
+                },
+                async() => {
+                    // just lg for log???
+                    lg('Begin example 8');
+
+                    const pb = new Pixel_Buffer({
+                        bits_per_pixel: 1,
+                        size: [2000, 2000]
+                    });
+
+                    // But if we fill it...?
+
+                    // Drawing the mask of the polygon takes a little while.
+                    //  Flood fill from outside is nicely fast while drawing this polygon.
+                    //   That is because it is square.
+
+                    // A more radial-star shape would be slower.
+                    //  Or a more complex shape.
+
+                    // So yes, this flood fill from outside operation is considerably slower.
+                    //  A highly optimised way to do this would be useful.
+                    //  Be careful not to delete working code until it is obselete.
+                    //   Worth retaining less optimised but clearer and more concise code.
+                    //    May be effective as default cases, may be a better representation of algorithm for human understanding.
+                    //     May be a 'reference implementation'.
+
+
+                    pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+
+                    const pb8 = pb.to_8bipp();
+                    //console.log('pb8.ta.length', pb8.ta.length);
+
+                    await save_pixel_buffer('./pb1_pb8_eg8.png', pb8, {format: 'png'});
+
+                    
+
+
+                    lg('End example 8');
+
                 }
                 // Thresholding image(s) to obtain 1bipp masks.
                 //  Then later will test the accelerated server versions of it. Will try WASM acceleration too.

@@ -101,6 +101,27 @@ const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
 
 // use an instance of core?
 
+const get_points_bounding_box = (points) => {
+
+    let min_x = Number.POSITIVE_INFINITY;
+    let min_y = Number.POSITIVE_INFINITY;
+    let max_x = Number.NEGATIVE_INFINITY;
+    let max_y = Number.NEGATIVE_INFINITY;
+
+    for (const [x, y] of points) {
+        if (x < min_x) min_x = x;
+        if (x > max_x) max_x = x;
+        if (y < min_y) min_y = y;
+        if (y > max_y) max_y = y;
+    }
+
+    return [
+        [min_x, min_y],
+        [max_x, max_y]
+    ];
+
+}
+
 const get_instance = () => {
 
     const Core = require('./pixel-buffer-core');
@@ -228,28 +249,9 @@ const get_instance = () => {
             // Need to find the bounding box for those points.
 
 
-            if (fill) {
+            if (fill === true) {
 
-                const get_points_bounding_box = (points) => {
-
-                    let min_x = Number.POSITIVE_INFINITY;
-                    let min_y = Number.POSITIVE_INFINITY;
-                    let max_x = Number.NEGATIVE_INFINITY;
-                    let max_y = Number.NEGATIVE_INFINITY;
-
-                    for (const [x, y] of points) {
-                        if (x < min_x) min_x = x;
-                        if (x > max_x) max_x = x;
-                        if (y < min_y) min_y = y;
-                        if (y > max_y) max_y = y;
-                    }
-
-                    return [
-                        [min_x, min_y],
-                        [max_x, max_y]
-                    ];
-
-                }
+                
 
                 const bb_points = get_points_bounding_box(arr_points);
                 // And want to get the size / range.
@@ -260,23 +262,24 @@ const get_instance = () => {
                 //    Don't want to have to complicate code with offset handling all over the place.
                 //     Do offsets in the easiest way, then add further convenience features.
 
-                console.log('bb_points', bb_points);
+                //console.log('bb_points', bb_points);
 
                 const offset = bb_points[0];
 
+                // + 1 to the polygon size, each dimension???
                 const polygon_size = [
-                    [bb_points[1][0] - bb_points[0][0]],
-                    [bb_points[1][1] - bb_points[0][1]]
+                    [bb_points[1][0] - bb_points[0][0] + 1],
+                    [bb_points[1][1] - bb_points[0][1] + 1]
                 ];
 
-                console.log('polygon_size', polygon_size);
+                //console.log('polygon_size', polygon_size);
 
                 const pb_polygon = new this.constructor({
                     'bits_per_pixel': 1,
                     'size': polygon_size
                 })
 
-                console.log('pb_polygon.ta.length', pb_polygon.ta.length);
+                //console.log('pb_polygon.ta.length', pb_polygon.ta.length);
 
                 //throw 'stop';
 
@@ -284,17 +287,39 @@ const get_instance = () => {
 
                 const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
 
-                console.log('down_offsetted_points', down_offsetted_points);
+                //console.log('down_offsetted_points', down_offsetted_points);
 
                 // or draw the polygon here in color 1?
                 //  as it's going to be used as a mask-type object.
+
+                let t1 = Date.now();
+
+
+                console.log('pre draw 1bipp polygon');
                 pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                let t2 = Date.now();
+                let td = t2 - t1;
+                console.log('post draw 1bipp polygon ms: ' + td);
 
                 const pb_polygon_unfilled = pb_polygon.clone();
 
 
 
-                //pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+                t1 = Date.now();
+
+                // This flood fill from outside part of the drawing is the slowest part.
+                //  Likely we need a quicker way of checking if any pixels have already been visited.
+                //   Possibly could even use a 1bipp pixel buffer.
+
+
+
+
+                console.log('pre 1bipp flood fill from outside');
+                pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+                t2 = Date.now();
+                td = t2 - t1;
+
+                console.log('post 1bipp flood fill from outside ms:', td);
 
                 // copy this pb polygon here?
                 
@@ -309,8 +334,8 @@ const get_instance = () => {
                 // then invert it.
                 //  can simply apply not to all bytes when 1bipp
 
-                //pb_polygon.invert();
-                //pb_polygon.or(pb_polygon_unfilled);
+                pb_polygon.invert();
+                pb_polygon.or(pb_polygon_unfilled);
 
 
                 // then copy this pb_polygon's data to this...
@@ -319,7 +344,26 @@ const get_instance = () => {
                 //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
 
                 // This part seems broken...
-                this.place_image_from_pixel_buffer(pb_polygon, offset);
+                //console.log('offset', offset);
+
+                //console.log('pb_polygon.size', pb_polygon.size);
+
+                // Need to specify the color it's to be drawn at if it's a 1bipp image being drawn.
+
+                // this.draw_1bipp_pixel_buffer(pb_1bipp, offset, color)
+
+                // this.draw_1bipp_pixel_buffer_mask(pb_1bipp_mask, offset, color) ???
+                //   using a different, more specifically named function for this makes sense.
+
+
+                t1 = Date.now();
+                console.log('pre draw mask');
+                this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
+                t2 = Date.now();
+                td = t2 - t1;
+                console.log('post draw mask ms:', td);
+
+                //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
 
 
 
@@ -1980,6 +2024,9 @@ const get_instance = () => {
 
             // PPL shift would help too, when reading pixels yet to visit.
 
+            console.trace();
+            throw 'NYI';
+
 
         }
 
@@ -2237,6 +2284,708 @@ const get_instance = () => {
         // And a general high level flood fill algorithm for other bipp values.
 
 
+        // Greatly optimised implementation of this will help.
+        //  As will greatly optimised implementation of flood filling from the edges.
+
+
+        // This implementation is optimised a little at least...
+        //  A more optimised version that uses a 1 byte per pixel matrix would be faster, no doubt.
+        //  Faster for tracking which pixels have been visited.
+        //   Would use about 8* as much RAM, which should be OK.
+
+        // Then want to make optimised / highly optimised version(s).
+
+        // Including optimisations for flood filling color 1 from outer boundary in 1bipp images.
+        //  Is particularly useful for drawing filled polygons / shapes.
+
+
+
+
+
+
+
+
+
+
+        'flood_fill_1bipp'(x, y, color) {
+
+
+
+
+            const new_color = color;
+            const target_color = this.get_pixel([x, y]);
+
+            const [width, height] = this.size;
+
+            //console.log('target_color', target_color);
+            //console.log('new_color', new_color);
+
+            if (target_color === new_color) {
+                // No need to fill if the new color is the same as the target color
+                return 0;
+            } else {
+
+
+                /*
+                const arr_stack_implementation = () => {
+
+                    const stack = [];
+                    stack.push([x, y]);
+
+                    //ppl_to_visit.add(ta_pos);
+
+                    // Is a lot faster using a Core Pixel_Buffer to keep track of which pixels have already been visited.
+                    //  An array that is 8 times the size would probably be faster.
+                    //   Maybe by a lot.
+
+
+
+
+                    const pb_already_visited = new Core({
+                        size: this.size,
+                        bits_per_pixel: 1
+                    })
+                    //const dict_already = {};
+
+                    let curr_x, curr_y, px;
+
+                    let shifted;
+
+                    // No, need to pop pixels to see about visiting them.
+
+                    //shifted = ppl_to_visit.shift();
+
+
+                    //while (shifted !== undefined && shifted.length > 0) {
+
+
+                    // May be faster using 8 bipp temporarily.
+
+
+
+
+
+                    while (stack.length > 0) {
+                        [curr_x, curr_y] = stack.pop();
+                        //console.log('shifted', shifted);
+
+                        //shifted = ppl_to_visit.shift();
+                        //console.log('shifted', shifted);
+
+                        //curr_x = shifted[0];
+                        //curr_y = shifted[1];
+
+
+                        //[curr_x, curr_y] = ppl_to_visit.shift();
+
+
+                        //console.log('[curr_x, curr_y]', [curr_x, curr_y]);
+
+                        // Could inline the pixel access.
+
+
+                        px = this.get_pixel([curr_x, curr_y]);
+                        //console.log('px', px);
+                        //console.log('target_color', target_color);
+
+                        if (px === target_color) {
+                            //console.log('px match');
+
+                            this.set_pixel_1bipp([curr_x, curr_y], new_color);
+                            // Check neighbors
+                            if (curr_x > 0) {
+                                // if that px is not on the stack already though...
+
+
+                                if (pb_already_visited.get_pixel_1bipp([curr_x - 1, curr_y]) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+
+                                    stack.push([curr_x - 1, curr_y]);
+                                };
+
+                                //if (!dict_already[[curr_x - 1, curr_y]]) {
+                                //    stack.push([curr_x - 1, curr_y]);
+                                //}
+                            }
+                            if (curr_x < width - 1) {
+                                //stack.push([curr_x + 1, curr_y]);
+
+                                if (pb_already_visited.get_pixel_1bipp([curr_x + 1, curr_y]) === 0) {
+                                    stack.push([curr_x + 1, curr_y]);
+
+                                    //ta_pos[0] = curr_x + 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+
+
+                                };
+
+                            }
+                            if (curr_y > 0) {
+                                if (pb_already_visited.get_pixel_1bipp([curr_x, curr_y - 1]) === 0) {
+                                    stack.push([curr_x, curr_y - 1]);
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            if (curr_y < height - 1) {
+
+                                if (pb_already_visited.get_pixel_1bipp([curr_x, curr_y + 1]) === 0) {
+                                    stack.push([curr_x, curr_y + 1]);
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y + 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+
+                            pb_already_visited.set_pixel_1bipp([curr_x, curr_y], 1);
+
+                            //dict_already[[curr_x, curr_y]] = true;
+                        }
+
+                        //shifted = ppl_to_visit.shift();
+                        //console.log('stack.length', stack.length);
+                        //console.log('dict_already', dict_already);
+                    }
+
+
+                }
+
+                //return arr_stack_implementation();
+                */
+
+
+
+
+                // Not so sure why the ta implementation below does not work.
+                //  Seems to be putting too many on the stack.
+                //  Maybe get and set pixel is not working for these ta position objects.
+
+                // Must find the right optimisations.
+                //  Probably best to check some lower level functions using ta positions.
+                //  Esp for 1 bipp functions.
+
+
+
+                /*
+
+                const ta_stack_fn_calls_implementation = () => {
+
+                    // Capcity number of pixels....
+
+                    // Takes a few ms to allocate....
+
+                    let stack_capacity = 1024 * 1024 * 8; // 8 MB for now. 64???
+                    //  Seems not to get it done with a huge stack....
+
+
+
+                    let ta_stack = new Uint16Array(stack_capacity);
+                    let i_stack_pos = 0;
+                    let stack_length = 0;
+                    let px_color;
+                    
+                    // and the number in the stack...?
+
+                    let ta_pos = new Uint16Array(2);
+                    let ta_pos2 = new Uint16Array(2);
+
+                    // stack push...
+                    //  want it inline rather than function call (probably??? will test)
+                    //  will make a version that calls internal functions for now.
+                    //   possibly will be very fast.
+
+
+                    // Maybe don't need capacity check???
+
+
+                    // Could keep track of max stack length as it runs.
+
+
+                    const fn_stack_push_pos = pos => {
+
+                        
+                        //ta_stack[i_stack_pos++] = pos[0];
+                        //ta_stack[i_stack_pos++] = pos[1];
+                        //stack_length++;
+                        
+
+                        // Maybe slows it down a tiny amount?
+
+                        if (i_stack_pos < stack_capacity) {
+                            ta_stack[i_stack_pos++] = pos[0];
+                            ta_stack[i_stack_pos++] = pos[1];
+                            stack_length++;
+                        } else {
+
+                            console.log('stack_length', stack_length);
+                            console.log('i_stack_pos', i_stack_pos);
+
+                            console.trace();
+                            throw 'NYI - stack exceeded capacity';
+                        }
+                    }
+
+
+                    // Could inline these without too much difficulty.
+
+                    const fn_stack_pop_pos = () => {
+                        if (i_stack_pos > 1) {
+                            ta_pos[0] = ta_stack[i_stack_pos - 2];
+                            ta_pos[1] = ta_stack[i_stack_pos - 1];
+                            i_stack_pos -= 2;
+                            stack_length--;
+                            //console.log('ta_pos', ta_pos);
+                            //console.log('stack_length', stack_length);
+                            //return ta_pos;
+                        } else {
+                            //return undefined;
+                        }
+                    }
+
+                    ta_pos[0] = x;
+                    ta_pos[1] = y;
+                    fn_stack_push_pos(ta_pos);
+
+
+                    // Could inline this...
+                    //  Or speed it up using 1bypp (simpler algorithms)
+                    const pb_already_visited = new Core({
+                        size: this.size,
+                        bits_per_pixel: 1
+                    })
+
+                    // Think this part is working, problem seems to be with stack?
+                    //  Or the use of these data types?
+
+                    // Seems broken....
+
+                    //console.log('stack_length', stack_length);
+                    //throw 'stop';
+
+                    while (stack_length > 0) {
+                        fn_stack_pop_pos();
+                        //console.log('pop_res', pop_res);
+                        // loads into ta_pos
+                        // More specific get pixel function speeds it up a little.
+                        px_color = this.get_pixel_1bipp(ta_pos); // inline this?
+
+                        if (px_color === target_color) {
+                            this.set_pixel_1bipp(ta_pos, new_color);
+                            // 
+
+                            if (ta_pos[0] > 0) {
+                                // if that px is not on the stack already though...
+                                ta_pos2[0] = ta_pos[0] - 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                // And getting the pixel does not quite work here....
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    fn_stack_push_pos(ta_pos2);
+                                };
+
+                                //if (!dict_already[[curr_x - 1, curr_y]]) {
+                                //    stack.push([curr_x - 1, curr_y]);
+                                //}
+                            }
+                            if (ta_pos[0] < width - 1) {
+                                //stack.push([curr_x + 1, curr_y]);
+                                ta_pos2[0] = ta_pos[0] + 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    fn_stack_push_pos(ta_pos2);
+                                };
+
+                            }
+                            if (ta_pos[1] > 0) {
+
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] - 1;
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    fn_stack_push_pos(ta_pos2);
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            if (ta_pos[1] < height - 1) {
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] + 1;
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    fn_stack_push_pos(ta_pos2);
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            pb_already_visited.set_pixel_1bipp(ta_pos, 1);
+                        }
+                        //console.log('stack_length', stack_length);
+                    }
+                }
+                //return ta_stack_fn_calls_implementation();
+
+                */
+
+
+
+                // Still maybe not fast enough....
+                //  A variety of possible optimisations exist.
+
+                // Especially when getting into the lower level bits.
+                //  Things such as flood-fill right and left rapidly.
+                //   Identifying which bits, to left and right of pixel, can have thier values set to 255.
+                //    Being able to (accurately) set multiple pixels at once.
+
+                // Possibly measuring how many borders enclose a pixel?
+                //  Could be optimal in some cases.
+
+
+
+
+
+
+                
+
+
+                // Then an inlined implementation of get and set pixel?
+                //  A matrix of the full size for if a pixel has been visited or not would be quicker.
+
+
+
+
+
+                const ta_stack_fn_calls_inlined_implementation = () => {
+
+                    // Capcity number of pixels....
+
+                    // Takes a few ms to allocate....
+
+                    let stack_capacity = 1024 * 1024 * 8; // 8 MB for now. 64???
+                    //  Seems not to get it done with a huge stack....
+
+
+
+                    let ta_stack = new Uint16Array(stack_capacity);
+                    let i_stack_pos = 0;
+                    let stack_length = 0;
+                    let px_color;
+                    
+                    // and the number in the stack...?
+
+                    let ta_pos = new Uint16Array(2);
+                    let ta_pos2 = new Uint16Array(2);
+
+                    // stack push...
+                    //  want it inline rather than function call (probably??? will test)
+                    //  will make a version that calls internal functions for now.
+                    //   possibly will be very fast.
+
+
+                    // Maybe don't need capacity check???
+
+
+                    // Could keep track of max stack length as it runs.
+
+                    /*
+
+                    const fn_stack_push_pos = pos => {
+
+                        
+                        //ta_stack[i_stack_pos++] = pos[0];
+                        //ta_stack[i_stack_pos++] = pos[1];
+                        //stack_length++;
+                        
+
+                        // Maybe slows it down a tiny amount?
+
+                        if (i_stack_pos < stack_capacity) {
+                            ta_stack[i_stack_pos++] = pos[0];
+                            ta_stack[i_stack_pos++] = pos[1];
+                            stack_length++;
+                        } else {
+
+                            console.log('stack_length', stack_length);
+                            console.log('i_stack_pos', i_stack_pos);
+
+                            console.trace();
+                            throw 'NYI - stack exceeded capacity';
+                        }
+                    }
+                    */
+
+
+                    // Could inline these without too much difficulty.
+
+
+                    /*
+
+                    const fn_stack_pop_pos = () => {
+                        if (i_stack_pos > 1) {
+                            ta_pos[0] = ta_stack[i_stack_pos - 2];
+                            ta_pos[1] = ta_stack[i_stack_pos - 1];
+                            i_stack_pos -= 2;
+                            stack_length--;
+                            //console.log('ta_pos', ta_pos);
+                            //console.log('stack_length', stack_length);
+                            //return ta_pos;
+                        } else {
+                            //return undefined;
+                        }
+                    }
+                    */
+
+                    ta_pos[0] = x;
+                    ta_pos[1] = y;
+                    //fn_stack_push_pos(ta_pos);
+
+                    if (i_stack_pos < stack_capacity) {
+                        ta_stack[i_stack_pos++] = ta_pos[0];
+                        ta_stack[i_stack_pos++] = ta_pos[1];
+                        stack_length++;
+                    } else {
+
+                        console.log('stack_length', stack_length);
+                        console.log('i_stack_pos', i_stack_pos);
+
+                        console.trace();
+                        throw 'NYI - stack exceeded capacity';
+                    }
+
+
+                    // Could inline this...
+                    //  Or speed it up using 1bypp (simpler algorithms)
+                    const pb_already_visited = new Core({
+                        size: this.size,
+                        bits_per_pixel: 1
+                    })
+
+                    // Think this part is working, problem seems to be with stack?
+                    //  Or the use of these data types?
+
+                    // Seems broken....
+
+                    //console.log('stack_length', stack_length);
+                    //throw 'stop';
+
+                    while (stack_length > 0) {
+                        //fn_stack_pop_pos();
+
+                        //if (i_stack_pos > 1) {
+                            ta_pos[0] = ta_stack[i_stack_pos - 2];
+                            ta_pos[1] = ta_stack[i_stack_pos - 1];
+                            i_stack_pos -= 2;
+                            stack_length--;
+                            //console.log('ta_pos', ta_pos);
+                            //console.log('stack_length', stack_length);
+                            //return ta_pos;
+                        //}
+
+                        //console.log('pop_res', pop_res);
+                        // loads into ta_pos
+                        // More specific get pixel function speeds it up a little.
+                        px_color = this.get_pixel_1bipp(ta_pos); // inline this?
+
+                        if (px_color === target_color) {
+                            this.set_pixel_1bipp(ta_pos, new_color);
+                            // 
+
+                            if (ta_pos[0] > 0) {
+                                // if that px is not on the stack already though...
+                                ta_pos2[0] = ta_pos[0] - 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                // And getting the pixel does not quite work here....
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+
+                                };
+
+                                //if (!dict_already[[curr_x - 1, curr_y]]) {
+                                //    stack.push([curr_x - 1, curr_y]);
+                                //}
+                            }
+                            if (ta_pos[0] < width - 1) {
+                                //stack.push([curr_x + 1, curr_y]);
+                                ta_pos2[0] = ta_pos[0] + 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+                                };
+
+                            }
+                            if (ta_pos[1] > 0) {
+
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] - 1;
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            if (ta_pos[1] < height - 1) {
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] + 1;
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            pb_already_visited.set_pixel_1bipp(ta_pos, 1);
+                        }
+                        //console.log('stack_length', stack_length);
+                    }
+                }
+
+                // And this is just a tiny bit faster too....
+                
+
+                return ta_stack_fn_calls_inlined_implementation();
+                
+
+                
+            }
+
+            // A typed array stack could be more effective.
+            //  Or a pixel_pos_list.
+
+
+            // Maybe have a Position_Stack class.
+            //  be able to push onto the stack
+            //  pop from the stack
+
+
+
+
+            // Or use a Pixel_Pos_List instead of a stack.
+
+            
+
+
+            // ppl_visiting_pixels instead?
+
+
+            //const ppl_to_visit = new Pixel_Pos_List();
+
+            //const ta_pos = new Uint16Array([x, y]);
+
+            // Maybe Pixel_Position_Stack.
+
+
+
+            
+
+            
+        }
+
 
         'flood_fill'(x, y, r, g, b, a) {
 
@@ -2254,12 +3003,6 @@ const get_instance = () => {
             // Worth trying 1 bipp flood fills.
 
 
-
-
-
-
-
-
             // stack of pixels to visit
             // map of pixels visited
             // Could optimize this with typed arrays
@@ -2268,8 +3011,6 @@ const get_instance = () => {
             // 3 bytes per pixel....
 
             // Can we try a simpler algorithm, at least to start with???
-
-
 
 
             if (bipp === 24) {
@@ -2623,7 +3364,6 @@ const get_instance = () => {
                 return fast_stacked_mapped_flood_fill();
 
             } else if (bipp === 8) {
-
                 // r
                 const [w, h] = this.size;
                 let fast_stacked_mapped_flood_fill = () => {
@@ -2688,7 +3428,6 @@ const get_instance = () => {
                         //[x, y] = arr_pixels_to_visit[c_visited];
                         scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; // x
                         scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; // y
-
                         scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
 
                         if (buffer[scratch_32[8]++] - ta8_pixels[0] === 0) {
@@ -2734,91 +3473,20 @@ const get_instance = () => {
 
 
             } else if (bipp === 1) {
+                // Could see about an optimised 1bipp flood fill.
+                //  Using a pos array would make it more consistent with other functions.
+
+                return this.flood_fill_1bipp(x, y, r);
                 // could try a much simpler algorithm.
 
-                const new_color = r;
-
-                const target_color = this.get_pixel(x, y);
-
-                const [width, height] = this.size;
-
-                //console.log('target_color', target_color);
-                //console.log('new_color', new_color);
-
-                if (target_color === new_color) {
-                    // No need to fill if the new color is the same as the target color
-                    return;
-                }
-
-                const stack = [];
-                stack.push([x, y]);
-
-                const dict_already = {};
-
-                while (stack.length > 0) {
-                    const [curr_x, curr_y] = stack.pop();
-
-                    //console.log('[curr_x, curr_y]', [curr_x, curr_y]);
-
-                    const px = this.get_pixel([curr_x, curr_y]);
-                    //console.log('px', px);
-                    //console.log('target_color', target_color);
-
-                    if (px === target_color) {
-                        //console.log('px match');
-
-                        this.set_pixel([curr_x, curr_y], new_color);
-
-
-                        // Check neighbors
-                        if (curr_x > 0) {
-                            // if that px is not on the stack already though...
-
-                            if (!dict_already[[curr_x - 1, curr_y]]) {
-                                stack.push([curr_x - 1, curr_y]);
-                            }
-
-
-                        }
-                        if (curr_x < width - 1) {
-                            //stack.push([curr_x + 1, curr_y]);
-
-                            if (!dict_already[[curr_x + 1, curr_y]]) {
-                                stack.push([curr_x + 1, curr_y]);
-                            }
-
-                        }
-                        if (curr_y > 0) {
-                            if (!dict_already[[curr_x, curr_y - 1]]) {
-                                stack.push([curr_x, curr_y - 1]);
-                            }
-
-
-                        }
-                        if (curr_y < height - 1) {
-
-                            if (!dict_already[[curr_x, curr_y + 1]]) {
-                                stack.push([curr_x, curr_y + 1]);
-                            }
-
-
-                        }
-                        dict_already[[curr_x, curr_y]] = true;
-
-
-                    }
+                // could try a 1bipp pixel buffer to keep track of which pixels have already been visited.
 
 
 
 
 
-                    //console.log('stack.length', stack.length);
 
-                    //console.log('dict_already', dict_already);
-                }
-
-
-
+                
 
             } else {
 
@@ -2921,12 +3589,12 @@ const get_instance = () => {
         each_outer_boundary_pixel(callback) {
             let ta_pos = new Uint16Array(2);
             const {size} = this;
-            console.log('size', size);
+            //console.log('size', size);
     
             //throw 'stop';
             const [w, h] = size;
     
-            console.log('[w, h]', [w, h]);
+            //console.log('[w, h]', [w, h]);
     
             //throw 'stop';
     
@@ -2992,6 +3660,9 @@ const get_instance = () => {
         }
 
 
+        // I think this is slow.
+
+
         flood_fill_given_color_pixels_from_outer_boundary(given_color, fill_color) {
 
             const {
@@ -3019,6 +3690,9 @@ const get_instance = () => {
 
                 });
             } else if (bits_per_pixel === 1) {
+
+                
+
                 this.each_outer_boundary_pixel((b_color, pos) => {
                     //console.log('[color, pos]', [color, pos]);
 
@@ -3026,15 +3700,15 @@ const get_instance = () => {
 
                     //const [r, g, b] = b_color;
 
-                    console.log('b_color', b_color);
-                    console.log('pos', pos);
+                    //console.log('b_color', b_color);
+                    //console.log('pos', pos);
 
                     if (b_color === given_color) {
                         // flood fill this pos with the given color.
 
 
                         // And will need a new flood fill function.
-                        console.log('fill_color', fill_color);
+                        //console.log('fill_color', fill_color);
 
                         this.flood_fill(pos[0], pos[1], fill_color);
 

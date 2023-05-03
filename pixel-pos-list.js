@@ -127,6 +127,25 @@ class Pixel_Pos_List {
             // Need to read it from its read pixel when doing each_pixel.
         }
 
+        // pop
+        //  removes from the end.
+        //  means bringing the read pos back.
+
+        this.pop = () => {
+            // remove and return last element from array.
+            //  would need to make a copy of it.
+
+            const res = new Uint16Array(2);
+            res[0] = ta_pixels[--read_pos];
+            res[1] = ta_pixels[--read_pos];
+            return res;
+
+
+        }
+
+
+
+
 
 
         // Could start out with a smaller ta_pixels.
@@ -134,6 +153,10 @@ class Pixel_Pos_List {
         // want to be able to iterate through the pixels.
         // want to be able to add pixels.
         this.ta = ta_pixels;
+
+
+        // As well as push?
+
         this.add = (pos) => {
             //console.log('pos', pos);
             if (i > max_index) {
@@ -236,10 +259,10 @@ class Pixel_Pos_List {
             get: () => {
                 if (!_bounds) {
                     _bounds = new Uint16Array(4);
-                    _bounds[0] = 1000000;
-                    _bounds[1] = 1000000;
-                    _bounds[2] = 0;
-                    _bounds[3] = 0;
+                    _bounds[0] = Number.POSITIVE_INFINITY;
+                    _bounds[1] = Number.POSITIVE_INFINITY;
+                    _bounds[2] = Number.NEGATIVE_INFINITY;
+                    _bounds[3] = Number.NEGATIVE_INFINITY;
                     this.each_pixel(pos => {
                         //console.log('pos', pos);
                         if (pos[0] < _bounds[0]) _bounds[0] = pos[0];

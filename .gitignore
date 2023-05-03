@@ -132,3 +132,6 @@ dist
 
 /examples/output/*
 examples/output/.DS_Store
+
+
+*.png
