@@ -311,11 +311,97 @@ const get_instance = () => {
                 //  Likely we need a quicker way of checking if any pixels have already been visited.
                 //   Possibly could even use a 1bipp pixel buffer.
 
-
-
-
                 console.log('pre 1bipp flood fill from outside');
-                pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+
+                // flood_fill_1bipp_color_0_from_outer_boundary_with_color_1
+                //  could be a lot more optimised? on the bit level in terms of setting the pixels to 'on' as appropriate.
+
+
+                // A scanline type of flood-fill may be faster.
+                //  Fill to the right until the next already at color 1 in an optimised way.
+
+
+
+                // Flood fill that is row-optimised could work best.
+                //  May also be worth using byte aligned rows.
+                //   Maybe not by default though.
+
+
+                // flood_fill_1bipp_c0_pixels_from_outer_boundary_with_c1
+                //  An optimised (prob stack based) flood fill may work best for this.
+                //   Filling entire rows horisontally.
+                //    However need to then be careful about how many other pixels get put on the stack while doing this.
+                //     Want to get into the gaps with more flood fill on the stack.
+
+                // Could look into more performant stack?
+                //  Object with dynamic size in JS?
+
+                // A fixed size stack, and when the stack is full, it does what though?
+                //  Keeping track of some 'resume' state?
+                //  Removing pixels from the stack in some situations...?
+                //   Trying other pixels and then putting some back on the stack?
+                //  Seems tricky.
+
+                // May want to read from the line above and below as well?
+                //  To determine if they are worth putting on the stack?
+                // Or... identify all horizontal spans in the image
+                //  (or identify them as necessary)
+                // Have a stack of horizontal spans to process
+                //  And it would check for all horizontal spans in the lines above and below.
+
+                // Could identify them as 'horizontal span on line y [x1, x2]
+                //  Horizontal spans should be quite rapid to find.
+                //  Also consider single pixels within a horizontal span - maybe rep them as a span, less optimised though.
+                //   Will not be all that many single pixels?
+                //    Will be some, as in the outline of shapes.
+
+                // Then will be able to flood fill the (referenced?) horizontal spans.
+                //  Consider how OR / NOT / AND can be used on larger images, ie byte by byte doing many at once.
+
+                // Whether or not a horizontal span has been visited by the flood fill...
+                //  As in, every pixel in that horizontal span would have been visited.
+                //   But we maybe should check which of the horizontal spans have been visited, keep track of them as separate objects.
+
+                //  Though maybe don't need to track which have been visited already in some cases once they are filled?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+
+
+
+
+
+
+                // flood_fill_off_pixels_from_outer_boundary_on_1bipp
+
+                pb_polygon.flood_fill_off_pixels_from_outer_boundary_on_1bipp();
+
+
+
+                //pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+
+
                 t2 = Date.now();
                 td = t2 - t1;
 
@@ -2307,13 +2393,737 @@ const get_instance = () => {
 
 
 
+        // Giving the pos as a ta may be more optimal in some ways.
+        //  Seems like the standard syntax in many places.
+        //   May also want to give it the stack / some of the stack to start with.
+        //    As in it calls it with the requirement of checking all outer pixels.
+
+
+        // and a version that flood fills color 1...
+
+
+
+        // A version that uses the arr rows arr x off spans to flood fill from the boundaries would be effective too.
+
+        // Is a little difficult using these arr rows x off spans - but should be efficient.
+        // Get all the links between them ahead of time?
+        //  Identifying if any of them are touching an edge?
+        //  Maybe put them all in an array?
+        //   So that references to the ones above or below can be encoded in that array too?
+
+        // Making more of an actual graph of objects could work too... maybe less efficient.
+        //  A really optimised typed array format would be better (still).
+
+        // Simple format could be most useful to get started with at least.
+        //  May want to keep the network of them because of the stack? not changing the order of them?
+
+        // Could identify the joined ones, and make an array of (or mark?) the ones which will then be painted?
+
+        // Let's try this in a relatively simple and clear way to start with...?
+
+        // get_connected_x_off_spans(y, idx_x_off_span)
+        //  above and below
+        //   (and apart from particular one we have just come from?)
+
+        // May be (much?) better to have more of a representation of the network.
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+        'flood_fill_c1_1bipp'(pos) {
+            //const new_color = 1;
+
+            const target_color = this.get_pixel_1bipp(pos);
+            let [x, y] = pos;
+
+
+            if (target_color === 1) {
+                // No need to fill if the new color is the same as the target color
+                return 0;
+            } else {
+
+                const ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation = () => {
+                    // This will be less memory efficient but likely (much) faster.
+
+
+                    
+                    // Capcity number of pixels....
+
+                    // Takes a few ms to allocate....
+
+
+                    // 
+
+                    let stack_capacity = 1024 * 1024 * 16; // 8 MB for now. 64???
+                    //  Seems not to get it done with a huge stack....
+
+
+
+                    let ta_stack = new Uint16Array(stack_capacity);
+                    let i_stack_pos = 0;
+                    let stack_length = 0;
+                    let px_color;
+                    
+                    // and the number in the stack...?
+
+                    let ta_pos = new Uint16Array(2);
+                    let ta_pos2 = new Uint16Array(2);
+
+                    ta_pos[0] = pos[0];
+                    ta_pos[1] = pos[1];
+                    //fn_stack_push_pos(ta_pos);
+
+                    if (i_stack_pos < stack_capacity) {
+                        ta_stack[i_stack_pos++] = ta_pos[0];
+                        ta_stack[i_stack_pos++] = ta_pos[1];
+                        stack_length++;
+                    } else {
+
+                        console.log('stack_length', stack_length);
+                        console.log('i_stack_pos', i_stack_pos);
+
+                        console.trace();
+                        throw 'NYI - stack exceeded capacity';
+                    }
+
+
+                    // Could inline this...
+                    //  Or speed it up using 1bypp (simpler algorithms)
+
+                    // Just an x,y grid would do the job better probably.
+
+                    const [width, height] = this.size;
+
+
+                    const ta_already_visited = new Uint8Array(width * height);
+
+                    /*
+                    const pb_already_visited = new Core({
+                        size: this.size,
+                        bits_per_pixel: 1
+                    })
+                    */
+
+                    // Think this part is working, problem seems to be with stack?
+                    //  Or the use of these data types?
+
+                    // Seems broken....
+
+                    //console.log('stack_length', stack_length);
+                    //throw 'stop';
+
+                    // What about getting a pixel pos list of the colors to paint?
+
+
+
+                    // Possible faster 1bipp linear flood fill?
+                    //  Have access to the row above and below at the same time?
+                    //   And only put it on the stack if that pixel is of the target color?
+
+                    while (stack_length > 0) {
+                        //fn_stack_pop_pos();
+
+                        //if (i_stack_pos > 1) {
+                        ta_pos[0] = ta_stack[i_stack_pos - 2];
+                        ta_pos[1] = ta_stack[i_stack_pos - 1];
+                        i_stack_pos -= 2;
+                        stack_length--;
+                            //console.log('ta_pos', ta_pos);
+                            //console.log('stack_length', stack_length);
+                            //return ta_pos;
+                        //}
+
+                        if (i_stack_pos >= stack_capacity - 8) {
+                            throw 'Not enough stack for positions yet to visit';
+                        }
+
+                        //console.log('pop_res', pop_res);
+                        // loads into ta_pos
+                        // More specific get pixel function speeds it up a little.
+                        px_color = this.get_pixel_1bipp(ta_pos); // inline this?
+
+                        if (px_color === target_color) {
+
+
+                            this.set_pixel_on_1bipp(ta_pos);
+
+                            // Throw an error if there are not 8 or more stack positions?
+                            //  And no error later on?
+                            //   Could be more efficient.
+
+
+
+                            // 
+
+                            if (ta_pos[0] > 0) {
+                                // if that px is not on the stack already though...
+                                ta_pos2[0] = ta_pos[0] - 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                // And getting the pixel does not quite work here....
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+
+                                    ta_stack[i_stack_pos++] = ta_pos2[0];
+                                    ta_stack[i_stack_pos++] = ta_pos2[1];
+                                    stack_length++;
+
+
+                                };
+
+                                //if (!dict_already[[curr_x - 1, curr_y]]) {
+                                //    stack.push([curr_x - 1, curr_y]);
+                                //}
+                            }
+                            if (ta_pos[0] < width - 1) {
+                                //stack.push([curr_x + 1, curr_y]);
+                                ta_pos2[0] = ta_pos[0] + 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    ta_stack[i_stack_pos++] = ta_pos2[0];
+                                    ta_stack[i_stack_pos++] = ta_pos2[1];
+                                    stack_length++;
+
+                                };
+
+                            }
+                            if (ta_pos[1] > 0) {
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] - 1;
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    ta_stack[i_stack_pos++] = ta_pos2[0];
+                                    ta_stack[i_stack_pos++] = ta_pos2[1];
+                                    stack_length++;
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            if (ta_pos[1] < height - 1) {
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] + 1;
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    ta_stack[i_stack_pos++] = ta_pos2[0];
+                                    ta_stack[i_stack_pos++] = ta_pos2[1];
+                                    stack_length++;
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            ta_already_visited[width * ta_pos[1] + ta_pos[0]] = 255
+                            //pb_already_visited.set_pixel_1bipp(ta_pos, 1);
+                        }
+                        //console.log('stack_length', stack_length);
+                    }
+                }
+                
+                // Seems very much slower with that matrix this way!
+                // And then a more fully inlined implementation...?
+
+                //  Surprised that 8bipp matrix was slower. It was an algorithmic error, it seems to be considerably faster this way.
+                //   About 2.5x the speed for something like 8x the memory usage.
+                // ta_stack_fn_calls_inlined_implementation
+                // ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation
+
+
+                // Maybe want some smaller and more tightly controlled examples to get started with this different type of image representation.
+                //  Could look at making it more integral to the core of the system.
+                //   Things like using that as an underlying representation...?
+                //    Or see about writing it to the pixel buffer(s), making it a shape representation which is available at a lower level of the system.
+                //     Rapid writing and processing of horizontal lines will be useful.
+
+                // Could use these for quick shape drawing.
+                //  Will be arranged more for writing many pixels at once, doing so quickly in horizontal lines.
+                //   Will have code to track to the bit alignment of the image target.
+
+                // draw_x_gap_rows_shape???
+
+                // inverting the row x off spans to row x on spans (more ready for drawing)
+
+                // The row color span system seems more versitile but also less optimised for some purposes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                const horizontal_line_filling_stack_to_visit_store_already_visited_implementation = () => {
+
+                    // All horizontal pixel span sections from the image would be useful data.
+                    //  Seems like it would be easier to determine adjacency of horizontal line sections.
+                    //   Want to do it in a neat but more mathematical way.
+
+                    //    Binary search to find relevant boundaries.
+
+                    // An array of each horizontal color spans on each line.
+                    //  Maybe use normal array js type?
+                    //   Would be able to find 'continuity paths'
+
+                    // Getting all of these color continuity spans for the image (by row) could be useful.
+                    // Want to be able to build them quickly.
+
+                    // Will build them in an array way specific to 1bipp - so that each item in the array represents a new color span
+                    //  ie a change from before (to the other color)
+
+                    const {ta, size} = this;
+
+                    // Do it row by row perhaps?
+
+
+                    // calculate_arr_rows_arr_x_off_spans_1bipp
+
+                    const aa_x_off_spans = this.calculate_arr_rows_arr_x_off_spans_1bipp();
+                    console.log('aa_x_off_spans', aa_x_off_spans);
+
+
+                    // array or object representing the links (ajoinments) of the x off spans on different y lines.
+                    //  (or it would be really fast to find them???)
+                    //  storing the links would probably be most efficient when it's a large / complex image.
+
+                    //  or an object with the paths of them that list which are linked to
+                    //   separate above and below links?
+
+                    //  When this is done, it should enable a very fast flood fill for a wide variety of shapes (1bipp).
+                    //   Should enable much faster drawing of filled polygons.
+
+                    // Could see about doing more directly with just the array and functions that rapidly find things.
+
+                    // Some kind of matrix of these links perhaps?
+                    //  Setting up direct links between JS objects could definitely work well.
+                    //  As could having a numeric index for all of them.
+
+
+                    
+                    const find_connected_x_off_spans_below = (y, idx_x_off_span) => {
+
+                        const res = [];
+
+                        if (y < aa_x_off_spans.length - 1) {
+
+                            const span1 = aa_x_off_spans[y][idx_x_off_span];
+                            console.log('');
+                            console.log('span1', span1);
+
+                            const y_below = aa_x_off_spans[y + 1];
+                            console.log('y_below', y_below);
+
+
+                            // Is there any overlap of ranges???
+
+                            const l_y_below = y_below.length;
+
+                            for (let i_below = 0; i_below < l_y_below; i_below++) {
+                                const range_below = y_below[i_below];
+
+                                // check for any overlap...
+
+
+                                const has_overlap = range_below[0] >= span1[0] && range_below[0] <= span1[1] || range_below[1] >= span1[0] && range_below[1] <= span1[1];
+                                console.log('range_below', range_below);
+                                console.log('has_overlap', has_overlap);
+
+                                if (has_overlap) {
+                                    res.push(range_below);
+                                }
+                            }
+
+
+                            //throw 'stop';
+
+                        }
+
+                        return res;
+                    }
+
+
+
+
+
+
+
+
+
+                    // Probably is getting them right....
+                    //  Maybe it's best to use an algorithm to determine the graph network between them?
+
+                    for (let y = 0; y < aa_x_off_spans.length; y++) {
+                        const arr_row_x_off_spans = aa_x_off_spans[y];
+
+                        for (let idx_x_off_span = 0; idx_x_off_span < arr_row_x_off_spans.length; idx_x_off_span++) {
+                            const x_off_span = arr_row_x_off_spans[idx_x_off_span];
+                            const path_xos = [y, idx_x_off_span];
+
+                            console.log('path_xos', path_xos);
+
+                            const spans_connected_below = find_connected_x_off_spans_below(y, idx_x_off_span);
+
+                            console.log('spans_connected_below', spans_connected_below);
+
+                            // Look for the x offset spans that are below it.
+                            //  May be worth keeping track of the links between them.
+                            //   (as in they only need to be stored in one place)
+
+
+                        }
+
+                    }
+
+
+
+
+                    
+
+
+                    
+
+
+                    const old = () => {
+
+                        const calculate_1bipp_row_arr_x_spans_off = y => {
+
+                            // could try it the less efficient way for now, make a reference implementation.
+
+                            const res = [];
+                            const width = this.size[0];
+                            // assume starting with 0;
+                            let last_color = 0;
+                            let current_color;
+                            let ta_pos = new Uint16Array(2);
+                            ta_pos[1] = y;
+
+                            // need to work out the start and end position of the x spans off.
+
+
+
+
+                            for (let x = 0; x < width; x++) {
+                                ta_pos[0] = x;
+                                current_color = this.get_pixel_1bipp(ta_pos);
+
+                                if (current_color === last_color) {
+                                    if (res.length === 0) {
+                                        res.push([0, 1]);
+                                    } else {
+                                        res[res.length - 1][1]++;
+                                    }
+                                } else {
+                                    if (res.length === 0) {
+                                        res.push([0, 0]); // a span of length 0
+                                        res.push([0, 1]);
+                                    } else {
+                                        res.push([x, x + 1]);
+                                    }
+                                }
+                                last_color = current_color;
+
+
+                            }
+                            return res;
+
+
+                        }
+
+                        const row_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y);
+
+                        console.log('----------------');
+
+                        console.log('row_x_off_spans', row_x_off_spans);
+
+                        // Maybe we want to do it for the whole image?
+                        //  Maybe the row above and below if there is such a row.
+
+                        // May be a much more efficient logic for doing this when getting the whole image in terms of these x off spans.
+                        //  Then doing the flood fill logic so that it works effectively this way.
+
+                        // Not having to calculate the row above and below x off spans too many times.
+                        //  Though could keep them in an object or array easily enough though.
+
+
+
+
+                        if (y > 0) {
+                            const row_above_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y - 1);
+                            // And can detect overlapping x off spans above.
+                            console.log('row_above_x_off_spans', row_above_x_off_spans);
+
+                            // Go through all this row's x off spans.
+
+                            // Sequential traversal through both would work best.
+                            //  Identifying overlaps with one pass through.
+
+
+
+                            //  ?????Then do a binary search to find the first x off span in the row above that begins within 
+
+
+
+                        }
+                        if (y < this.size[1] - 1) {
+                            const row_below_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y + 1);
+                            // And can detect overlapping x off spans below.
+
+                            console.log('row_below_x_off_spans', row_below_x_off_spans);
+
+                            // Can go through, using (1 or 2?) x pointer(s) variable(s)
+                            //  or more even?
+                            // Def want to point to the x values for the current span.
+
+                            // Identify spans below which have any points intersecting with the spans in this row.
+
+                            //  Possibly identify graphs of linked horizontal spans?
+                            //   Then flood filling them would cause that horizontal span to collapse.
+                            //    Possibly there would be a very fast way to write the horizontal span notation to a typed array.
+                            //     Looking up 1 of 256 values quickly???
+                            //      Fast write to various alignments of 1bipp uint8 array.
+                            //       (all 8 alignments)
+
+                            // Worth doing some more work on the smaller images and the core algorithms and data structures that will enable this
+                            //  fast 1bipp flood fill.
+                            //   (and likely more efficient storage format for 1bipp images)
+                            //   (may have higher performance underlying 1bipp image format data structure)
+                            //   (may be better for some cases than others)
+
+                            // Put the row_x_off_spans functionality into the core.
+                            //  Seems like core functionality that will be worth integrating very centrally into the system because of its
+                            //  possible efficiency gains for a variety of purposes.
+
+
+
+
+
+
+
+
+
+
+
+
+                        }
+
+                        console.log('----------------');
+
+
+
+
+
+
+
+
+                        /*
+
+                        const calculate_1bipp_row_color_spans_starting_with_0 = (y) => {
+
+                            // byte and bit index of the start and end pixels of the row.
+
+                            const start_byte_bit = this.get_pixel_byte_bit_1bipp([0, y]);
+                            const end_byte_bit = this.get_pixel_byte_bit_1bipp([size[0], y]);
+
+                            console.log('[start_byte_bit, end_byte_bit]', [start_byte_bit, end_byte_bit]);
+
+                            // Could have a 'slow' method to start with and to test results against.
+                            // Want to be detecting runs of 1s or 0s with more optimised methods.
+                            //  Could use BigInt reading to check if they are all the same for 8 bytes (64 bits).
+
+                            // Could even have / use a lookup table of 256 items to see
+                            //  number of pixels to add to the current span
+                            //  an array of pixel spans ?? or whatever format is best
+                            //   there can not be that many of them.
+                            //    (what color the last span ends on, though this can be calculated / read easily)
+                            //     (may be useful to calculate for reference / debugging at some points)
+
+
+
+
+
+                            // Optimised reading of these 1bipp lines into this format.
+                            // Optimised / efficient logic for using them in flood fills.
+
+                            // Then efficient writing them (possibly with OR) into the 1bipp bitmaps.
+                            //  Logic that checks bytes for 0 or 255 would help.
+                            //   And then if it finds other values, it moves specifically through that byte, bit by bit, applying logic to each of those bits.
+                            //    Could be efficient inline 8 stage process rather than for loop.
+                            // Operations of adding to the last span (how ever many pixels / bits).
+                            //  Starting a new span(1 pixel only so far)
+                            //  Starting a new span(n pixels)
+
+                            // Then fast rendering them to the pixel buffer 1bipp typed array...
+                            //  Setting 8 or even 64 pixels at a time when they are all the same color.
+
+                            // Being able to construct per-byte masks?
+                            //   More complex than just setting 1 byte at a time?
+                            //   Many / most cases will be setting 8 (or even 64) pixels at once, covering a lot of space quickly.
+
+
+                            // Then can go through that row identifying the number of color changes.
+                            //  Maybe getting this info should be in the core.
+                            //   It's the kind of thing which low level could be very useful for the implementation.
+                            //    Maybe even having it as a possible storage mode rather than fully 1bipp.
+                            //     Being able to define linear pixel spans and working with them for a variety of operations.
+                            //     May be a more efficient format in a variety of cases.
+                            //      Drawing pixels could add to an existing liner pixel span or create a new one.
+
+                            // Determining which linear pixel spans are directly above which other linear pixel spans.
+                            //  Or below
+                            // Use of binary search algorithm would be of use for this.
+                            //  Will mean the fill logic will get applied to thousands of pixels at once in large images.
+                            //  It's a data structure that is part way in terms of logic to acheiving flood fills.
+
+
+                        }
+
+
+                        console.log('pos[1]', pos[1]);
+                        let bb = calculate_1bipp_row_color_spans_starting_with_0(pos[1]);
+                        console.log('bb', bb);
+
+                        */
+
+                    }
+
+
+
+                    
+
+
+
+
+
+
+                }
+
+                //return horizontal_line_filling_stack_to_visit_store_already_visited_implementation();
+
+
+                // Worth building a decent flood fill implementation using the horizontal line filling outside of here for the moment.
+                //  Build the lower level functions needed for it to work, then it will be much easier and faster to make the flood fill itself.
+
+                
+
+                return ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation();
+
+
+                // Worth getting more into the core to get the whole image as an array of rows' x off spans.
+                // Maybe (then?) index all the x off spans?
+                //  But then removing them could become more tricky?
+                //  May also want to just keep track of all of the x off spans that wound up getting changed / removed.
+                //   Could then use these to make / iterate through a pixel position list of every pixel to paint.
+                //   That would, however, not be the fastest pixel painting algorithm.
+                //    Want to do horizontal scans based on the information in the x off spans.
+                // Indexing all the x off spans in an image could be useful.
+                //  Or could add a 'visited' or 'painted' property to them.
+                //   Then just writing all the painted x off spans to the image may be good / fast enough.
+                //    Especially with a nicely optimised horizontal line drawing algorithm.
+                //     Maybe have a 'draw_horizontal_line_color_on_1bipp'(y, x1, x2) ???
+                //      A (highly?) optimised and specific horizontal line drawing function?
+                //      Could apply a | 255 mask to a whole load of pixels (8) at a time.
+
+                // things like
+                //  if (num_remaining_px >= 8) {
+                //    are all the pixels in the image at byte of the target color (ie is byte 0)? if they are, then set that pixel to 1.
+                //     otherwise, go through them pixel by pixel?
+                //    
+
+                //  }
+
+                // Very rapid horizontal line drawing to 1bipp image tas would be very helpful.
+                //  As well as using these horizontal lines as their own encoding of the image.
+
+                // Getting the whole image as an array of these row x off spans would be useful.
+                //  Want to try with slightly larger images as well, such as 25x25 where there will be aligned areas, and alignment will need to be carried out
+                //   Make sure it works efficiently on the aligned areas, as in large images (line drawings especially) there will be large spans of the same
+                //    pixel off x spans.
+
+
+
+
+                //  Then can write a flood fill algorithm which acts directly on them.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+
+            }
+        }
+
+
+
+        // And better to use a 'pos' array.
+        //  Probably.
+
+        // Could try '_xy' versions too.
+
         'flood_fill_1bipp'(x, y, color) {
 
-
-
-
             const new_color = color;
-            const target_color = this.get_pixel([x, y]);
+            const target_color = this.get_pixel_1bipp([x, y]);
 
             const [width, height] = this.size;
 
@@ -2782,6 +3592,9 @@ const get_instance = () => {
 
                     // Could inline this...
                     //  Or speed it up using 1bypp (simpler algorithms)
+
+                    // Just an x,y grid would do the job better probably.
+
                     const pb_already_visited = new Core({
                         size: this.size,
                         bits_per_pixel: 1
@@ -2794,6 +3607,14 @@ const get_instance = () => {
 
                     //console.log('stack_length', stack_length);
                     //throw 'stop';
+
+                    // What about getting a pixel pos list of the colors to paint?
+
+
+
+                    // Possible faster 1bipp linear flood fill?
+                    //  Have access to the row above and below at the same time?
+                    //   And only put it on the stack if that pixel is of the target color?
 
                     while (stack_length > 0) {
                         //fn_stack_pop_pos();
@@ -2946,11 +3767,249 @@ const get_instance = () => {
                 }
 
                 // And this is just a tiny bit faster too....
-                
 
-                return ta_stack_fn_calls_inlined_implementation();
-                
+                const ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation = () => {
+                    // This will be less memory efficient but likely (much) faster.
 
+
+                    
+                    // Capcity number of pixels....
+
+                    // Takes a few ms to allocate....
+
+                    let stack_capacity = 1024 * 1024 * 8; // 8 MB for now. 64???
+                    //  Seems not to get it done with a huge stack....
+
+
+
+                    let ta_stack = new Uint16Array(stack_capacity);
+                    let i_stack_pos = 0;
+                    let stack_length = 0;
+                    let px_color;
+                    
+                    // and the number in the stack...?
+
+                    let ta_pos = new Uint16Array(2);
+                    let ta_pos2 = new Uint16Array(2);
+
+                    ta_pos[0] = x;
+                    ta_pos[1] = y;
+                    //fn_stack_push_pos(ta_pos);
+
+                    if (i_stack_pos < stack_capacity) {
+                        ta_stack[i_stack_pos++] = ta_pos[0];
+                        ta_stack[i_stack_pos++] = ta_pos[1];
+                        stack_length++;
+                    } else {
+
+                        console.log('stack_length', stack_length);
+                        console.log('i_stack_pos', i_stack_pos);
+
+                        console.trace();
+                        throw 'NYI - stack exceeded capacity';
+                    }
+
+
+                    // Could inline this...
+                    //  Or speed it up using 1bypp (simpler algorithms)
+
+                    // Just an x,y grid would do the job better probably.
+
+                    const [width, height] = this.size;
+
+
+                    const ta_already_visited = new Uint8Array(width * height);
+
+                    /*
+                    const pb_already_visited = new Core({
+                        size: this.size,
+                        bits_per_pixel: 1
+                    })
+                    */
+
+                    // Think this part is working, problem seems to be with stack?
+                    //  Or the use of these data types?
+
+                    // Seems broken....
+
+                    //console.log('stack_length', stack_length);
+                    //throw 'stop';
+
+                    // What about getting a pixel pos list of the colors to paint?
+
+
+
+                    // Possible faster 1bipp linear flood fill?
+                    //  Have access to the row above and below at the same time?
+                    //   And only put it on the stack if that pixel is of the target color?
+
+                    while (stack_length > 0) {
+                        //fn_stack_pop_pos();
+
+                        //if (i_stack_pos > 1) {
+                            ta_pos[0] = ta_stack[i_stack_pos - 2];
+                            ta_pos[1] = ta_stack[i_stack_pos - 1];
+                            i_stack_pos -= 2;
+                            stack_length--;
+                            //console.log('ta_pos', ta_pos);
+                            //console.log('stack_length', stack_length);
+                            //return ta_pos;
+                        //}
+
+                        //console.log('pop_res', pop_res);
+                        // loads into ta_pos
+                        // More specific get pixel function speeds it up a little.
+                        px_color = this.get_pixel_1bipp(ta_pos); // inline this?
+
+                        if (px_color === target_color) {
+
+
+                            this.set_pixel_1bipp(ta_pos, new_color);
+                            // 
+
+                            if (ta_pos[0] > 0) {
+                                // if that px is not on the stack already though...
+                                ta_pos2[0] = ta_pos[0] - 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                // And getting the pixel does not quite work here....
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+
+                                };
+
+                                //if (!dict_already[[curr_x - 1, curr_y]]) {
+                                //    stack.push([curr_x - 1, curr_y]);
+                                //}
+                            }
+                            if (ta_pos[0] < width - 1) {
+                                //stack.push([curr_x + 1, curr_y]);
+                                ta_pos2[0] = ta_pos[0] + 1;
+                                ta_pos2[1] = ta_pos[1];
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //ta_pos[0] = curr_x - 1;
+                                    //ta_pos[1] = curr_y;
+                                    //ppl_to_visit.add(ta_pos);
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+                                };
+
+                            }
+                            if (ta_pos[1] > 0) {
+
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] - 1;
+
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            if (ta_pos[1] < height - 1) {
+                                ta_pos2[0] = ta_pos[0];
+                                ta_pos2[1] = ta_pos[1] + 1;
+                                //console.log('pb_already_visited.get_pixel_1bipp(ta_pos2)', pb_already_visited.get_pixel_1bipp(ta_pos2));
+
+                                if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
+                                //if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
+                                    //stack.push([curr_x, curr_y - 1]);
+
+                                    //fn_stack_push_pos(ta_pos2);
+
+                                    if (i_stack_pos < stack_capacity) {
+                                        ta_stack[i_stack_pos++] = ta_pos2[0];
+                                        ta_stack[i_stack_pos++] = ta_pos2[1];
+                                        stack_length++;
+                                    } else {
+            
+                                        console.log('stack_length', stack_length);
+                                        console.log('i_stack_pos', i_stack_pos);
+            
+                                        console.trace();
+                                        throw 'NYI - stack exceeded capacity';
+                                    }
+                                    //ta_pos[0] = curr_x;
+                                    //ta_pos[1] = curr_y - 1;
+                                    //ppl_to_visit.add(ta_pos);
+                                };
+                            }
+                            ta_already_visited[width * ta_pos[1] + ta_pos[0]] = 255
+                            //pb_already_visited.set_pixel_1bipp(ta_pos, 1);
+                        }
+                        //console.log('stack_length', stack_length);
+                    }
+                }
+                
+                // Seems very much slower with that matrix this way!
+                // And then a more fully inlined implementation...?
+
+                //  Surprised that 8bipp matrix was slower. It was an algorithmic error, it seems to be considerably faster this way.
+                //   About 2.5x the speed for something like 8x the memory usage.
+                // ta_stack_fn_calls_inlined_implementation
+                // ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation
+
+                return ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation();
                 
             }
 
@@ -3657,6 +4716,37 @@ const get_instance = () => {
     
     
     
+        }
+
+
+
+        // Flood fill from the outer boundaries, filling in color 0 as 1, 1bipp
+
+        flood_fill_off_pixels_from_outer_boundary_on_1bipp() {
+
+            this.each_outer_boundary_pixel((b_color, pos) => {
+                //console.log('[color, pos]', [color, pos]);
+
+                // if color is 0, 0, 0
+
+                //const [r, g, b] = b_color;
+
+                //console.log('b_color', b_color);
+                //console.log('pos', pos);
+
+                if (b_color === 0) {
+                    // flood fill this pos with the given color.
+
+
+                    // And will need a new flood fill function.
+                    //console.log('fill_color', fill_color);
+
+                    this.flood_fill_c1_1bipp(pos);
+
+                }
+
+
+            });
         }
 
 

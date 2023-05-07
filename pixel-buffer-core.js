@@ -372,6 +372,11 @@ let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_
 // Want to be able to easily use pixel buffers as compositors for other pixel buffers.
 
 
+// Could even have an external scratch ta.
+//  For things like index, byte and bit.
+
+
+
 
 class Pixel_Buffer_Core {
     // Setting bits per pixel to 8
@@ -3243,97 +3248,99 @@ class Pixel_Buffer_Core {
     // Or it's reading them wrong elsewhere????
 
 
-    'set_pixel_1bipp'(pos, color) {
-        // color should be 1 or 0
-        // on or off.
 
 
-        // Not so sure this works.
+    // The bit should simply be the remainder, not subtracting 7 from it?
+    //  May really want to deal with bits incrementing from 0 to 7, I think that is big endian?
+    //  The bitmap logic is big endian.
 
-        
-        //console.log('set_pixel_1bipp [pos, color]', pos, color);
-        //console.log('pos', pos);
 
-        const val = !!color;
-        // get the pixel index....
 
+
+    
+
+    // or better to calculate it into an existing typed array?
+    'get_pixel_byte_bit_1bipp'(pos) {
         const idx = pos[1] * this.size[0] + pos[0];
 
+        const byte = idx >> 3;
 
-        const byte = Math.floor(idx / 8);
+        // definitely subtract from 7?
+        //  or that's the memory bit, not the logical bit.
 
-        //console.log('byte', byte);
+        const bit = (idx & 0b111);
+        //  not so sure we need the '7 -'
 
-        // 7 - idx % 8 ???
-        const bit = 7 - (idx % 8);
-
-        //console.log('byte, bit', [byte, bit]);
-        //console.log('color', color);
-
-        //console.log('');
-
-        // use roots of some sort?
+        return {byte, bit};
+    }
 
 
-        // 
+    'get_pixel_byte_bit_BE_1bipp'(pos) {
+        const idx = pos[1] * this.size[0] + pos[0];
+
+        const byte = idx >> 3;
+
+        // definitely subtract from 7?
+        //  or that's the memory bit, not the logical bit.
+
+        const bit = (idx & 0b111);
+        //  not so sure we need the '7 -'
+
+        return {byte, bit};
+    }
+
+    'set_pixel_on_1bipp'(pos) {
+        const idx = pos[1] * this.size[0] + pos[0];
+
+        const byte = idx >> 3;
+        const bit = (idx & 0b111);
 
 
+        this.ta[byte] = this.ta[byte] | (128 >> bit);
+    }
 
-        //let mask = (~(1 << (bit - 1))) & 255;
-        //const pow = Math.pow(2, bit);
 
-        
-        //console.log('pow', pow);
-
-        //const byte_val = this.ta[byte];
-        //console.log('byte_val', byte_val);
+    'set_pixel_1bipp'(pos, color) {
+        // Simpler / faster to directly set the color?
+        //  May indeed need different logic depending on if the pixel is on or off.
+        //  Using the (same?) mask differently to 
 
 
         /*
-        if (byte_val < pow) {
-            //this.ta[byte] += pow;
-        } else {
-            //this.ta[byte] -= pow;
-        }
-        */
 
-        //console.log('val', val);
-        //console.log('a) this.ta[byte]', this.ta[byte]);
+
+        const val = !!color;
+        const idx = pos[1] * this.size[0] + pos[0];
+
+        const byte = idx >> 3;
+        const bit = 7 - (idx & 0b111);
+
+        //const byte = Math.floor(idx / 8);
+        //const bit = 7 - (idx % 8);
         if (val === true) {
-
-            //let mask = (1 << (bit - 1));
-            //let mask = Math.pow(2, bit);
-
-            //let mask = 1 << bit;
-
-            //console.log('this.ta[byte] | pow', this.ta[byte] | pow);
-
-            //this.ta[byte] = this.ta[byte] | mask;
             this.ta[byte] = this.ta[byte] | (1 << bit);
         } else {
-            // xor I think???
-
-            // hmmm not so sure...
-
-            // No, not &
-            //  & not pow?
-
-
-            //console.log('255 | pow', 255 | pow);
-            //console.log('this.ta[byte]', this.ta[byte]);
-
-            //this.ta[byte] = this.ta[byte] | (255 & ~pow);
-
-            // This line here is wrong....
-
-            // let mask = ~(1 << 3);
-
-            //let mask = (~(1 << (bit - 1))) & 255;
-            //let mask = (~(1 << (bit))) & 255;
-            //this.ta[byte] = this.ta[byte] & mask;
             this.ta[byte] = this.ta[byte] & (~(1 << (bit))) & 255;
-            //this.ta[byte] = this.ta[byte] | (255 & pow);
         }
+
+        */
+        const idx = pos[1] * this.size[0] + pos[0];
+
+        const byte = idx >> 3;
+        const bit = (idx & 0b111);
+
+        // not working quite right trying big endian
+
+
+        if (color === 1) {
+            this.ta[byte] = this.ta[byte] | (128 >> bit);
+        } else {
+            this.ta[byte] = this.ta[byte] & (~(128 >> bit)) & 255;
+        }
+
+
+
+
         //console.log('b) this.ta[byte]', this.ta[byte]);
         // 0: 
         // Think this works now :)
@@ -3390,9 +3397,15 @@ class Pixel_Buffer_Core {
         this.ta[byte + 2] = color[3];
     }
     'set_pixel_by_idx_1bipp'(idx, color) {
+
+        throw 'stop';
         const byte = Math.floor(idx / 8);
         const bit = 7 - (idx % 8);
         const val = !!color;
+
+
+        // or do it from the left? BE?
+
         const pow = Math.pow(2, bit);
 
         //console.log('color', color);
@@ -3544,9 +3557,37 @@ class Pixel_Buffer_Core {
 
 
     'get_pixel_by_idx_1bipp'(idx) {
-        const byte = Math.floor(idx / 8);
-        const bit = 7 - (idx % 8);
-        const pow = Math.pow(2, bit);
+
+        /*
+
+        const idx = pos[1] * this.size[0] + pos[0];
+
+        const byte = idx >> 3;
+        const bit = (idx & 0b111);
+
+        */
+
+        //throw 'stop';
+        //const byte = Math.floor(idx / 8);
+
+        const byte = idx >> 3;
+        const bit = (idx & 0b111);
+
+        //const bit = (idx % 8);
+
+        //console.log('bit', bit);
+
+        // Change this so it's BE???
+
+        //const pow = Math.pow(2, bit);
+        //console.log('pow', pow);
+
+        // This seems to fix the endianness at least.
+        //  Maybe could optimise more.
+
+        const pow = 128 >> bit;
+
+        // 
 
         return ((this.ta[byte] & pow) === pow) ? 1 : 0;
 
@@ -3587,56 +3628,34 @@ class Pixel_Buffer_Core {
     'get_pixel_1bipp'(pos) {
         // work out the pixel index...
         //  Possibly this part is not working correctly.
-
-
-
-
         //console.log('pos', pos);
 
         // Not sure if brackets make any speed difference.
 
         // This is quite a fast implementation.
 
-        const idx = (pos[1] * this.size[0]) + pos[0];
-        // Think this does require math.floor
-
-        //const byte = Math.floor(idx / 8);
+        //  or send it through to another function when the index number has been calculated?
+        //  use get_pixel_idx_1bipp?
 
 
 
-        //const byte = idx >> 3;
-
-
-        /*
-
-        if (idx >> 3 !== byte) {
-
-            console.log('pos', pos);
-            console.log('this.size[0]', this.size[0]);
-
-            console.log('idx', idx);
-            console.log('byte', byte);
-
-            console.trace();
-            throw 'stop';
-        }
-        */
-
+        const idx = (pos[1] * this.size[0]) + pos[0]
         const byte = idx >> 3;
+        //const bit = 7 - (idx & 0b111);
+        //return ((this.ta[byte] & 1 << bit) !== 0) ? 1 : 0;
+
+        // no, calculate the bit (endianness) differently.
 
 
-        // Are the bits backwards?
-        //  Big endian???
+        // No, move 128 to the right by the number of bits....
 
-        // Any way to optimise this???
+        // no 7 - ???
 
-        // Need to further improve rendering speed.
-        
+        return ((this.ta[byte] & 128 >> (idx & 0b111)) !== 0) ? 1 : 0;
 
+        //return ((this.ta[byte] & 128 >> 7 - (idx & 0b111)) !== 0) ? 1 : 0;
 
-        const bit = 7 - (idx % 8);
-
-
+        //return ((this.ta[byte] & 1 << 7 - (idx & 0b111)) !== 0) ? 1 : 0;
 
         // Bit shifting to the right then comparing with 1 may be best.
 
@@ -3649,7 +3668,12 @@ class Pixel_Buffer_Core {
         // bit shift left instead???
 
         // decent optimisation.
-        const pow = 1 << bit;
+        //const pow = 1 << bit;
+
+        // Seems OK re operator precedence.
+        
+
+
 
         //const pow = Math.pow(2, bit);
         // use AND with POW
@@ -3662,7 +3686,7 @@ class Pixel_Buffer_Core {
         //console.log('');
         
 
-        return ((this.ta[byte] & pow) !== 0) ? 1 : 0;
+        
 
         //return ((this.ta[idx >> 3] & 1 << (7 - (idx % 8))) !== 0) ? 1 : 0;
 
@@ -4201,6 +4225,376 @@ return a.every((val, i) => val === b[i]);
             bres[i++] = 255 - v;
         });
         return res;
+    }
+
+
+    // Make use of this in more than 1 flood fill operation - flood filling from the boundaries.
+    //  Flood fill from boundaries can work on this image representation.
+    //  Can determine which of them are on the outer boundary.
+    //  And could fill them all in in this representation.
+
+
+    // This core seems like the place for some more optimised horizontal line drawing algorithms.
+
+    'draw_horizontal_line_on_1bipp'(y, [x1, x2]) {
+        if (x1 > x2) {
+            throw 'Expected: x1 <= x2';
+        } else if (x1 === x2) {
+            return this.set_pixel_on_1bipp([x1, y]);
+        } else {
+
+            const {ta} = this;
+
+            let last_op_num_bits_advanced = 0;
+
+            const length = x2 - x1 + 1;
+            //console.log('');
+            //console.log('length (num pixels)', length);
+
+            // and the number of bits too...?
+
+            // Maybe this should get the bit index as well?
+
+
+            // Maybe want a BE notation version of this though???
+            //  Or has the format been wrong somehow???
+
+
+            //console.log('[x1, x2]', [x1, x2]);
+
+
+            const ox1 = this.get_pixel_byte_bit_BE_1bipp([x1, y]);
+            const ox2 = this.get_pixel_byte_bit_BE_1bipp([x2, y]);
+
+            //console.log('ox1', ox1);
+            //console.log('ox2', ox2);
+
+            // So could go through the bytes working out how many (and which) bits of that byte need to be set to on.
+            //  Calculate the byte mask.
+
+            let idx_bits_advanced = 0;
+            let num_bits_remaining = length;
+
+            let byte_mask = 0|0;
+
+            let i_byte = ox1.byte;
+
+            const b1 = ox1.bit; // now it's BE?
+
+
+            // Special case where it's less than the full byte?
+            //  So just a few pixels...?
+
+            // Number of bits remaining to set to 'on' in byte...?
+
+            //  Overall process should make drawing very fast.
+
+            if (ox1.byte === ox2.byte) {
+
+                // just do setpixels for the moment....
+                //  or could possibly come up with a mask? could be faster.
+                //  use a constant depending on the length....
+
+                // length of 0???
+
+
+                // ???
+
+                const using_byte_mask = () => {
+
+                    //console.log('using_byte_mask length:', length);
+
+
+                    if (length === 1) {
+                        byte_mask = 128;
+                    } else if (length === 2) {
+                        byte_mask = 192;
+                    } else if (length === 3) {
+                        byte_mask = 224;
+                    } else if (length === 4) {
+                        byte_mask = 240;
+                    } else if (length === 5) {
+                        byte_mask = 248;
+                    } else if (length === 6) {
+                        byte_mask = 252;
+                    } else if (length === 7) {
+                        byte_mask = 254;
+                    } else if (length === 8) {
+                        byte_mask = 255;
+                    } else {
+                        console.trace();
+                        throw 'stop';
+                    }
+
+                    //console.log('1) byte_mask', byte_mask);
+    
+                    //if (b1 === 1)
+    
+                    byte_mask = byte_mask >>> b1;
+
+                    //console.log('2) byte_mask', byte_mask);
+    
+                    ta[i_byte] = ta[i_byte] | byte_mask;
+                }
+
+                // using set pixel
+                // The ranges are inclusive
+
+
+                const using_set_pixel = () => {
+                    for (let x = x1; x <= x2; x++) {
+                        this.set_pixel_1bipp([x, y], 1);
+                    }
+                }
+
+                return using_byte_mask();
+
+                
+
+                
+
+
+
+
+
+
+
+
+            } else {
+
+
+                //console.log('0) num_bits_remaining', num_bits_remaining);
+                //console.log('b1', b1);
+
+                // Do the masking for the first byte...
+
+
+
+                if (b1 === 0) {
+                    // do the full pixel, 255
+                    byte_mask = 255;
+                } else if (b1 === 1) {
+                    // 01111111
+                    byte_mask = 127;
+                } else if (b1 === 2) {
+                    // 00111111
+                    byte_mask = 63;
+                } else if (b1 === 3) {
+                    // 00111111
+                    byte_mask = 31;
+                } else if (b1 === 4) {
+                    // 00111111
+                    byte_mask = 15;
+                } else if (b1 === 5) {
+                    // 00111111
+                    byte_mask = 7;
+                } else if (b1 === 6) {
+                    // 00111111
+                    byte_mask = 3;
+                } else if (b1 === 7) {
+                    // 00111111
+                    byte_mask = 1;
+                } else {
+                    throw 'stop - unexpected bit value (expected 0 to 7)';
+                }
+
+                ta[i_byte] = ta[i_byte] | byte_mask;
+
+
+
+
+                last_op_num_bits_advanced = 8 - b1;
+
+                //idx_bits_advanced += last_op_num_bits_advanced;
+                num_bits_remaining -= last_op_num_bits_advanced;
+                i_byte++;
+
+                //console.log('1) num_bits_remaining', num_bits_remaining);
+
+                // Too much going on???
+                while (num_bits_remaining >= 8) {
+                    ta[i_byte++] = 255;
+                    //last_op_num_bits_advanced = 8;
+                    //idx_bits_advanced += last_op_num_bits_advanced;
+                    num_bits_remaining -= 8;
+                }
+
+                // then how many bits left???
+
+                //console.log('2) num_bits_remaining', num_bits_remaining);
+
+                if (num_bits_remaining > 0) {
+                    if (num_bits_remaining === 1) {
+                        // 10000000
+                        byte_mask = 128;
+
+
+                    } else if (num_bits_remaining === 2) {
+                        byte_mask = 192;
+                    } else if (num_bits_remaining === 3) {
+                        byte_mask = 224;
+                    } else if (num_bits_remaining === 4) {
+                        byte_mask = 240;
+                    } else if (num_bits_remaining === 5) {
+                        byte_mask = 248;
+                    } else if (num_bits_remaining === 6) {
+                        byte_mask = 252;
+                    } else if (num_bits_remaining === 7) {
+                        byte_mask = 254;
+                    }
+
+                    ta[i_byte] = ta[i_byte] | byte_mask;
+
+                }
+
+
+            }
+
+
+            
+
+
+
+
+            // Then how many bits are left?
+            // Are there 8 or more bits left?
+
+
+
+
+
+            // Then do & on that pixel with the byte mask.
+
+            
+
+            // then have a counter that goes through the bytes?
+            // or check / keep checking if we have a full byte ahead to advance....
+
+
+
+
+
+
+
+
+
+            //console.trace();
+            //throw 'NYI';
+
+
+
+        }
+
+    }
+
+
+
+    // Likely could make a (much) more optimised fn to calculate these.
+    'calculate_arr_row_x_off_spans_1bipp'(y) {
+
+        // Could see about accelerated algorithms that will read 8 (or more) pixels at once.
+        //  May be worth doing first check on 64 pixels if they are all lined up so that can be done.
+
+        // With an Array_Reader or something similar like that, whatever it's called.
+        // Array_Buffer_Reader? Data_Reader???
+
+        // beware that the rows don't necessarily start on a new byte.
+        // need to be careful about that unless they are in byte aligned mode.
+        // may be worth considering 8byte aligned mode for rows. Would make algorithms using bigint considerably easier / more efficient.
+
+        // For the moment, deal with the rows as they are within the system (dense 1bipp data)
+
+        const res = [];
+        const width = this.size[0];
+        // assume starting with 0;
+        let last_color = 0;
+        let current_color;
+        let ta_pos = new Uint16Array(2);
+        ta_pos[1] = y;
+
+        // need to work out the start and end position of the x spans off.
+
+
+
+        //console.log('width', width);
+
+        for (let x = 0; x < width; x++) {
+            ta_pos[0] = x;
+            current_color = this.get_pixel_1bipp(ta_pos);
+
+
+            // Not all that efficient at representing single pixel gaps.
+            //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+
+            
+
+            if (current_color === 0) {
+                if (current_color === last_color) {
+                    if (res.length === 0) {
+                        res.push([x, x]);
+                    } else {
+                        res[res.length - 1][1]++;
+                    }
+                } else {
+                    res.push([x, x]);
+                    if (res.length === 0) {
+                        //throw 'stop';
+                        //res.push([0, 0]); // a span of length 0
+                        //res.push([0, 1]);
+                    } else {
+
+                        // No item in result for non-0 pixels
+
+                        //res.push([x, x + 1]);
+                    }
+                }
+            }
+
+            /*
+
+            if (current_color === last_color) {
+                if (res.length === 0) {
+                    res.push([0, 1]);
+                } else {
+                    res[res.length - 1][1]++;
+                }
+            } else {
+                if (res.length === 0) {
+                    res.push([0, 0]); // a span of length 0
+                    res.push([0, 1]);
+                } else {
+                    res.push([x, x + 1]);
+                }
+            }
+            */
+            last_color = current_color;
+
+
+        }
+        return res;
+        
+
+
+
+
+    }
+
+    'calculate_arr_rows_arr_x_off_spans_1bipp'() {
+        const [width, height] = this.size;
+        const res = new Array(height);
+        // And each of them should be an array....
+
+        // Call the function to calculate arr_row_x_off_spans for each row (y position)
+
+        for (let y = 0; y < height; y++) {
+            res[y] = this.calculate_arr_row_x_off_spans_1bipp(y);
+        }
+
+
+
+
+        return res;
+
     }
 }
 
