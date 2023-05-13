@@ -49,6 +49,9 @@ const Pixel_Pos_List = require('./pixel-pos-list');
 //   Would help to make it replacable with more optimized functions.
 // Advanced / Enh
 const kernels = require('./convolution-kernels/kernels');
+
+
+
 const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
     const c_length = f32a_convolution.length;
     const dimension_size = Math.sqrt(c_length);
@@ -239,6 +242,13 @@ const get_instance = () => {
             }
         }
 
+
+        // Seems like some polygon drawing is not working right in some cases.
+        // Probably need to test and fix and optimise from some earlier drawing principles.
+        //  Such as drawing 1bipp shapes onto 24bipp pixel buffers?
+
+
+
         'draw_polygon'(arr_points, color, fill = false) {
 
             // filled option...
@@ -251,233 +261,322 @@ const get_instance = () => {
 
             if (fill === true) {
 
+
+                // Want to try the different 'flood fill inner pixels' for this polygon drawing.
+                //  Will before long try on larger images. Maybe much larger too.
+
+
+                const flood_fill_from_outside_invert_merge_implementation = () => {
+                    const bb_points = get_points_bounding_box(arr_points);
+                    // And want to get the size / range.
+
+                    // Or, make a pixel_buffer that represents that space.
+                    //  Having that pb handle offsets could be very useful.
+                    //   Though maybe it would need some lower level changes?
+                    //    Don't want to have to complicate code with offset handling all over the place.
+                    //     Do offsets in the easiest way, then add further convenience features.
+
+                    //console.log('bb_points', bb_points);
+
+                    const offset = bb_points[0];
+
+                    // + 1 to the polygon size, each dimension???
+                    const polygon_size = [
+                        [bb_points[1][0] - bb_points[0][0] + 1],
+                        [bb_points[1][1] - bb_points[0][1] + 1]
+                    ];
+
+                    //console.log('polygon_size', polygon_size);
+
+                    const pb_polygon = new this.constructor({
+                        'bits_per_pixel': 1,
+                        'size': polygon_size
+                    })
+
+                    //console.log('pb_polygon.ta.length', pb_polygon.ta.length);
+
+                    //throw 'stop';
+
+                    // Then draw the polygon to there...
+
+                    const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+
+                    //console.log('down_offsetted_points', down_offsetted_points);
+
+                    // or draw the polygon here in color 1?
+                    //  as it's going to be used as a mask-type object.
+
+                    let t1 = Date.now();
+
+
+                    console.log('pre draw 1bipp polygon');
+                    pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                    let t2 = Date.now();
+                    let td = t2 - t1;
+                    console.log('post draw 1bipp polygon ms: ' + td);
+
+                    const pb_polygon_unfilled = pb_polygon.clone();
+
+
+
+                    t1 = Date.now();
+
+                    // This flood fill from outside part of the drawing is the slowest part.
+                    //  Likely we need a quicker way of checking if any pixels have already been visited.
+                    //   Possibly could even use a 1bipp pixel buffer.
+
+                    console.log('pre 1bipp flood fill from outside');
+
+                    // flood_fill_1bipp_color_0_from_outer_boundary_with_color_1
+                    //  could be a lot more optimised? on the bit level in terms of setting the pixels to 'on' as appropriate.
+
+
+                    // A scanline type of flood-fill may be faster.
+                    //  Fill to the right until the next already at color 1 in an optimised way.
+
+
+
+                    // Flood fill that is row-optimised could work best.
+                    //  May also be worth using byte aligned rows.
+                    //   Maybe not by default though.
+
+
+                    // flood_fill_1bipp_c0_pixels_from_outer_boundary_with_c1
+                    //  An optimised (prob stack based) flood fill may work best for this.
+                    //   Filling entire rows horisontally.
+                    //    However need to then be careful about how many other pixels get put on the stack while doing this.
+                    //     Want to get into the gaps with more flood fill on the stack.
+
+                    // Could look into more performant stack?
+                    //  Object with dynamic size in JS?
+
+                    // A fixed size stack, and when the stack is full, it does what though?
+                    //  Keeping track of some 'resume' state?
+                    //  Removing pixels from the stack in some situations...?
+                    //   Trying other pixels and then putting some back on the stack?
+                    //  Seems tricky.
+
+                    // May want to read from the line above and below as well?
+                    //  To determine if they are worth putting on the stack?
+                    // Or... identify all horizontal spans in the image
+                    //  (or identify them as necessary)
+                    // Have a stack of horizontal spans to process
+                    //  And it would check for all horizontal spans in the lines above and below.
+
+                    // Could identify them as 'horizontal span on line y [x1, x2]
+                    //  Horizontal spans should be quite rapid to find.
+                    //  Also consider single pixels within a horizontal span - maybe rep them as a span, less optimised though.
+                    //   Will not be all that many single pixels?
+                    //    Will be some, as in the outline of shapes.
+
+                    // Then will be able to flood fill the (referenced?) horizontal spans.
+                    //  Consider how OR / NOT / AND can be used on larger images, ie byte by byte doing many at once.
+
+                    // Whether or not a horizontal span has been visited by the flood fill...
+                    //  As in, every pixel in that horizontal span would have been visited.
+                    //   But we maybe should check which of the horizontal spans have been visited, keep track of them as separate objects.
+
+                    //  Though maybe don't need to track which have been visited already in some cases once they are filled?
+
+                    // flood_fill_off_pixels_from_outer_boundary_on_1bipp
+
+                    pb_polygon.flood_fill_off_pixels_from_outer_boundary_on_1bipp();
+
+
+
+                    //pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
+
+
+                    t2 = Date.now();
+                    td = t2 - t1;
+
+                    console.log('post 1bipp flood fill from outside ms:', td);
+
+                    // copy this pb polygon here?
+                    
+
+                    // Better to do it from the edges???
+
+                    // flood_fill_from_image_outer_boundary ???
+
+
+                    // pb_polygon.flood_fill(0, 0, 1);
+
+                    // then invert it.
+                    //  can simply apply not to all bytes when 1bipp
+
+                    pb_polygon.invert();
+                    pb_polygon.or(pb_polygon_unfilled);
+
+
+                    // then copy this pb_polygon's data to this...
+                    //   oring
+
+                    //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
+
+                    // This part seems broken...
+                    //console.log('offset', offset);
+
+                    //console.log('pb_polygon.size', pb_polygon.size);
+
+                    // Need to specify the color it's to be drawn at if it's a 1bipp image being drawn.
+
+                    // this.draw_1bipp_pixel_buffer(pb_1bipp, offset, color)
+
+                    // this.draw_1bipp_pixel_buffer_mask(pb_1bipp_mask, offset, color) ???
+                    //   using a different, more specifically named function for this makes sense.
+
+
+                    
+                    console.log('pre draw mask');
+                    t1 = Date.now();
+
+                    // Could speed this up using xspan drawing.
+                    this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
+                    t2 = Date.now();
+                    td = t2 - t1;
+                    console.log('post draw mask ms:', td);
+
+                    //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
+
+
+
+                    // Then do 'or' onto this.
+                    //  Maybe copying px by px with the offset makes most sense.
+
+                    //  Copy from pb, to pos....
+
+
+
+
+
+
+
+
+
+                    // then flood fill the outside too?
+
+
+
+
+
+
+
+
+
+                    // make a pb that represents them.
+                    //  see if there is an easy way for that.
+
+
+                }
+
+                // Still draw polygon to new empty pb to start with...
+
+
+                // The fastest so far? Flood filling inner is a decent speed.
+                //  However, could instead identify inner horizontal lines, and draw them.
+                //  Flood fill does that identification itself.
+
+                const fast_flood_fill_inner_implementation = () => {
+
+                    const t0 = Date.now();
+
+                    //console.log('fast_flood_fill_inner_implementation ------');
+                    //console.log('-------------------------------------------\n');
+
+                    const bb_points = get_points_bounding_box(arr_points);
+                    const offset = bb_points[0];
+
+                    // + 1 to the polygon size, each dimension???
+                    const polygon_size = [
+                        [bb_points[1][0] - bb_points[0][0] + 1],
+                        [bb_points[1][1] - bb_points[0][1] + 1]
+                    ];
+                    const pb_polygon = new this.constructor({
+                        'bits_per_pixel': 1,
+                        'size': polygon_size
+                    })
+                    const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+                    
+
+                    //console.log('pre draw 1bipp polygon');
+                    let t1 = Date.now();
+                    pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                    let t2 = Date.now();
+                    let td = t2 - t1;
+                    //console.log('post draw 1bipp polygon ms: ' + td);
+
+
+                    // Could improve the overall algorith here.
+                    //  Could work out timings for different parts of the inner process.
+
+
+
+
+                    // Get the inner x_spans instead - don't use them to fill the inner image.
+                    //  Use them to fill / draw to this image, so there will be no need to copy that other image over as a mask.
+                    //   Bearing in mind that this image is not 1bipp?
+                    //   May be most advantages in using 1bipp for composition in a lot of places...?
+                    //    But not necessarily.
+                    //    Do want really fast operations with them where it's possible to do it that way.
+
+                    // Maybe make fast horizontal line drawing algorithms for non-1bipp.
+                    //  And that may? be faster than using 1bipp image as mask.
+
+                    // Faster mask drawing???
+
+
+                    // Could look into faster mask copying too.
+
+
+
+
+
+
+
+
+                    
+
+                    //console.log('pre inner fill 1bipp');
+                    t1 = Date.now();
+                    //pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                    pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
+                    t2 = Date.now();
+                    td = t2 - t1;
+                    //console.log('post inner fill 1bipp ms: ' + td);
+
+                    
+
+                    //console.log('pre draw mask');
+                    t1 = Date.now();
+                    //console.log('pb_polygon.ta', pb_polygon.ta);
+                    this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
+                    t2 = Date.now();
+                    td = t2 - t1;
+
+                    const t_all = t2 - t0;
+
+                    //console.log('post draw mask ms:', td);
+
+
+
+                    //console.log('----- ms:', t_all);
+                    //console.log('');
+
+                    // then need to copy it into place.
+                    //  May need to find ways to improve the speed of this too...
+                    //  Or could do a more direct writing of the inner regions.
+
+
+
+                }
+
+                fast_flood_fill_inner_implementation();
+
+
                 
 
-                const bb_points = get_points_bounding_box(arr_points);
-                // And want to get the size / range.
-
-                // Or, make a pixel_buffer that represents that space.
-                //  Having that pb handle offsets could be very useful.
-                //   Though maybe it would need some lower level changes?
-                //    Don't want to have to complicate code with offset handling all over the place.
-                //     Do offsets in the easiest way, then add further convenience features.
-
-                //console.log('bb_points', bb_points);
-
-                const offset = bb_points[0];
-
-                // + 1 to the polygon size, each dimension???
-                const polygon_size = [
-                    [bb_points[1][0] - bb_points[0][0] + 1],
-                    [bb_points[1][1] - bb_points[0][1] + 1]
-                ];
-
-                //console.log('polygon_size', polygon_size);
-
-                const pb_polygon = new this.constructor({
-                    'bits_per_pixel': 1,
-                    'size': polygon_size
-                })
-
-                //console.log('pb_polygon.ta.length', pb_polygon.ta.length);
-
-                //throw 'stop';
-
-                // Then draw the polygon to there...
-
-                const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
-
-                //console.log('down_offsetted_points', down_offsetted_points);
-
-                // or draw the polygon here in color 1?
-                //  as it's going to be used as a mask-type object.
-
-                let t1 = Date.now();
-
-
-                console.log('pre draw 1bipp polygon');
-                pb_polygon.draw_polygon(down_offsetted_points, 1, false);
-                let t2 = Date.now();
-                let td = t2 - t1;
-                console.log('post draw 1bipp polygon ms: ' + td);
-
-                const pb_polygon_unfilled = pb_polygon.clone();
-
-
-
-                t1 = Date.now();
-
-                // This flood fill from outside part of the drawing is the slowest part.
-                //  Likely we need a quicker way of checking if any pixels have already been visited.
-                //   Possibly could even use a 1bipp pixel buffer.
-
-                console.log('pre 1bipp flood fill from outside');
-
-                // flood_fill_1bipp_color_0_from_outer_boundary_with_color_1
-                //  could be a lot more optimised? on the bit level in terms of setting the pixels to 'on' as appropriate.
-
-
-                // A scanline type of flood-fill may be faster.
-                //  Fill to the right until the next already at color 1 in an optimised way.
-
-
-
-                // Flood fill that is row-optimised could work best.
-                //  May also be worth using byte aligned rows.
-                //   Maybe not by default though.
-
-
-                // flood_fill_1bipp_c0_pixels_from_outer_boundary_with_c1
-                //  An optimised (prob stack based) flood fill may work best for this.
-                //   Filling entire rows horisontally.
-                //    However need to then be careful about how many other pixels get put on the stack while doing this.
-                //     Want to get into the gaps with more flood fill on the stack.
-
-                // Could look into more performant stack?
-                //  Object with dynamic size in JS?
-
-                // A fixed size stack, and when the stack is full, it does what though?
-                //  Keeping track of some 'resume' state?
-                //  Removing pixels from the stack in some situations...?
-                //   Trying other pixels and then putting some back on the stack?
-                //  Seems tricky.
-
-                // May want to read from the line above and below as well?
-                //  To determine if they are worth putting on the stack?
-                // Or... identify all horizontal spans in the image
-                //  (or identify them as necessary)
-                // Have a stack of horizontal spans to process
-                //  And it would check for all horizontal spans in the lines above and below.
-
-                // Could identify them as 'horizontal span on line y [x1, x2]
-                //  Horizontal spans should be quite rapid to find.
-                //  Also consider single pixels within a horizontal span - maybe rep them as a span, less optimised though.
-                //   Will not be all that many single pixels?
-                //    Will be some, as in the outline of shapes.
-
-                // Then will be able to flood fill the (referenced?) horizontal spans.
-                //  Consider how OR / NOT / AND can be used on larger images, ie byte by byte doing many at once.
-
-                // Whether or not a horizontal span has been visited by the flood fill...
-                //  As in, every pixel in that horizontal span would have been visited.
-                //   But we maybe should check which of the horizontal spans have been visited, keep track of them as separate objects.
-
-                //  Though maybe don't need to track which have been visited already in some cases once they are filled?
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 
-
-
-
-
-
-
-                // flood_fill_off_pixels_from_outer_boundary_on_1bipp
-
-                pb_polygon.flood_fill_off_pixels_from_outer_boundary_on_1bipp();
-
-
-
-                //pb_polygon.flood_fill_given_color_pixels_from_outer_boundary(0, 1);
-
-
-                t2 = Date.now();
-                td = t2 - t1;
-
-                console.log('post 1bipp flood fill from outside ms:', td);
-
-                // copy this pb polygon here?
-                
-
-                // Better to do it from the edges???
-
-                // flood_fill_from_image_outer_boundary ???
-
-
-                // pb_polygon.flood_fill(0, 0, 1);
-
-                // then invert it.
-                //  can simply apply not to all bytes when 1bipp
-
-                pb_polygon.invert();
-                pb_polygon.or(pb_polygon_unfilled);
-
-
-                // then copy this pb_polygon's data to this...
-                //   oring
-
-                //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
-
-                // This part seems broken...
-                //console.log('offset', offset);
-
-                //console.log('pb_polygon.size', pb_polygon.size);
-
-                // Need to specify the color it's to be drawn at if it's a 1bipp image being drawn.
-
-                // this.draw_1bipp_pixel_buffer(pb_1bipp, offset, color)
-
-                // this.draw_1bipp_pixel_buffer_mask(pb_1bipp_mask, offset, color) ???
-                //   using a different, more specifically named function for this makes sense.
-
-
-                t1 = Date.now();
-                console.log('pre draw mask');
-                this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
-                t2 = Date.now();
-                td = t2 - t1;
-                console.log('post draw mask ms:', td);
-
-                //this.place_image_from_pixel_buffer(pb_polygon, offset, {or: true});
-
-
-
-                // Then do 'or' onto this.
-                //  Maybe copying px by px with the offset makes most sense.
-
-                //  Copy from pb, to pos....
-
-
-
-
-
-
-
-
-
-                // then flood fill the outside too?
-
-
-
-
-
-
-
-
-
-                // make a pb that represents them.
-                //  see if there is an easy way for that.
 
 
 
@@ -3052,7 +3151,7 @@ const get_instance = () => {
                 // Worth building a decent flood fill implementation using the horizontal line filling outside of here for the moment.
                 //  Build the lower level functions needed for it to work, then it will be much easier and faster to make the flood fill itself.
 
-                
+
 
                 return ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation();
 
@@ -4817,6 +4916,538 @@ const get_instance = () => {
 
 
 
+
+        }
+
+
+        // Worth making a much more optimised version of this.
+
+        // It's currently a really long function.
+
+        // Could likely work on bits and pieces of this to speed them up individually.
+        // Definitely worth looking into aligned copies.
+        //  Be able to create pixel buffers that have each line start on an n*8 byte.
+        //  Padding at end and / or beginning of lines.
+        //   End is probably best. Beginning could be appropriate in some cases ??? (yes, to get alignment with other image)
+
+        // 1 byte at once copy would def be useful too.
+        //  But the 64 bytes at once will greatly speed up copying some larger images.
+
+
+
+
+
+
+        flood_fill_inner_pixels_off_to_on_1bipp() {
+
+
+            // Could use faster algorithm to read these x off spans.
+
+
+            const identify_overlaps = (higher_row_x_spans, lower_row_x_spans) => {
+                //const overlaps = [];
+
+                let i = 0, j = 0;
+                const m = higher_row_x_spans.length, n = lower_row_x_spans.length;
+
+                while (i < m && j < n) {
+                    const a = higher_row_x_spans[i], b = lower_row_x_spans[j];
+                
+                    if (a.x0_span[1] < b.x0_span[0]) {
+                        i++;
+                    } else if (b.x0_span[1] < a.x0_span[0]) {
+                        j++;
+                    } else {
+                        //overlaps.push([a, b]);
+                        // note the connections in the objects themselves....
+                        //  That will allow rapid movement between them / identification of connected groups.
+
+                        a.connected_below.push(b.idx);
+                        b.connected_above.push(a.idx);
+
+
+                        if (a.x0_span[1] <= b.x0_span[1]) {
+                            i++;
+                        }
+                        if (b.x0_span[1] <= a.x0_span[1]) {
+                            j++;
+                        }
+                    }
+                }
+
+                //return overlaps;
+            }
+
+            const rows_x0spans = this.calculate_arr_rows_arr_x_off_spans_1bipp();
+            //console.log('rows_x0spans', rows_x0spans);
+            // And should be able to identify contiguous groups of these.
+            //  Though, getting them into a different structure to quickly 
+            //   move between contiguous x0spans may work best.
+            //  Meaning that the flood fill algorithm needs to use one of these contiguous regions.
+            //   Be able to identify which regions are touching the outer boundary and which are not
+            //    (therefore find the inner region(s) of a polygon whos outline has been drawn)
+
+            // Have them all as one long list.
+            //  Use simpler objects and arrays.
+
+            const arr_all_x_spans = [];
+
+            // Could also index them by y as well....
+
+            const arr_y_indexed = new Array(this.size[1]);
+
+            let i2;
+
+            let idx = 0;
+            for (let i = 0; i < rows_x0spans.length; i++) {
+                const single_row_x0spans = rows_x0spans[i];
+                arr_y_indexed[i] = [];
+
+                for (i2 = 0; i2 < single_row_x0spans.length; i2++) {
+                    const x0_span = single_row_x0spans[i2];
+
+                    const o_x0span = {
+                        idx: idx++,
+                        y: i,
+                        x0_span: x0_span,
+                        connected_above: [],
+                        connected_below: [],
+                    }
+
+                    arr_all_x_spans.push(o_x0span);
+                    arr_y_indexed[i].push(o_x0span);
+
+                    // arr_y_indexed
+                }
+            }
+
+            //console.log('arr_all_x_spans', arr_all_x_spans);
+            //console.log('arr_all_x_spans.length', arr_all_x_spans.length);
+
+            //console.log('arr_y_indexed', JSON.stringify(arr_y_indexed, null, 2));
+
+            // arr_y_indexed
+
+            // Then can go through that y indexed array, determining any links between rows.
+
+            // And will be doubly linked using indexes.
+
+            // Will later be able to use the indexes to remember which have been 'visited'.
+            // Though will put together groups / arrays of the different contiguous ones.
+
+            // Want an array where we are not thinking in terms of the 'current', but about the link between
+            //  above and below.
+
+            let higher_row_y, lower_row_y;
+
+            let span_above, span_below;
+
+
+
+            // Iterate row pairs?
+
+
+
+            for (higher_row_y = 0; higher_row_y < this.size[1] - 1; higher_row_y++) {
+
+
+
+
+                // ????
+
+                // Maybe use separate algorithm for identifying the row overlaps.
+
+
+
+
+
+
+
+                lower_row_y = higher_row_y + 1;
+
+                // higher row has lower y value.
+                //  need to be careful and explicit.
+
+                //console.log('');
+
+                const higher_row_x_spans = arr_y_indexed[higher_row_y];
+                const lower_row_x_spans = arr_y_indexed[lower_row_y];
+
+                //console.log('higher_row_x_spans', higher_row_x_spans);
+                //console.log('lower_row_x_spans', lower_row_x_spans);
+
+
+                
+
+                
+                
+
+
+                //console.log('pre identify overlaps [higher_row_x_spans, lower_row_x_spans]', higher_row_x_spans, lower_row_x_spans);
+
+                identify_overlaps(higher_row_x_spans, lower_row_x_spans);
+
+
+
+                //console.log('overlaps', overlaps);
+
+                
+                //throw 'stop';
+
+                // Then determine if there is overlap...
+
+                // Try a really simple algorithm???
+                //  Then later try other versions.
+
+                // Maybe 'events' for both of the arrays would help - ie one starts, one finishes.
+                //  And when one starts below while one above has started and not finished, it's an overlap
+                //  likewise when one below has started but not finished, and one above starts, we have overlap.
+
+                // Do want a fast algorithm to find the overlaps between the rows.
+                //  Then it will enable a fast / very fast flood fill.
+
+                // above_state?
+                //  started 1 or stopped / not active 0
+
+                // May need to make a much more optimised system for identifying the spans - but this may be the right
+                //  algorithmic basis here.
+
+                //const events = [];
+
+                // efficiently build the events array...
+
+                
+
+
+
+
+
+
+                // Single pointer?
+                //  also?: above_start_x above_end_x?
+
+                // Probably going through an 'events' array would be the fastest.
+                //  ['above', 'start', idx] maybe
+
+                // Then with simple logic looking at these start and stop 'events' we can identify when during the sequence they
+                //  are overlapping (both in started state)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            }
+
+            //console.log('arr_y_indexed', arr_y_indexed);
+            //console.log('arr_y_indexed', JSON.stringify(arr_y_indexed, null , 2));
+
+            // Counting the sepatate groups.
+
+            // Iterate through them (1 by 1)
+            // Then for any span:
+            //  If it's not already assigned to a group, assign it to a new group
+            //   Recursively / stack based go through all linked spans
+            //    assigning to that group (number)
+
+            // Maybe don't need to do this yet???
+            //  May be best to do it this way in order to identify inner and outer groups / regions.
+
+
+
+
+
+            // Then identify them as separate? connected groups.
+            //  Some kind of recursive / stack based algorithm to identify the different groups.
+
+
+            // Stack-based algorithm to identify the connected groups (of spans)?
+            // Array / stack of spans yet to visit (while connecting the specific group?)
+            // Dict / lookup object of which groups have already been visited. 
+            //  
+
+            const l = arr_all_x_spans.length;
+
+            let arr_stack_yet_to_visit = [];
+            let ui8a_visited_already = new Uint8Array(l);
+            let i_group = 0;
+            let i_current_group;
+
+            // current group is boundary adjacent?
+
+            
+            //let current_group_is_boundary_adjacent = false;
+
+            // and an array of groups...
+            //  Would be useful to have them.
+
+
+            // Array of the indexes of groups
+            const arr_groups = [];
+
+            // an array of group objects that also have the is_boundary_adjacent property would help a lot here
+
+            const arr_o_groups = [];
+
+            let arr_current_group = [];
+            let o_current_group;
+
+            // an array of obj groups?
+            //  would have is_boundary_adjacent property (maybe just when true)
+
+            // Then flood fill from edge could operate on such boundary adjacent groups.
+            // Internal flood fill could work on the non-boundary adjacent groups.
+
+            // Groups / regions of pixels is a very appropriate way to speed things up.
+            // Grouping by x spans of the same color - fast / much faster for writing 1bipp values 
+            //  (with correct algo that writes multiple px at once)
+            // Grouping these xspans into regions of contiguous color.
+            //  Or essentially grouped as being their own mask / image section.
+
+            // Seems like it will be a very efficient way for dealing with regions of contiguous color.
+            //  Worth having very fast low level procedures for the basic 1bipp structures.
+            //   Will use them for some more complex operations. Want underlying fast and low memory classes / structures.
+            //   Using indexs of these xspans may work out to be very efficient.
+            //  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            // and current group in the visit?
+
+
+            //const visit = (idx_xspan, i_current_group) => {
+                // add neighbours to stack...?
+            //}
+
+            let i_xspan_visiting, xspan_visiting;
+            
+
+            // Could check for group boundary adjacency here...?
+            //  Though separate processes / iterations may make the code clearer.
+
+            // Do expect this to be fast because of algorithmic process efficiency but then will probably still
+            //  need fine tuning with specific data structures and operations.
+
+            const [width, height] = this.size;
+
+            const is_xspan_image_boundary_adjacent = xspan => {
+                const {x0_span} = xspan;
+
+                if (xspan.y === 0) return true;
+                if (x0_span[0] === 0) return true;
+
+                if (xspan.y === height - 1) return true;
+                if (x0_span[1] === width - 1) return true;
+
+                return false;
+
+
+
+            }
+
+            let xspan;
+            let idx_span_above, idx_span_below;
+
+            for (let c = 0; c < l; c++) {
+
+                if (ui8a_visited_already[c] === 0) {
+                    ui8a_visited_already = new Uint8Array(l);
+
+                    //const xspan = arr_all_x_spans[c];
+                    xspan = arr_all_x_spans[c];
+                    
+                    ui8a_visited_already[c] = 255;
+
+                    // Should (only?) be undefined if it's not been visited yet.
+                    if (xspan.group === undefined) {
+
+
+                        // could keep track if the previous group was boundary adjacent?
+
+
+                        // Should only do this a few times...
+
+
+
+
+                        i_current_group = i_group++;
+
+                        //if (i_current_group > 0) {
+                        arr_current_group = [];
+                        o_current_group = {
+                            index: i_current_group,
+                            xspan_indexes: arr_current_group
+
+                        }
+                        
+
+                        arr_o_groups.push(o_current_group);
+
+                        arr_groups.push(arr_current_group);
+
+                        if (is_xspan_image_boundary_adjacent(xspan)) {
+                            o_current_group.is_boundary_adjacent = true;
+                        }
+                            
+                        //}
+
+
+
+                        // current_group_is_boundary_adjacent = current_group_is_boundary_adjacent && is_xspan_bounary_adjacent(xspan)
+
+
+
+                        xspan.group = i_current_group;
+                        //ui8a_visited_already[c] = 255;
+                        arr_current_group.push(c);
+
+
+
+                        // add the neighbouring pixels to the stack....
+
+                        //console.log('xspan', xspan);
+
+                        //console.log('xspan.connected_above', xspan.connected_above);
+
+                        
+
+                        for (idx_span_above of xspan.connected_above) {
+                            if (ui8a_visited_already[idx_span_above] === 0) arr_stack_yet_to_visit.push(idx_span_above);
+                        }
+                        for (idx_span_below of xspan.connected_below) {
+                            if (ui8a_visited_already[idx_span_below] === 0) arr_stack_yet_to_visit.push(idx_span_below);
+                        }
+
+                        // need to move to a different 'visiting' span.
+                        while (arr_stack_yet_to_visit.length > 0) {
+                            // push each of the connected xspan indexes
+
+                            i_xspan_visiting = arr_stack_yet_to_visit.pop();
+
+                            // could check here if we still need to visit it???
+
+                            // slightly more complex but it works now with no duplicates.
+                            if (ui8a_visited_already[i_xspan_visiting] === 0) {
+                                xspan_visiting = arr_all_x_spans[i_xspan_visiting];
+
+                                if (is_xspan_image_boundary_adjacent(xspan_visiting)) {
+                                    o_current_group.is_boundary_adjacent = true;
+                                }
+
+
+                                xspan_visiting.group = i_current_group;
+                                arr_current_group.push(i_xspan_visiting);
+
+                                ui8a_visited_already[i_xspan_visiting] = 255;
+
+                                for (idx_span_above of xspan_visiting.connected_above) {
+                                    if (ui8a_visited_already[idx_span_above] === 0) arr_stack_yet_to_visit.push(idx_span_above);
+                                }
+                                for (idx_span_below of xspan_visiting.connected_below) {
+                                    if (ui8a_visited_already[idx_span_below] === 0) arr_stack_yet_to_visit.push(idx_span_below);
+                                }
+                            }
+
+                        }
+
+                    }
+                }
+
+            }
+
+
+
+
+            // Is group 1 always the inner group?
+            // group is boundary adjacent?
+
+            // Elsewhere identify which group has got any boundary pixels...?
+
+            // Could previously analyse which xspans are boundary-adjacent.
+            //  Then when we find one, note that that whole group is boundary adjacent.
+            //   Maybe avoid setting a value more times than needed.
+            //   Could track if it's boundary adjacent while putting the group together.
+            //    Could also note if any of the xspans themselves are boundary adjacent at an earlier stage.
+
+
+
+
+
+
+
+            //console.log('arr_all_x_spans', arr_all_x_spans);
+
+            //console.log('arr_groups', arr_groups);
+
+            //console.log('arr_o_groups', arr_o_groups);
+
+            // then non-boundary groups...
+
+            const non_boundary_group_indexes = [];
+
+            for (const g of arr_o_groups) {
+                //console.log('g', g);
+                if (!g.is_boundary_adjacent) {
+                    for (const idx of g.xspan_indexes) {
+                        //console.log('idx', idx);
+                        non_boundary_group_indexes.push(idx);
+                    }
+                    
+                }
+            }
+
+            //console.log('non_boundary_group_indexes', non_boundary_group_indexes);
+
+            // then get them as x spans (each including the y value)
+            //  y_val_x_span items???
+
+            // likely to want a lower level ta-backed system to deal with them faster.
+            // [y, [x1, x2]]???
+            // or better as [[x1, x2], y]???
+            //  seems more logical / standard that way round.
+            //  may need to consider optimisation requirements in some cases, maybe it wont matter with this, but need consistency.
+
+
+            const arr_all_inner_xspans = [];
+
+            for (const idx of non_boundary_group_indexes) {
+                //console.log('idx', idx);
+                arr_all_inner_xspans.push([arr_all_x_spans[idx].x0_span, arr_all_x_spans[idx].y]);
+            }
+
+            //console.log('arr_all_inner_xspans', arr_all_inner_xspans);
+
+            // Then could see about painting them...
+            //  (x1, x2, y) for further speed? or a ta with the 3 of them???
+
+            // Will change the format???
+
+            for (const [x_span, y] of arr_all_inner_xspans) {
+                //console.log('[x_span, y]', [x_span, y]);
+
+                // xspan then y.
+                this.draw_horizontal_line_on_1bipp(x_span, y);
+            }
 
         }
 

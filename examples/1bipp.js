@@ -15,6 +15,17 @@ if (require.main === module) {
 
             let size_limit = 'small';
 
+            // May want cases that test 64 pixels being read / written at once....
+            //  Have seen a great speedup for some masking operations (incl drawing filled shapes).
+            //  Need to speed up draw_1bipp_pixel_buffer_mask
+            //   Probably use the x on spans.
+            //    Will also see about a more efficient iterator that does not generate the result array.
+            //     Could just return results (in a ta) representing 1 span at a time [x1, x2, y].
+
+
+
+            //let size_limit = 'huge';
+
 
             const save_pixel_buffer_png = (path, pb) => {
 
@@ -354,6 +365,7 @@ if (require.main === module) {
                         size: [5, 5]
                     });
 
+                    // Not so sure we need this function so much.
                     pb2.place_image_from_pixel_buffer(pb, [0, 0]);
 
                     pb8 = pb2.to_8bipp();
@@ -490,8 +502,27 @@ if (require.main === module) {
                     });
 
                     // But if we fill it...?
+                    //  Fails without a working draw_1bipp_pixel_buffer_mask
 
                     pb.draw_polygon([[1, 1,], [3, 1], [3, 3], [1, 3]], 1, true);
+
+
+                    // check the x on spans....
+
+                    let start = process.hrtime();
+                    let pb_ar_rows_xonspans = pb.calculate_arr_rows_arr_x_on_spans_1bipp();
+
+                    let end = process.hrtime(start);
+
+                    let timeInNanos = end[0] * 1e9 + end[1];
+                    
+
+                    // Seems to get them wrong, missing out a central 'off' spot.
+                    //  Need to fix that.
+                    console.log('pb_ar_rows_xonspans', pb_ar_rows_xonspans);
+                    console.log('timeInNanos', timeInNanos);
+
+                    //throw 'stop';
                     
 
 
@@ -729,12 +760,13 @@ if (require.main === module) {
                             bits_per_pixel: 1,
                             size: [8, 8]
                         });
-                        pb.draw_horizontal_line_on_1bipp(0, [0, 1]);
-                        pb.draw_horizontal_line_on_1bipp(0, [3, 5]);
-                        pb.draw_horizontal_line_on_1bipp(1, [0, 4]);
-                        pb.draw_horizontal_line_on_1bipp(2, [0, 6]);
-                        pb.draw_horizontal_line_on_1bipp(3, [0, 7]);
-                        pb.draw_horizontal_line_on_1bipp(4, [4, 7]);
+                        pb.draw_horizontal_line_on_1bipp([0, 1], 0);
+                        pb.draw_horizontal_line_on_1bipp([0, 1], 0);
+                        pb.draw_horizontal_line_on_1bipp([3, 5], 1);
+                        pb.draw_horizontal_line_on_1bipp([0, 4], 2);
+                        pb.draw_horizontal_line_on_1bipp([0, 6], 3);
+                        pb.draw_horizontal_line_on_1bipp([0, 7], 4);
+                        pb.draw_horizontal_line_on_1bipp([4, 7], 5);
     
                         console.log('pb.ta', pb.ta);
     
@@ -774,6 +806,12 @@ if (require.main === module) {
                         pb.draw_polygon([[1, 1,], [15, 4], [15, 15], [4, 15]], 1, true);
     
                         // draw_horizontal_line_on_1bipp(y, x_span)
+
+
+                        // Let's use xspan, y syntax instead, when we use this function.
+
+                        /*
+
     
                         pb.draw_horizontal_line_on_1bipp(20, [0, 1]);
                         // length of 2 there.
@@ -793,6 +831,8 @@ if (require.main === module) {
                         pb.draw_horizontal_line_on_1bipp(28, [2, 31]);
                         pb.draw_horizontal_line_on_1bipp(29, [2, 33]);
                         pb.draw_horizontal_line_on_1bipp(30, [2, 35]);
+
+                        */
                         // 35 is the rightmost pixel (0 to 35, being 36 pixels)
 
                         // Being able to determine the outside areas and inside areas on line drawing polygons.
@@ -950,9 +990,24 @@ if (require.main === module) {
 
 
                         // A really large algorithm right now with all the comments and space.
-                        
 
 
+
+
+                        // color 1 fill color, color 0 empty region color
+                        //  for use after drawing the outline of a polygon.
+
+                        // inner_pixels_off_flood_fill_on_1bipp
+                        //  either put in core or enhanced.
+                        //   maybe this kind of flood fill will / should be a core piece of functionality.
+
+                        // flood_fill_inner_pixels_off_to_on_1bipp
+                        //  (presumes a 1bipp image, line drawing using 'on' pixels)
+
+
+
+
+                        // A fairly slow, early implementation of that inner flood fill.
                         const do_1bipp_inner_flood_fill = () => {
                             const rows_x0spans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
                             //console.log('rows_x0spans', rows_x0spans);
@@ -1550,10 +1605,6 @@ if (require.main === module) {
 
 
 
-                                            
-
-
-
 
                                         }
 
@@ -1630,11 +1681,26 @@ if (require.main === module) {
                             for (const [x_span, y] of arr_all_inner_xspans) {
                                 //console.log('[x_span, y]', [x_span, y]);
 
-                                pb.draw_horizontal_line_on_1bipp(y, x_span);
+                                pb.draw_horizontal_line_on_1bipp(x_span, y);
                             }
 
 
                         }
+
+                        //do_1bipp_inner_flood_fill();
+
+
+
+                        const start = process.hrtime();
+
+                        // Make a faster implementation that's a lot faster for small images too?
+
+                        pb.flood_fill_inner_pixels_off_to_on_1bipp();
+
+                        const end = process.hrtime(start);
+
+                        const timeInNanos = end[0] * 1e9 + end[1];
+                        console.log('flood fill timeInNanos:', timeInNanos);
 
 
 
@@ -1673,9 +1739,213 @@ if (require.main === module) {
 
                     }
 
+
+                    // These all will be improved by lower level algorithm improvements.
+
+
+
+                    const square300 = async() => {
+                        const pb = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [300, 300]
+                        });
+
+                        // Draw various shapes?
+                        // Copy it?
+
+                        // Draw a flood filled shape?
+
+                        // Could work on accelerated flood fill here.
+                        // And accelerated filled shape drawing.
+
+                        pb.draw_polygon([[16, 16,], [122, 16], [280, 200], [16, 200]], 1, true);
+
+
+
+                        // Looks right....
+                        //  The reading of these lines could be sped up.
+                        //  Possibly will use a more efficient lower level data structure (ta with wrapping) to keep track of these various x spans
+
+                        // May be fastest to keep them all in a list.
+                        //  
+
+                        // How to count and detect where the pixel changes are?
+                        // Finding 01 or 10 pattern in the bits....
+                        //  May have possibility of doing nicely low level process to detect where it changes from 1 color to another on the horizontal
+                        //  scanline.
+
+                        // Do some kind of 'or' operation on 01010101 and 10101010?????
+
+                        // There likely are some bitwise tricks that would speed things up very nicely.
+
+                        // Could keep shifting the bits being read to the beginning, and then trying various masks to test how many consecutive 1s or 0s there are.
+                        //  Could detect up to 8? And then when 8 in a row are found it processes all of them at once (1 byte)?
+
+                        // Minimising reading and writing to the ArrayBuffer itself?
+
+
+
+
+
+
+
+
+
+                        
+
+
+
+
+
+
+
+
+                        let start = process.hrtime();
+                        let pb_ar_rows_xoffspans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
+
+                        let end = process.hrtime(start);
+
+                        let timeInNanos = end[0] * 1e9 + end[1];
+                        
+
+
+                        //console.log('pb_ar_rows_xoffspans', pb_ar_rows_xoffspans);
+
+                        // See about greatly speeding this up... (done, possibly could be done more....)
+                        //console.log('calculate_arr_rows_arr_x_off_spans_1bipp timeInNanos:', timeInNanos);
+
+
+                        start = process.hrtime();
+                        let pb_ar_rows_xonspans = pb.calculate_arr_rows_arr_x_on_spans_1bipp();
+
+                        end = process.hrtime(start);
+
+                        timeInNanos = end[0] * 1e9 + end[1];
+                        
+
+
+                        //console.log('pb_ar_rows_xonspans', pb_ar_rows_xonspans);
+
+                        // See about greatly speeding this up...
+                        //  Could reimplement the algorithm.
+                        //   Nice to see that it's working here though....
+                        //   Could use it for the masking operations, see how they are sped up.
+
+
+
+                        console.log('calculate_arr_rows_arr_x_on_spans_1bipp timeInNanos:', timeInNanos);
+
+
+                        // Could use this shape to test out various functions and features.
+                        //  Get the rows of pixel on or off spans...
+
+                        // It's only the horizontal lines which are large amount of fully on bytes / 8byte sections.
+
+                        // Could see about checking for long areas???
+                        //  Like finding all sections where there are joined bytes....
+                        //  Such as 255 bytes
+                        //  Such as _1x64 
+
+                        // Getting larger off x spans may be of great use....
+                        // Treating each line as its own piece of data?
+                        //  Settings to do with the row 8 byte alignment may help a lot.
+                        //  As would 1 byte alignment possibility.
+                        //   May be more important that way.
+
+                        // Quickly extract all spans of it all being bits 0 or 1?
+                        //  Or be able to read onwards xdiff many at once???
+
+                        // Detect next change between 0 and 1...
+                        // Detect (position of) next 0 or 1...
+
+                        // Could zero-in on it with masks.
+                        // May be worth reading 4 bits at a time in some cases
+                        //  As in we have 16 possible values...
+
+                        // Attempt to read 64 bits at once
+                        //  (all 1, all 0) (other readings - such as finding which bytes have any mixtures of 1s and 0s?)
+
+                        // Masks for each of the bytes, faster than array reading?
+                        // Some pre-generated bitmasks / constants...
+
+                        // eg 11111111000000000000000000000000000000000000000000000000
+                        //    00000000111111110000000000000000000000000000000000000000
+
+                        // Would be a mask and shift operation.
+                        // Will be worth trying some different methods.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        //const 
+
+
+
+
+
+
+
+
+
+
+
+                        const pb8 = pb.to_8bipp();
+                        //console.log('pb8.ta.length', pb8.ta.length);
+    
+                        await save_pixel_buffer('./pb1_pb8_eg6d.png', pb8, {format: 'png'});
+
+                    }
+
+
+
+
+
                     await a_smaller_image();
                     await slightly_larger();
                     await quite_small();
+                    await square300();
+
+
+
+                    // Could do examples at 64x64 or larger.
+                    //  Would be nice to have some scope for 64 pixels at a time reading and writing.
+
+                    // Is there some rapid bitwise logic we can use?
+                    //  Very likely will need branching.
+                    //   Want fast way / ways to determine the number of contiguous 1s after the character.
+                    //   Could use bytes with lookup tables (saved as constants, some could be loaded into local variables).
+
+                    // Could use different algorithms depending on the image size (or width?).
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                     
                     
@@ -1691,7 +1961,9 @@ if (require.main === module) {
                 async() => {
                     // just lg for log???
 
-                    if (!size_limit === 'small') {
+                    // New polygon drawing / faster flood fill seems a lot faster (for now).
+
+                    if (size_limit !== 'small') {
                         lg('Begin example 7');
 
                         const pb = new Pixel_Buffer({
@@ -1730,7 +2002,9 @@ if (require.main === module) {
                 async() => {
                     // just lg for log???
 
-                    if (!size_limit === 'small') {
+                    console.log('size_limit', size_limit);
+
+                    if (size_limit !== 'small') {
                         lg('Begin example 8');
 
                         const pb = new Pixel_Buffer({

@@ -2910,8 +2910,7 @@ class Pixel_Buffer_Core {
                     }
                 }
             })(cb);
-        }
-        if (bpp === 24) {
+        } else if (bpp === 24) {
             ((cb) => {
                 for (ta_32_scratch[5] = padding; ta_32_scratch[5] < ta_32_scratch[3]; ta_32_scratch[5]++) {
                     for (ta_32_scratch[4] = 0; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
@@ -2930,6 +2929,9 @@ class Pixel_Buffer_Core {
                     }
                 }
             })(cb);
+        } else {
+            console.trace();
+            throw 'NYI';
         }
     }
 
@@ -3075,6 +3077,13 @@ class Pixel_Buffer_Core {
     // no need for the ta px value.
     //  could ignore it, or use the first item in the array.
 
+    // Being able to read / process 64 pixels at once will be very helpful for some 1bipp instructions.
+    //  Would be able to process contiguous blocks of the same color quicker.
+    // Only worth doing that when there are 64 or more pixels left in the line.
+    //  Could do bitwise ops to read from a 64 pixel block?
+    //  
+
+
 
     each_ta_1bipp(ta_pos, ta_px_value, ta_info, callback) {
         // worth doing an x and y loop?
@@ -3083,6 +3092,8 @@ class Pixel_Buffer_Core {
         // Can we set details of the array view for the ta px value?
         //  Lets copy the pixel values for the moment.
 
+        // ~ (NOT) BigInt(0) to get it as all 1s.
+
         const bipp = this.bipp;
         if (bipp === 1) {
 
@@ -3090,111 +3101,98 @@ class Pixel_Buffer_Core {
 
             const [w, h] = this.size;
             //let pos = new Array(2);
+            // maybe allow pos overwriting???
+
+            //BigInt.
+
+            //let px = 0 | 0;
 
             for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
-
                 for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
-
-                    
                     const px = this.get_pixel_1bipp(ta_pos);
                     //console.log('px', px);
                     ta_px_value[0] = px;
                     //console.log('ta_pos', ta_pos);
-
                     callback(px, ta_pos);
-
                 }
-
             }
-            
+
+        } else {
+            throw 'each_ta_1bipp error: bipp must be 1, bipp: ' + bipp;
+        }
+    }
+
+    // each x_on_span 1bipp would be useful.
+
+    // Byte by byte processing would be quite effective.
+    // Not sure if making 8 byte processing at this stage would be better though.
+    // 8 bytes at once may be best to use in some circumstances.
+    // Easily check if they are the minimum (0) or maximum// _64_1s constant maybe.
 
 
-            /*
-            const _for_24bipp = () => {
-                if (ta_pos instanceof Int16Array || ta_pos instanceof Int32Array && ta_pos.length >= 2) {
+    // Only want to use the algorithm that looks at bigints when it's at least 8 pixels wide?
+    //  Or possibly wider. We want to pick up on longer contiguous blocks of the same value.
+    //  Could break them down into half-bytes.
 
-                    // only accept clamped ui8 array for the moment?
     
-                    if (ta_px_value instanceof Uint8ClampedArray && ta_px_value.length >= 3) {
-    
-                        // r, g, b
-    
-                        // these values stored as 32 bit.
-                        //  can still have quite large bit addresses. 512mb limit???
-    
-                        // or use larger float ta type?
-                        //  32 bit int for the moment?
-                        //  bigint?
-    
-                        if (ta_info instanceof Uint32Array && ta_info.length >= 4) {
-                            // img w, img h, pixel index (num), bipp
-    
-                            // for loop over all...
-                            //  set these two to the size.
-    
-    
-    
-                            const ta = this.ta;
-    
-                            ta_info[0] = this.size[0];
-                            ta_info[1] = this.size[1];
-                            ta_info[2] = 0;
-                            ta_info[3] = 24; // bipp;
-    
-                            const update = () => {
-                                ta[ta_info[2] * 3] = ta_px_value[0];
-                                ta[ta_info[2] * 3 + 1] = ta_px_value[1];
-                                ta[ta_info[2] * 3 + 2] = ta_px_value[2];
-    
-                            }
-    
-                            for (ta_pos[1] = 0; ta_pos[1] < ta_info[1]; ta_pos[1]++) {
-                                for (ta_pos[0] = 0; ta_pos[0] < ta_info[0]; ta_pos[0]++) {
-                                    ta_px_value[0] = ta[ta_info[2] * 3];
-                                    ta_px_value[1] = ta[ta_info[2] * 3 + 1];
-                                    ta_px_value[2] = ta[ta_info[2] * 3 + 2];
-                                    
-                                    callback(update);
-                                    ta_info[2]++;
-                                }
-                            }
-    
-                            //  pixel num = bit index / bipp
-                            //   have a pixel num variable too?
-                            //    could be convenient.
-                            //     maybe more convenient than bit index.
-                            //  pixel num would be simpler / easier than bit_index in many cases.
-    
-                        }
-    
-    
-    
-                        // ta_info
-                        //  width
-                        //  height
-                        //  bit index of current pixel
-                        //  bipp (but we know that's 24???)
-                        //   nice to set a value for it.
-    
+
+
+
+
+    each_px_on_1bipp(ta_pos, ta_px_value, ta_info, callback) {
+
+
+        // And could we have a faster version that can move through multiple (ie 64) pixels at once.
+        //  Want to quickly process blocks of pixels on or off. Blocks of pixels off could be skipped many at once.
+
+        // worth doing an x and y loop?
+        //  and then also do integer incrementing
+
+        // Can we set details of the array view for the ta px value?
+        //  Lets copy the pixel values for the moment.
+
+        // Faster when moving through the typed array.
+
+        // Can get faster when skipping many pixels at once.
+
+
+        // iterate through the ta bytes...
+        //  be able to identify blocks of 8 pixels 
+
+
+
+        const bipp = this.bipp;
+        if (bipp === 1) {
+
+            // do get_pixel etc.
+
+            const [w, h] = this.size;
+            //let pos = new Array(2);
+            // maybe allow pos overwriting???
+
+            for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
+                for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
+                    //const px = this.get_pixel_1bipp(ta_pos);
+                    //console.log('px', px);
+
+                    // Faster still with 1 | 0 ... ???
+                    //if (px === 1 | 0) {
+                    if (this.get_pixel_1bipp(ta_pos) === 1 | 0) {
+                        //ta_px_value[0] = px;
+                        //console.log('ta_pos', ta_pos);
+                        callback(1 | 0, ta_pos);
                     }
                 }
             }
 
-            */
-
-
-            
-
-
-
         } else {
-            throw 'each_ta_24bipp error: bipp must be 1, bipp: ' + bipp;
+            throw 'each_ta_1bipp error: bipp must be 1, bipp: ' + bipp;
         }
-
-
     }
     //  
 
+
+    // each_px_ta_...
 
 
     // Maybe could do with simpler default version of this.
@@ -3510,7 +3508,7 @@ class Pixel_Buffer_Core {
         //  However, want to make this flexible and work in all possible cases.
         //  Could look into typescript too.
 
-        let ta_pos, ta_color, grey_color;
+        //let ta_pos, ta_color, grey_color;
 
         const a = arguments;
         const l = a.length;
@@ -3639,7 +3637,7 @@ class Pixel_Buffer_Core {
 
 
 
-        const idx = (pos[1] * this.size[0]) + pos[0]
+        const idx = (pos[1] * this.size[0]) + pos[0];
         const byte = idx >> 3;
         //const bit = 7 - (idx & 0b111);
         //return ((this.ta[byte] & 1 << bit) !== 0) ? 1 : 0;
@@ -3892,36 +3890,258 @@ return a.every((val, i) => val === b[i]);
     'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color) {
 
         // Universial bipp non-optimised version may be best / easiest here.
+        //  Want fastest versions of this and other functions.
 
-        const pb_source = pb_1bipp_mask;
+        //console.log('draw_1bipp_pixel_buffer_mask');
+        // The xspans implementation should be a lot faster.
+        //  Using xpans on.
 
-        //console.log('pb_source.meta', pb_source.meta);
+        // Copy lines....
 
-        const ta_pos = new Int16Array(2);
-        const ta_px_value = new Uint8ClampedArray(3);
+        // More rapid reading of the buffer mask - contiguous xspan lines.
+        // Will then be able to write lines like that more rapidly.
 
-        // make general int info array support +-? Better able to hold (memory) offsets that way.
-        const ta_info = new Uint32Array(4);
+        // iterating through x_on_spans would help a lot to write these quickly.
 
-        // should have each_pixel function I think....
+        // Can the 1bipp buffer mask be made so that its bytes line up with this (for all rows), for faster operations?
 
-        // pb.each_px(ta_pos, ta_px_value, ta_info,
 
-        pb_source.each_px(ta_pos, ta_px_value, ta_info, (mask_px_color, pos) => {
-            if (mask_px_color === 1) {
-                const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
-                //console.log('px_dest_pos', px_dest_pos);
-                this.set_pixel(px_dest_pos, color);
+
+
+
+        // Could have an inline set_pixel implementation.
+        // Could iterate the source bit by bit...
+
+        // Or lines, reading 64 bit blocks at some point...?
+
+
+
+
+
+        // Inline getpixel / setpixel system...?
+
+        // Could do a while loop with updating of indexes...
+
+        // Reading 64 (or 8) pixels at once would provide a very decent speed improvement in many places.
+
+
+
+
+
+        const iterate_set_pixel_implementation = () => {
+
+            console.log('  iterate_set_pixel_implementation');
+
+            const pb_source = pb_1bipp_mask;
+
+            //console.log('pb_source.meta', pb_source.meta);
+
+            const ta_pos = new Int16Array(2);
+            const ta_px_value = new Uint8ClampedArray(3);
+
+            // make general int info array support +-? Better able to hold (memory) offsets that way.
+            const ta_info = new Uint32Array(4);
+            const px_dest_pos = new Uint16Array(2);
+
+            // each_px_on_offsetted_1bipp perhaps?
+            //  
+
+            // A version with an offset as well?
+
+            // Different loops for different bit per pixel values?
+
+            const {bipp} = this;
+
+            if (bipp === 1) {
+
+                // Maybe no need for ta_px_value, ta_info (or ta_pos?)
+                
+                pb_source.each_px_on_1bipp(ta_pos, ta_px_value, ta_info, (mask_px_color, pos) => {
+                
+                    //const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                    px_dest_pos[0] = pos[0] + dest_pos[0];
+                    px_dest_pos[1] = pos[1] + dest_pos[1];
+
+                    //px_dest_pos[0] = ta_info[0] + dest_pos[0];
+                    //px_dest_pos[1] = ta_info[1] + dest_pos[1];
+    
+                    //console.log('px_dest_pos', px_dest_pos);
+                    this.set_pixel_on_1bipp(px_dest_pos);
+                });
+            } else {
+                pb_source.each_px_on_1bipp(ta_pos, ta_px_value, ta_info, (mask_px_color, pos) => {
+                
+                    //const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                    px_dest_pos[0] = pos[0] + dest_pos[0];
+                    px_dest_pos[1] = pos[1] + dest_pos[1];
+    
+                    //console.log('px_dest_pos', px_dest_pos);
+                    this.set_pixel(px_dest_pos, color);
+    
+                });
             }
 
-        });
+            
+        }
+
+        // The xspans need further work / optimisation.
+
+        // iterate xspans and write them immediately...?
+
+        // Could work on more rapid reading of these xspans into an array...
+
+        // The implementation using x spans (on) would rely on some faster underlying xspans processing / reading code.
+        // This could be able to use bitwise OR on many (64) pixels at once, when aligned properly.
+        // Could make each row have 64*n pixels width, for easiest and fastest alignments.
+        //  Will then need to cover that case.
+        //  For the moment, let's do large reads (and writes?) where we see that it is possible.
 
 
 
+
+        // Should be a considerably / much faster implementation.
+
+        // Is this failing on very small image sizes???
+        //  Rows starting and ending in the same byte?
+        //   Should be ok....
+        //   But may need to double-check.
+
+
+        // This implementation is quite a lot faster on images I have tried (such as 4000x4000 Italy map)
+        const arr_on_xspans_implementation = () => {
+
+            // Seems not to be working right....
+            const arr_rows_arr_on_xspans = pb_1bipp_mask.calculate_arr_rows_arr_x_on_spans_1bipp();
+
+            // then can write them all as horizontal lines...
+            // Also want to look into optimised byte aligned and 8 byte at once implementations.
+
+            //console.log('arr_on_xspans', arr_on_xspans);
+            const [width, height] = pb_1bipp_mask.size;
+
+            const {bipp} = this;
+
+            // then go through them....
+
+            //console.log('arr_rows_arr_on_xspans', arr_rows_arr_on_xspans);
+            // All empty, in some situation(s).
+            //  Not quite sure why doing this mask on an empty shape happens.
+
+            // Going through the height of the x spans on....
+
+            // A special case where this is 1bipp?
+            // Otherwise, need to use different (and likely less optimised) horizontal line drawing.
+
+
+            if (bipp === 1) {
+                if (color === 1) {
+                    let y = 0;
+                    let [dest_x, dest_y] = dest_pos;
+                    for (y = 0; y < height; y++) {
+                        const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
+                        if (arr_row_xspans_on.length > 0) {
+                            //console.log('** arr_row_xspans_on', arr_row_xspans_on);
+                            //console.trace();
+                            //throw 'stop';
+
+                            // go through each of them, 
+
+                            for (const xonspan of arr_row_xspans_on) {
+                                // write the horizontal line...
+
+                                //console.log('[xonspan[0], xonspan[1], y]:', [xonspan[0], xonspan[1], y]);
+
+                                // then should be able to draw them quickly.
+
+                                // needs to add the appropriate offset
+                                xonspan[0] += dest_x;
+                                xonspan[1] += dest_x;
+
+                                // This only works if this is 1bipp.
+                                //  Need to do draw_horizontal_line of the right color.
+
+                                this.draw_horizontal_line_on_1bipp(xonspan, y + dest_y);
+                            }
+                        }
+                    }
+                } else {
+                    throw 'NYI';
+                }
+
+                
+            } else {
+
+                // use draw_horizontal_line function instead....
+
+                let y = 0;
+                let [dest_x, dest_y] = dest_pos;
+                for (y = 0; y < height; y++) {
+                    const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
+                    if (arr_row_xspans_on.length > 0) {
+                        //console.log('** arr_row_xspans_on', arr_row_xspans_on);
+                        //console.trace();
+                        //throw 'stop';
+
+                        // go through each of them, 
+
+                        for (const xonspan of arr_row_xspans_on) {
+                            // write the horizontal line...
+
+                            //console.log('[xonspan[0], xonspan[1], y]:', [xonspan[0], xonspan[1], y]);
+
+                            // then should be able to draw them quickly.
+
+                            // needs to add the appropriate offset
+                            xonspan[0] += dest_x;
+                            xonspan[1] += dest_x;
+
+                            // This only works if this is 1bipp.
+                            //  Need to do draw_horizontal_line of the right color.
+
+                            this.draw_horizontal_line(xonspan, y + dest_y, color);
+                        }
+                    }
+                }
+
+
+
+            }
+
+
+            
+
+            //throw 'stop';
+
+        }
+
+        
+
+
+
+        return arr_on_xspans_implementation();
+
+
+        //return on_xspans_implementation();
+
+        // Could make an inline or multiple inlint iterate set pixel implementations.
+
+        //return iterate_set_pixel_implementation();
+        //return arr_on_xspans_implementation();
+
+
+        
 
     }
 
     // Maybe more like 'draw' or 'paint' image if it's 1bipp pb being drawn on a higher bipp pb?
+
+    // Has a few more optimisations now - but may want to consider different overall ways of doing this.
+    //  Drawing horizontal lines could be a lot faster.
+
+    // 'on_xspans' may be the better way to do this.
+
+
+
     'place_image_from_pixel_buffer'(pixel_buffer, dest_pos, options = {}) {
 
         const {bipp} = this;
@@ -3999,7 +4219,9 @@ return a.every((val, i) => val === b[i]);
 
                     // pb.each_px(ta_pos, ta_px_value, ta_info,
 
-                    pb_source.each_px(ta_pos, ta_px_value, ta_info, (color, pos) => {
+                    const px_dest_pos = new Uint16Array(2);
+
+                    pb_source.each_px_on_1bipp(ta_pos, ta_px_value, ta_info, (color, pos) => {
 
                         //console.log();
                         //console.log('');
@@ -4010,11 +4232,15 @@ return a.every((val, i) => val === b[i]);
 
                         //throw 'stop';
 
-                        if (color === 1) {
-                            const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
-                            //console.log('px_dest_pos', px_dest_pos);
-                            this.set_pixel(px_dest_pos, color);
-                        }
+                        //if (color === 1) {
+                        //const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                        //console.log('px_dest_pos', px_dest_pos);
+
+                        px_dest_pos[0] = pos[0] + dest_pos[0];
+                        px_dest_pos[1] = pos[1] + dest_pos[1];
+
+                        this.set_pixel(px_dest_pos, color);
+                        //}
 
                     })
                 } else {
@@ -4029,15 +4255,17 @@ return a.every((val, i) => val === b[i]);
 
                     //console.log('pb_source.size', pb_source.size);
 
-
-                    pb_source.each_px(ta_pos, ta_px_value, ta_info, (color, pos) => {
+                    const px_dest_pos = new Uint16Array(2);
+                    pb_source.each_ta_1bipp(ta_pos, ta_px_value, ta_info, (color, pos) => {
                         //console.log('');
                         //console.log('2) pos', pos);
                         //console.log('2) color', color);
 
                         //console.log('[color, pos]', [color, pos]);
 
-                        const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                        //const px_dest_pos = [pos[0] + dest_pos[0], pos[1] + dest_pos[1]];
+                        px_dest_pos[0] = pos[0] + dest_pos[0];
+                        px_dest_pos[1] = pos[1] + dest_pos[1];
 
 
                         //console.log('2) px_dest_pos', px_dest_pos);
@@ -4234,9 +4462,90 @@ return a.every((val, i) => val === b[i]);
     //  And could fill them all in in this representation.
 
 
+
+    // Should have parameters different way around....
+
     // This core seems like the place for some more optimised horizontal line drawing algorithms.
 
-    'draw_horizontal_line_on_1bipp'(y, [x1, x2]) {
+    // Horizontal line drawing - may be able to accelerate it in some ways...
+    //  Inlining everything could work reasonably well, it can be quite simple.
+
+
+
+
+    //'draw_horizontal_line_on_1bipp'(y, [x1, x2]) {
+
+    // This is a reasonably good speed.
+    // Could write pixels in a faster way probably, but this is reasonably good for now.
+
+
+    'draw_horizontal_line_24bipp'(xspan, y, color) {
+
+        // Aware the xspan is inclusive! ????? (or not???)
+        //  As in, 0,0 is 1 pixel wide. 0,2 would actually span 3 pixels (0, 1, 2). 
+
+        //console.log('[xspan, y, color]', [xspan, y, color]);
+        const [x1, x2] = xspan;
+        
+        // Use a pixel writing position local variable.
+        // Write [r, g, b] sequentially, incrementing that writing position variable.
+
+        // idx_start_byte
+        const {ta} = this;
+
+        const [width, height] = this.size;
+
+        // idx_byte_of_last_color (start byte of last color)
+
+        const start_pixel_idx = width * y + x1;
+        //const end_pixel_idx = width * y + x2;
+
+        // fo a loop through those pixel indexes - but will need to make use of bit indexes too.
+
+        const [r, g, b] = color;
+
+        let w = start_pixel_idx * 3;
+
+        //console.log('1) w', w);
+
+        for (let x = x1; x <= x2; x++) {
+            ta[w++] = r;
+            ta[w++] = g;
+            ta[w++] = b;
+        }
+        //console.log('2) w', w);
+
+
+
+
+
+
+
+
+        
+    }
+
+    'draw_horizontal_line'(xspan, y, color) {
+        const {bipp} = this;
+        if (bipp === 1) {
+            console.trace();
+            throw 'NYI';
+        } else if (bipp === 24) {
+            return this.draw_horizontal_line_24bipp(xspan, y, color);
+        } else {
+            console.trace();
+            throw 'NYI';
+        }
+
+    }
+    
+    'draw_horizontal_line_on_1bipp'([x1, x2], y) {
+        // [x1, x2], y would be better.
+        //  More consistent with other functions.
+
+
+
+
         if (x1 > x2) {
             throw 'Expected: x1 <= x2';
         } else if (x1 === x2) {
@@ -4348,15 +4657,6 @@ return a.every((val, i) => val === b[i]);
                 }
 
                 return using_byte_mask();
-
-                
-
-                
-
-
-
-
-
 
 
 
@@ -4490,7 +4790,289 @@ return a.every((val, i) => val === b[i]);
 
 
     // Likely could make a (much) more optimised fn to calculate these.
+
+
+    // Option to include the y values?
+
+    // ???
+
+
+    // calculate_arr_row_x_on_x2yspans_1bipp
+    //  Could just be 3 values together.
+
+    // Maybe lower level implementation could return values from a typed array.
+
+
+
+    // calculate_arr_row_x_off_x2yspans_1bipp
+
+
+    // x2y format could be more effective.
+
+
+    // This function has got to take a little while.
+    //  Could there be a way using bitwise operations to go through the bytes working out how many more pixels to add to the span as it is being built?
+
+    // Algorithms using really fast scanning of the array.
+    //  Maybe even using bigint?
+    //  Returning data that's all in a typed array (and maybe class to access that data with good syntax?)
+    // Or just have 4 items in the array - x1, x2, y, other?
+
+
+
+
+
+    // Can see about a faster binary row reading system.
+    //  For each row (y), find the start and end bit indexes (pixel indexes)
+    //   work out which byte and bit within each byte for the start and end of the row.
+    //   then use some kind of const 'magic' logic.
+    //    Once we have the bit, could check to see if it's the only one in the byte.
+    //     Or could check if there is a contiguous block of on until the end of the byte.
+    //     likely to be like 00100000
+    //                    or 00111111    (and then could assume its likely to continue with 1 bytes, can check for them)
+
+    // Array buffer reading of multiple (such as 8) bytes at once could help a lot here too.
+
+
+
+
+    //      Could check them both as accelerated paths when we have a bit on in the 3rd position (indexed from left from 1), 2nd position indexed from 0 as we will.
+    //  Could have quite a lot of constants / magic numbers within the if statements.
+
+    'calculate_arr_row_x_on_spans_1bipp'(y) {
+
+        // Will try other implementations.
+        //  The inline no x loop consecutive reader would be nice.
+        //   May also be worth seeing about reading 64 bytes at once in some cases.
+        //    (maybe keeping track of a 64 bit piece and moving through it)
+
+        // Need to compare and test implementations.
+
+
+
+
+        const initial_implementation = () => {
+
+                const res = [];
+            const width = this.size[0];
+            // assume starting with 0;
+            let last_color = 1;
+            let current_color;
+            let ta_pos = new Uint16Array(2);
+            ta_pos[1] = y;
+
+            // need to work out the start and end position of the x spans off.
+
+            //console.log('width', width);
+
+            for (let x = 0; x < width; x++) {
+                ta_pos[0] = x;
+                current_color = this.get_pixel_1bipp(ta_pos);
+                //console.log('current_color', current_color);
+                // Not all that efficient at representing single pixel gaps.
+                //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+                if (current_color === 1) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+                            res.push([x, x]);
+                        } else {
+                            res[res.length - 1][1]++;
+                        }
+                    } else {
+                        res.push([x, x]);
+                    }
+                }
+                last_color = current_color;
+            }
+
+            //console.log('**res', res);
+            return res;
+        }
+
+        const inlined_consecutive_value_checking_no_x_loop_implementation = () => {
+
+            const COLOR_LOOKING_FOR = 1;
+            const COLOR_NOT_LOOKING_FOR = 0;
+
+
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+
+            // Starting at the color not looking for...?
+            //  Would be a change. Maybe it's better logic.
+            //  Maybe try a modified 'off' version using consts for looking for and not looking for.
+
+            let last_color = 1; // Try keeping it for the moment.
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+            let num_bits_remaining = width;
+
+
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+            let has_just_done_multi_read = false;
+
+            let byte_val = 0 | 0;
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+                idx_bit_within_byte = idx_bit_overall & 0b111;
+
+
+                // then check if we can do just a few of the consecutive reading ops....
+
+                has_just_done_multi_read = false;
+
+
+                if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+                    // Attempt a multi-read here.
+                    //  And probably use 'else' for other cases....
+                    //   or set it so it's doing a multi-read and not the next part?
+                    //    because it may need to stop / not do the multi-read and get on with the next part...
+
+                    byte_val = ta[idx_bit_overall >> 3];
+                    if (byte_val === 255) {
+
+                        // read 8x1 values...
+
+                        // COLOR_NOT_LOOKING_FOR
+
+                        // But we are looking for this...
+
+                        if (last_color === 1) {
+                            
+                            //last_color = 1;
+                            if (res.length === 0) {
+                                arr_last = [x, x + 7];
+                                res.push(arr_last);
+                            } else {
+                                arr_last[1] += 8;
+                            }
+
+
+
+                        } else {
+                            // A shift, so make a new array item.
+
+                            arr_last = [x, x + 7];
+                            res.push(arr_last);
+                            
+                            
+                        }
+                        x += 8;
+                        last_color = 1;
+                        num_bits_remaining -= 8;
+                        idx_bit_overall += 8;
+                        has_just_done_multi_read = true;
+                        
+
+                    } else if (byte_val === 0) {
+
+                        last_color = 0;
+                        has_just_done_multi_read = true;
+                        idx_bit_overall += 8;
+                        x += 8;
+                        num_bits_remaining -= 8;
+
+                        
+
+                    } else {
+                        // No multi read this time.
+                    }
+
+                    // set has_just_done_multi_read to true if necessary.
+
+                }
+
+                if (!has_just_done_multi_read) {
+                    //idx_byte = idx_bit_overall >> 3;
+                    current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_within_byte)) !== 0) ? 1 : 0;
+                    //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                    if (current_color === 1) {
+                        if (current_color === last_color) {
+                            if (res.length === 0) {
+                                arr_last = [x, x];
+                                res.push(arr_last);
+                            } else {
+                                arr_last[1]++;
+                            }
+                        } else {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                        }
+                    }
+                    last_color = current_color;
+                    idx_bit_overall++;
+                    x++;
+                    num_bits_remaining--;
+                }
+            }
+            return res;
+        }
+
+        // Seems much faster now.
+        return inlined_consecutive_value_checking_no_x_loop_implementation();
+        //return initial_implementation();
+
+
+        
+    }
+
     'calculate_arr_row_x_off_spans_1bipp'(y) {
+
+        // Def worth looking into further low level optimisations.
+
+        // Sped up reading of many 1s or 0s at once.
+        // 64 bit at once
+        // Then if not 64 bits at once, run other checks.
+        //  A binary search to find the number of consecutive 1s or 0s...
+        //  Could do a few at once from the beginning???
+        //   Though being able to detect something like 64 or 32 consecutive same bits will be helpful.
+
+
+
+
+
+
+
+
 
         // Could see about accelerated algorithms that will read 8 (or more) pixels at once.
         //  May be worth doing first check on 64 pixels if they are all lined up so that can be done.
@@ -4504,7 +5086,422 @@ return a.every((val, i) => val === b[i]);
 
         // For the moment, deal with the rows as they are within the system (dense 1bipp data)
 
-        const res = [];
+        // It may be possible to speed this up a lot....
+
+        // Could inline the pixel getting. (1st simple optimisation) - It's a good speedup!
+        //  That would mean keeping track of the byte and bit....
+        //   Could use a simpler incrementer for idx rather than recalculating it.
+
+        const inlined_get_pixel_implementation = () => {
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+            let last_color = 0;
+            let current_color;
+            const x_start = 0;
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_byte = 0 | 0;
+            let arr_last;
+            for (let x = 0; x < width; x++) {
+                idx_byte = idx_bit_overall >> 3;
+                current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 : 0;
+                //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                if (current_color === 0) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                        } else {
+                            arr_last[1]++;
+                        }
+                    } else {
+                        arr_last = [x, x];
+                        res.push(arr_last);
+                    }
+                }
+                last_color = current_color;
+                idx_bit_overall++;
+            }
+            return res;
+        }
+
+        // And a version that iterates through the bit indexes but not x???
+        // Version that does not have a code block for each x value would help support logic where there may be multiple pixel values
+        //  obtained at once for sequential x values. For that reason, an inlined version similar to inlined_get_pixel_implementation that
+        //  does not loop x would help. It could / would increment x when appropriate.
+        //   x is effectively incrementing bits anyway...
+
+
+        // This turns out to be a decent speedup on larger images.
+        //  Still, the reading of multiple pixels (up to 64) at once will prove very useful.
+
+        // Should be able to make a much faster implementation this way.
+
+        const inlined_get_pixel_no_x_loop_implementation = () => {
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+            let last_color = 0;
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0;
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+
+
+            
+
+
+            let num_bits_remaining = width;
+
+
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+
+
+
+
+                //idx_byte = idx_bit_overall >> 3;
+                current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 : 0;
+                //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                if (current_color === 0) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                        } else {
+                            arr_last[1]++;
+                        }
+                    } else {
+                        arr_last = [x, x];
+                        res.push(arr_last);
+                    }
+                }
+                last_color = current_color;
+                idx_bit_overall++;
+                x++;
+                num_bits_remaining--;
+            }
+
+
+
+            
+
+
+
+            return res;
+        }
+
+
+        // Very nice speedup with this implementation.
+        //  Could see about faster horizontal line drawing.
+        //  Not (yet) got into typed arrays for holding the xspans.
+
+        const inlined_consecutive_value_checking_no_x_loop_implementation = () => {
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+            let last_color = 0;
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+            let num_bits_remaining = width;
+
+
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+            let has_just_done_multi_read = false;
+
+            let byte_val = 0 | 0;
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+                idx_bit_within_byte = idx_bit_overall & 0b111;
+
+
+                // then check if we can do just a few of the consecutive reading ops....
+
+                has_just_done_multi_read = false;
+
+
+                if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+                    // Attempt a multi-read here.
+                    //  And probably use 'else' for other cases....
+                    //   or set it so it's doing a multi-read and not the next part?
+                    //    because it may need to stop / not do the multi-read and get on with the next part...
+
+                    byte_val = ta[idx_bit_overall >> 3];
+                    if (byte_val === 255) {
+
+                        // read 8x1 values...
+
+                        
+                        last_color = 1;
+                        has_just_done_multi_read = true;
+                        idx_bit_overall += 8;
+                        x += 8;
+                        num_bits_remaining -= 8;
+
+                    } else if (byte_val === 0) {
+
+                        if (last_color === 0) {
+                            
+                            //last_color = 1;
+                            if (res.length === 0) {
+                                arr_last = [x, x + 7];
+                                res.push(arr_last);
+                            } else {
+                                arr_last[1] += 8;
+                            }
+
+
+
+                        } else {
+                            // A shift, so make a new array item.
+
+                            arr_last = [x, x + 7];
+                            res.push(arr_last);
+                            
+                            
+                        }
+                        x += 8;
+                        last_color = 0;
+                        num_bits_remaining -= 8;
+                        idx_bit_overall += 8;
+                        has_just_done_multi_read = true;
+
+                    } else {
+                        // No multi read this time.
+                    }
+
+                    // set has_just_done_multi_read to true if necessary.
+
+                }
+
+                if (!has_just_done_multi_read) {
+                    //idx_byte = idx_bit_overall >> 3;
+                    current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_within_byte)) !== 0) ? 1 : 0;
+                    //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                    if (current_color === 0) {
+                        if (current_color === last_color) {
+                            if (res.length === 0) {
+                                arr_last = [x, x];
+                                res.push(arr_last);
+                            } else {
+                                arr_last[1]++;
+                            }
+                        } else {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                        }
+                    }
+                    last_color = current_color;
+                    idx_bit_overall++;
+                    x++;
+                    num_bits_remaining--;
+                }
+            }
+
+
+
+            
+
+
+
+            return res;
+        }
+
+        
+
+
+
+        
+
+
+
+        const reference_implementation = () => {
+            const res = [];
+            const width = this.size[0];
+            // assume starting with 0;
+            let last_color = 0;
+            let current_color;
+            let ta_pos = new Uint16Array(2);
+            ta_pos[1] = y;
+
+            // need to work out the start and end position of the x spans off.
+
+            //console.log('width', width);
+
+            // Maybe this slows it down....
+            let arr_last; // Seems like it should probably help.
+            //  Maybe last_x1, last_x2 perhaps???
+
+            for (let x = 0; x < width; x++) {
+                ta_pos[0] = x;
+
+
+                current_color = this.get_pixel_1bipp(ta_pos);
+
+                // Not all that efficient at representing single pixel gaps.
+                //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+                if (current_color === 0) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                            //res.push([x, x]);
+                        } else {
+                            //res[res.length - 1][1]++;
+                            arr_last[1]++;
+                        }
+                    } else {
+                        arr_last = [x, x];
+                        res.push(arr_last);
+                        //res.push([x, x]);
+                    }
+                }
+                last_color = current_color;
+            }
+            return res;
+        }
+
+        //return reference_implementation();
+
+        // inlined_consecutive_value_checking_no_x_loop_implementation
+        return inlined_consecutive_value_checking_no_x_loop_implementation();
+
+
+        // inlined_get_pixel_no_x_loop_implementation
+        //return inlined_get_pixel_no_x_loop_implementation();
+        //return inlined_get_pixel_implementation();
+
+        // inlined_get_pixel_implementation
+
+
+
+
+
+
+        
+    }
+
+    'calculate_arr_rows_arr_x_off_spans_1bipp'() {
+        const [width, height] = this.size;
+        const res = new Array(height);
+
+        //const {calculate_arr_row_x_off_spans_1bipp} = this;
+        // And each of them should be an array....
+
+        // Call the function to calculate arr_row_x_off_spans for each row (y position)
+
+        for (let y = 0; y < height; y++) {
+            res[y] = this.calculate_arr_row_x_off_spans_1bipp(y);
+
+            // Calling it like below removes the 'this' context.
+            //res[y] = calculate_arr_row_x_off_spans_1bipp(y);
+        }
+
+        return res;
+
+    }
+
+    'calculate_arr_rows_arr_x_on_spans_1bipp'() {
+        const [width, height] = this.size;
+        const res = new Array(height);
+
+        //const {calculate_arr_row_x_off_spans_1bipp} = this;
+        // And each of them should be an array....
+
+        // Call the function to calculate arr_row_x_off_spans for each row (y position)
+
+        for (let y = 0; y < height; y++) {
+            res[y] = this.calculate_arr_row_x_on_spans_1bipp(y);
+
+            // Calling it like below removes the 'this' context.
+            //res[y] = calculate_arr_row_x_off_spans_1bipp(y);
+        }
+
+        return res;
+
+    }
+
+    'count_row_off_xspans_1bipp'(y) {
+        let res = 0;
+
         const width = this.size[0];
         // assume starting with 0;
         let last_color = 0;
@@ -4514,29 +5511,32 @@ return a.every((val, i) => val === b[i]);
 
         // need to work out the start and end position of the x spans off.
 
-
-
         //console.log('width', width);
+
+        // iterate row pixels?
+        //  Could there be a system that reads them faster?
+
+
 
         for (let x = 0; x < width; x++) {
             ta_pos[0] = x;
             current_color = this.get_pixel_1bipp(ta_pos);
 
-
             // Not all that efficient at representing single pixel gaps.
             //  But there won't be very many of them overall in some large drawings with thin polygon edges.
-
-            
 
             if (current_color === 0) {
                 if (current_color === last_color) {
                     if (res.length === 0) {
-                        res.push([x, x]);
+                        //res.push([x, x]);
+
+                        res++;
                     } else {
-                        res[res.length - 1][1]++;
+                        //res[res.length - 1][1]++;
                     }
                 } else {
-                    res.push([x, x]);
+                    //res.push([x, x]);
+                    res++;
                     if (res.length === 0) {
                         //throw 'stop';
                         //res.push([0, 0]); // a span of length 0
@@ -4549,51 +5549,379 @@ return a.every((val, i) => val === b[i]);
                     }
                 }
             }
-
-            /*
-
-            if (current_color === last_color) {
-                if (res.length === 0) {
-                    res.push([0, 1]);
-                } else {
-                    res[res.length - 1][1]++;
-                }
-            } else {
-                if (res.length === 0) {
-                    res.push([0, 0]); // a span of length 0
-                    res.push([0, 1]);
-                } else {
-                    res.push([x, x + 1]);
-                }
-            }
-            */
             last_color = current_color;
-
-
         }
         return res;
-        
-
-
-
 
     }
 
-    'calculate_arr_rows_arr_x_off_spans_1bipp'() {
+    // Possibly just 1bipp?
+    'count_row_on_xspans_1bipp'(y) {
+        let res = 0;
+        const width = this.size[0];
+        // assume starting with 0;
+        let last_color = 1;
+        let current_color;
+        let ta_pos = new Uint16Array(2);
+        ta_pos[1] = y;
+        for (let x = 0; x < width; x++) {
+            ta_pos[0] = x;
+            //console.log('ta_pos', ta_pos);
+            current_color = this.get_pixel_1bipp(ta_pos);
+            //console.log('current_color', current_color);
+            if (current_color === 1) {
+                if (current_color === last_color) {
+                    if (res === 0) {
+                        res++;
+                    } else {
+                    }
+                } else {
+                    //res.push([x, x]);
+                    res++;
+                }
+            }
+            last_color = current_color;
+        }
+        return res;
+    }
+
+    'calculate_ta_row_x_off_x2ygbspans_1bipp'(y) {
+
+        // Typed array for all of them in the row.
+
+        // Need to count them first?
+        //  Is that quicker???
+
+        const count_xoffspans = this.count_row_off_xspans_1bipp(y);
+
+        const res = new Uint16Array(count_xoffspans * 5);
+
+        console.log('count_xoffspans', count_xoffspans);
+
+        let i_w = 0;
+
+        const width = this.size[0];
+            // assume starting with 0;
+        let last_color = 0;
+        let current_color;
+        let ta_pos = new Uint16Array(2);
+        ta_pos[1] = y;
+
+        // need to work out the start and end position of the x spans off.
+
+        //console.log('width', width);
+
+        for (let x = 0; x < width; x++) {
+            ta_pos[0] = x;
+            current_color = this.get_pixel_1bipp(ta_pos);
+
+            // Not all that efficient at representing single pixel gaps.
+            //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+
+            if (current_color === 0) {
+                if (current_color === last_color) {
+                    if (res.length === 0) {
+                        //res.push([x, x]);
+
+                        // x1, x2, y, g, b
+                        res[i_w++] = x;
+                        res[i_w++] = x;
+                        res[i_w++] = y;
+                        res[i_w++] = 0; // 0 for undefined group here....
+                        res[i_w++] = 0; // 0 for undefined border status here
+
+                    } else {
+                        //res[res.length - 1][1]++;
+
+                        res[i_w - 4]++;
+                    }
+                } else {
+                    //res.push([x, x]);
+                    res[i_w++] = x;
+                    res[i_w++] = x;
+                    res[i_w++] = y;
+                    res[i_w++] = 0; // 0 for undefined group here....
+                    res[i_w++] = 0; // 0 for undefined border status here
+                    
+                }
+            }
+            last_color = current_color;
+        }
+
+        return res;
+
+
+        // Could see about accelerated algorithms that will read 8 (or more) pixels at once.
+        //  May be worth doing first check on 64 pixels if they are all lined up so that can be done.
+
+        // With an Array_Reader or something similar like that, whatever it's called.
+        // Array_Buffer_Reader? Data_Reader???
+
+        // beware that the rows don't necessarily start on a new byte.
+        // need to be careful about that unless they are in byte aligned mode.
+        // may be worth considering 8byte aligned mode for rows. Would make algorithms using bigint considerably easier / more efficient.
+
+        // For the moment, deal with the rows as they are within the system (dense 1bipp data)
+
+
+        const old = () => {
+            const res = [];
+            const width = this.size[0];
+            // assume starting with 0;
+            let last_color = 0;
+            let current_color;
+            let ta_pos = new Uint16Array(2);
+            ta_pos[1] = y;
+
+            // need to work out the start and end position of the x spans off.
+
+            //console.log('width', width);
+
+            for (let x = 0; x < width; x++) {
+                ta_pos[0] = x;
+                current_color = this.get_pixel_1bipp(ta_pos);
+
+                // Not all that efficient at representing single pixel gaps.
+                //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+
+                if (current_color === 0) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+                            res.push([x, x]);
+                        } else {
+                            res[res.length - 1][1]++;
+                        }
+                    } else {
+                        res.push([x, x]);
+                        if (res.length === 0) {
+                            //throw 'stop';
+                            //res.push([0, 0]); // a span of length 0
+                            //res.push([0, 1]);
+                        } else {
+
+                            // No item in result for non-0 pixels
+
+                            //res.push([x, x + 1]);
+                        }
+                    }
+                }
+                last_color = current_color;
+            }
+        }
+
+        
+        return res;
+    }
+
+    'calculate_ta_row_x_on_x2ygbspans_1bipp'(y) {
+        const count_xonspans = this.count_row_on_xspans_1bipp(y);
+        // Will make better examination of lines.
+        //  An iterator / generator function that yields the horizontal spans.
+
+        // Can make a faster / more optimised line reader.
+        //  Can also work on arranging 8-byte alignments of rows.
+        //   So each row would start on a byte that's divisible by 8.
+
+        // Already have a decent speed improvement from using the xspans for the flood fills.
+        //  Creating the x spans with an improved byte / multibyte reading alforithm will help a lot.
+
+        // Not quite there for the vfff very fast flood fill algorithm.
+
+
+
+
+
+
+        const res = new Uint16Array(count_xonspans * 5);
+
+        console.log('y, count_xonspans', y, count_xonspans);
+
+        let i_w = 0;
+
+        const width = this.size[0];
+            // assume starting with 1;
+        let last_color = 1;
+        let current_color;
+        let ta_pos = new Uint16Array(2);
+        ta_pos[1] = y;
+
+        // need to work out the start and end position of the x spans off.
+
+        //console.log('width', width);
+
+        for (let x = 0; x < width; x++) {
+            ta_pos[0] = x;
+            current_color = this.get_pixel_1bipp(ta_pos);
+
+            // Not all that efficient at representing single pixel gaps.
+            //  But there won't be very many of them overall in some large drawings with thin polygon edges.
+
+            if (current_color === 1) {
+                if (current_color === last_color) {
+                    if (res.length === 0) {
+                        //res.push([x, x]);
+
+                        // x1, x2, y, g, b
+                        res[i_w++] = x;
+                        res[i_w++] = x;
+                        res[i_w++] = y;
+                        res[i_w++] = 0; // 0 for undefined group here....
+                        res[i_w++] = 0; // 0 for undefined border status here
+
+                    } else {
+                        //res[res.length - 1][1]++;
+
+                        res[i_w - 4]++;
+                    }
+                } else {
+                    //res.push([x, x]);
+                    res[i_w++] = x;
+                    res[i_w++] = x;
+                    res[i_w++] = y;
+                    res[i_w++] = 0; // 0 for undefined group here....
+                    res[i_w++] = 0; // 0 for undefined border status here
+                    
+                }
+            }
+            last_color = current_color;
+        }
+
+        return res;
+    }
+
+    // Want the x on version(s) too.
+    //  Maybe even all in one large typed array.
+
+    // May want x ons / x offs / x spans represented in a fast ta as part of the core.
+    //  Or the core to use a class that does that well.
+
+    
+
+
+
+    'calculate_arr_rows_ta_x_off_x2ygbspans_1bipp'() {
+
+        // x2ygb items in a typed array....
+
         const [width, height] = this.size;
         const res = new Array(height);
+
+        //const {calculate_arr_row_x_off_spans_1bipp} = this;
         // And each of them should be an array....
 
         // Call the function to calculate arr_row_x_off_spans for each row (y position)
 
         for (let y = 0; y < height; y++) {
-            res[y] = this.calculate_arr_row_x_off_spans_1bipp(y);
+            res[y] = this.calculate_ta_row_x_off_x2ygbspans_1bipp(y);
+
+            // Calling it like below removes the 'this' context.
+            //res[y] = calculate_arr_row_x_off_spans_1bipp(y);
+        }
+        return res;
+    }
+
+    'calculate_arr_rows_ta_x_on_x2ygbspans_1bipp'() {
+
+        // x2ygb items in a typed array....
+
+        const [width, height] = this.size;
+        const res = new Array(height);
+
+        //const {calculate_arr_row_x_off_spans_1bipp} = this;
+        // And each of them should be an array....
+
+        // Call the function to calculate arr_row_x_off_spans for each row (y position)
+
+        for (let y = 0; y < height; y++) {
+            res[y] = this.calculate_ta_row_x_on_x2ygbspans_1bipp(y);
+
+            // Calling it like below removes the 'this' context.
+            //res[y] = calculate_arr_row_x_off_spans_1bipp(y);
         }
 
-
-
-
+        console.log('* this.ta', this.ta);
+        console.log('this.size', this.size);
         return res;
+    }
+
+    // And also be able to get them for all rows, in one long array.
+    //  Even in one long typed array?
+    
+    // Even see about using a different drawing mode that modifies the xspans?
+    //  Could try that optimisation later on?
+    //   Have it switchable as to whether the (difinitive) image is represented in the xspans or in the ta...
+    //    And when the ta is requested, if there are updates that need to be drawn to it, then draw them
+    //     (or may be better just to recreate the whole ta from the xspans data)
+    //  Or do track modifications / operations since the last sync (either way?)
+
+    // Pixel_Buffer not actually being represented as a buffer of pixel values may be moving out of this control's focus.
+    //  Though if it could appear as a pixel buffer, and provide one when needed, while working in a more optimal underlying format, it could
+    //   be very efficient indeed and within a convenient API.
+
+    // Counting the xspans from the pb (as fast as possible) could help a lot.
+    //  Then could more easily make the ta to hold them.
+    //  Or make appropriately sized / estimated tas to hold the xpans x2y or x2yg (incl group) format.
+    //  x2ygb x1 x2 y group boundary
+
+    // These all in a fairly large ta could enable very fast access for them.
+    //  Will want to discover groups.
+    //  Would then need to modify algorithm that iterates 2 rows at once....
+    //   Iterate between rows, with the important values being used to find which are intersecting
+    //    (use them to make the links between 'above' and 'below')
+
+    // Maybe could have fast algorithmic reading using binary search of which are above and below.
+    //  Could be faster than creating and using the dynamic lists?
+    //   The data is already there in a way that can be accessed very fast with ints, prob worth doing it that way, def worth trying.
+
+    // Or storing the lists of links in another typed array?
+    //  Would be harder to build it dynamically though.
+    //  Maybe could put together a ta on 1 pass saying how many links above and below there are in various cases.....
+
+    // Fast getting of any above or below through fast binary search algorithm in the ta could be very effective.
+
+
+    // draw_1bipp_pixel_buffer_mask can be sped up with better use of xspans.
+
+    // Could even iterate over xspans?
+    //  Though may want the groups already calculated.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // Defaulting to xspan ons?
+
+    // For some operations we want only the 'on' or 'off' pixels.
+
+
+
+
+    get xspans() {
+        // Maybe this should include info on the xspans' groups.
+        //  
+
+        // This will be a more advanced API for dealing with it.
+        //  Possibly return an XSpans object?
+
+        // XSpans object (general type) should include both on and off pixels.
+
+
+
 
     }
 }
