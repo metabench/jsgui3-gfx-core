@@ -13,7 +13,7 @@ if (require.main === module) {
         const run_examples = async() => {
             lg('Begin run examples');
 
-            let size_limit = 'small';
+            //let size_limit = 'small';
 
             // May want cases that test 64 pixels being read / written at once....
             //  Have seen a great speedup for some masking operations (incl drawing filled shapes).
@@ -24,7 +24,7 @@ if (require.main === module) {
 
 
 
-            //let size_limit = 'huge';
+            let size_limit = 'huge';
 
 
             const save_pixel_buffer_png = (path, pb) => {
@@ -1701,6 +1701,7 @@ if (require.main === module) {
 
                         const timeInNanos = end[0] * 1e9 + end[1];
                         console.log('flood fill timeInNanos:', timeInNanos);
+                        console.log('flood fill ms:', timeInNanos / 1000000);
 
 
 
@@ -1713,22 +1714,6 @@ if (require.main === module) {
 
 
                         //throw 'stop';
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-                        
     
     
                         const pb8 = pb.to_8bipp();
@@ -1756,11 +1741,82 @@ if (require.main === module) {
                         // Draw a flood filled shape?
 
                         // Could work on accelerated flood fill here.
+
+
                         // And accelerated filled shape drawing.
+
+                        let start = process.hrtime();
+                        let end, timeInNanos;
+
+                        // Does this involve too many copies being made?
+                        //  The filled polygon drawing could use a more optimised flood fill inner?
+                        //  Or not actually do the flood fill inner, but just to identify inner x spans.
+                        //   
+
+                        // Seems like a decent challenge to get this down to a much lower time.
+                        //  Only 0.28ms when not filled, 3.5ms when filled.
+
+                        // See about making them both much faster still...
+
+
+
+                        // Further acceleration of this polygon drawing needed....
 
                         pb.draw_polygon([[16, 16,], [122, 16], [280, 200], [16, 200]], 1, true);
 
+                        // May be worth considering writing and testing (separately? together?) different lower level implementations of the
+                        //  draw_polygon algorithm.
 
+                        // Being able to draw polygons quickly seems like it will be very important.
+                        //  Getting the region (inner and outer) identification as fast as possible should help a lot.
+
+                        // Could even parallelise calculation of x spans accross an image.
+                        //  Would be interested in making something like 4 worker threads being run by default to parallelise some operations.
+                        //  Would make a nice speedup for some parts of the algorithm.
+
+                        // Drawing an image directly to a data structure that tracks / handles x on / off spans would be nice.
+                        //  Could provide greater efficiency still.
+                        //  Could set such pixels as belonging to a specific group.
+                        //   Could make finding inner pixels faster still.
+
+
+
+
+
+
+
+
+
+
+                        end = process.hrtime(start);
+
+                        timeInNanos = end[0] * 1e9 + end[1];
+
+                        // Drawing the polygon itself...
+                        //  Could use a more direct / lower level pixel index spans.
+                        //   A lower level data structure optimised for adding and removing these...
+                        //    (and filling them / identifying contiguous regions of them?)
+                        
+                        // 4ms for drawing a not very large polygon is still too slow.
+                        //  A very different 1bipp image implementation that's all about the xspans could help.
+                        //   A linked list structure could be versitile for adding and removing xspans.
+                        //   Would need to be wrapped in a class specialised for it.
+
+                        
+                        // Maybe even have special algorithms for drawing polygons with 4 points?
+                        //  Want to get the general implementations running as fast as possible.
+
+                        // Being able to identify all outer x off spans quicker???
+
+
+
+                       
+
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+
+                        // Still want (much) faster filled polygon drawing.
 
                         // Looks right....
                         //  The reading of these lines could be sped up.
@@ -1800,19 +1856,25 @@ if (require.main === module) {
 
 
 
-                        let start = process.hrtime();
+                        start = process.hrtime();
                         let pb_ar_rows_xoffspans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
 
-                        let end = process.hrtime(start);
+                        end = process.hrtime(start);
 
-                        let timeInNanos = end[0] * 1e9 + end[1];
+                        timeInNanos = end[0] * 1e9 + end[1];
                         
 
 
                         //console.log('pb_ar_rows_xoffspans', pb_ar_rows_xoffspans);
 
                         // See about greatly speeding this up... (done, possibly could be done more....)
-                        //console.log('calculate_arr_rows_arr_x_off_spans_1bipp timeInNanos:', timeInNanos);
+                        console.log('calculate_arr_rows_arr_x_off_spans_1bipp timeInNanos:', timeInNanos);
+                        console.log('calculate_arr_rows_arr_x_off_spans_1bipp ms:', timeInNanos / 1000000);
+
+                        // calculate_arr_rows_arr_x_off_spans_1bipp is relatively fast here....
+                        //  but want to further accelerate it.
+
+
 
 
                         start = process.hrtime();
@@ -1980,7 +2042,36 @@ if (require.main === module) {
                         // A more radial-star shape would be slower.
                         //  Or a more complex shape.
 
+                        let start, end, timeInNanos;
+
+                        start = process.hrtime();
+                        //let pb_ar_rows_xoffspans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
+
+                        
+                        
+
+
+                        //console.log('pb_ar_rows_xoffspans', pb_ar_rows_xoffspans);
+
+                        // See about greatly speeding this up... (done, possibly could be done more....)
+                        
+
+                        // A relatively simple polygon.
+                        //  Perhaps some of the optimisations for readying 8 pixels at once are already helping.
+
+                        // Drawing the filled polygon could do with further optimisations.
+                        //  Worth making newer inner implementations.
+
+
+
                         pb.draw_polygon([[50, 50,], [1500, 50], [1500, 1500], [50, 1500]], 1, true);
+                        end = process.hrtime(start);
+
+                        timeInNanos = end[0] * 1e9 + end[1];
+                        console.log('draw_polygon timeInNanos:', timeInNanos);
+                        console.log('draw_polygon ms:', timeInNanos / 1000000);
+
+                        
 
                         const pb8 = pb.to_8bipp();
                         //console.log('pb8.ta.length', pb8.ta.length);
@@ -2029,7 +2120,28 @@ if (require.main === module) {
                         //     May be a 'reference implementation'.
 
 
+                        let start = process.hrtime();
+                        //let pb_ar_rows_xoffspans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
+
+                        
+
+                        // See about accelerating drawing the filled polygon.
+
                         pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+
+                        let end = process.hrtime(start);
+
+                        let timeInNanos = end[0] * 1e9 + end[1];
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+
+                        // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
+                        //  Want to be able to draw 60+ times per second, including multiple larger polygons.
+                        //   Not that great perf yet but still pushing what JS can do.
+
+
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+
 
                         const pb8 = pb.to_8bipp();
                         //console.log('pb8.ta.length', pb8.ta.length);

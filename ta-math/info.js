@@ -105,6 +105,12 @@ const get_instance = () => {
     */
 
 
+    // Overlapping 2d bounds calculations would be useful too.
+    // May want a quick (functional) way to describe the interface over the typed array.
+
+    
+
+
 
     // calculate intersecting bounds on 2 given bounds (given as tas)
 

@@ -36,6 +36,8 @@
 
 // progress (0 to 9), task_size on above scale
 
+// This has got huge so far....
+
 const _roadmap = {
     '0.0.22': [
         ['pb.bypp = 1 convert to greyscale', 'done', 3, 'Medium small task requiring writing of optimized algorithm']
@@ -446,79 +448,19 @@ class Pixel_Buffer_Core {
 
         // or bytes per pixel cant always be ui8.
 
+        // bipp or bypp?
         const ta_bpp = new Uint8ClampedArray(2);
         ta_bpp[1] = 8; // byte to bit multiplier. will stay as 8.
         
 
         const _24bipp_to_8bipp = () => {
-
-            //console.log('_24bipp_to_8bipp');
-
             const old_ta = ta;
-            //console.log('old_ta', old_ta);
-            //console.log('old_ta.length', old_ta.length);
-
-
-
-            //console.log('this.num_px', this.num_px);
-
-            //const new_bypp = 1;
-
             const new_ta = ta = new Uint8ClampedArray(this.num_px);
-
-            // read byte idx
-            // write byte idx
-
-            // read byte color (3 components)
-            // write byte color ui8
-
             const l_read = old_ta.length;
-
-            // could be in a ta scratch of some sort.
-            //  Consider benchmarking for this in the near future.
-
-            // Could make a whole version number exploring that difference.
-
-
-
-
             let iby_read = 0, iby_write = 0;
-
-            //const inc_qty_read = 3, inc_qty_write = 1;
-
-            //let ui8_write;
-
-            // not so sure we need these inc qtys.
-
-            // Maybe this will be very fast, faster than row copy.
-            //  Could investigate direct copy as alternative to row copy.
-            //   May be faster in many cases...?
-
-
             while (iby_read < l_read) {
-
-                //ui8_write = Math.round((old_ta[iby_read++] + old_ta[iby_read++] + old_ta[iby_read++]) / 3);
-                //new_ta[iby_write++] = ui8_write;
-
                 new_ta[iby_write++] = Math.round((old_ta[iby_read++] + old_ta[iby_read++] + old_ta[iby_read++]) / 3);
-                // Consider other formula with different weightings.
-
             }
-
-
-            // num_pixels property...
-            //  bring into constructor?
-
-
-            //const new_ta = ta = new Uint8ClampedArray()
-
-
-
-            // Clone / copy the old ta?
-            //  Use the scratch ta.
-            //   And update the scratch from the ta?
-
-
         }
 
         const _change_bipp_inner_update = (old_bipp, new_bipp) => {
@@ -887,6 +829,15 @@ class Pixel_Buffer_Core {
         });
 
         
+        // Pos_Array perhaps?
+        //  Typed arrays and classes around them will provide the mega-fast data structures that can get some things like this to work.
+        //  Would be worth making and testing them separately.
+
+
+
+
+
+
         if (spec instanceof Pixel_Pos_List) {
             // load it as a buffer.
 
@@ -1107,6 +1058,12 @@ class Pixel_Buffer_Core {
 
 
         const setup_ta_ro_props = () => {
+
+
+            // See about using 'scratch' and other temporary tas.
+
+
+
             ro(this, 'ta_scratch', () => {
                 if (!ta_scratch) {
                     ta_scratch = new this.ta.constructor(this.ta);
@@ -1580,7 +1537,14 @@ class Pixel_Buffer_Core {
 
 
     // Likely to change to ta math function. Maybe within the painter object.
+
+    // Likely would be better to use parameters?
+    //  Unless we could have a faster parameterless system.
+    //  Data would be set onto typed arrays and accessed from there.
+    //  Not so sure when it would be significantly faster.
     fill_solid_rect_by_bounds() {
+
+
         const bounds = this.ta_bounds;
         const bipp = this.bipp;
         if (bipp === 24) {
@@ -1628,6 +1592,7 @@ class Pixel_Buffer_Core {
             // then repeat through the rows in the bounds....
             //  advance the write_byte_idx by a row (this.bypr) each time.
 
+            // Not so sure how fast row setting is.
             for (let i_row = bounds[1]; i_row < bounds[3]; i_row++) {
                 this.ta.set(solid_row, write_byte_idx);
 
@@ -1689,6 +1654,11 @@ class Pixel_Buffer_Core {
 
 
     // Works quite quick... investigate optimizations further.
+
+    // Will need to pay more attention to 'source'.
+    //  Using other pbs as a parameter may work better in many cases.
+    //  It's a more complex API when one pb links to another.
+
     copy_from_source() {
 
         // It's faster now that it uses the dest aligned copy from ta_math.
@@ -1717,12 +1687,113 @@ class Pixel_Buffer_Core {
             console.trace();
             throw 'NYI';
         } else if (bipp === 8 || bipp === 24 || bipp === 32) {
+
+            // This kind of code could go in a core optimised implementation rather than reference implementation.
+
+
             dest_aligned_copy_rect_1to4bypp(ta_source, ta, pb_source.bytes_per_row, this.bytes_per_pixel, ta_math.overlapping_bounds(my_bounds, source_size_bounds));
         } else {
             console.trace();
             throw 'stop';
         }
     }
+
+
+
+
+    // Not so sure why this function attempt is so long.
+    //  Should possibly remove it and later try different implementations.
+
+    //  For the moment, not so sure about everything being inlined and using typed arrays.
+    //   Some local variables (and maybe even function calls?) could speed things up.
+
+    // Want reference implementations as well as optimised implementations.
+    //  Maybe make versions of classes that are purely reference implementations.
+
+
+    // Pixel_Buffer_Reference_Implementation
+    //  Still could use a typed array.
+    //  Still would have bit logic with set_pixel.
+    //  Could use a few fancy tricks for some decent speed optimisation
+    //  Aiming for concise and clear algorithms. Clear about what they do and how they do it.
+
+    // Pixel_Buffer_Core_Reference_Implementation
+    // Pixel_Buffer_Core_Optimised_Implementation
+    //  with some overriden methods that are faster.
+
+    // Some kind of bit-aligned readings of x spans could work very well.
+    // Maybe try with some 64x64 images and work upwards from there.
+    //  Get that working, and work out what further calibration is needed.
+
+    // Anyway, the xspans format does seem essential.
+    
+    // xspans row perhaps.
+    //  and itself making reference to a larger ta within an xspans_image perhaps?
+
+
+    // yrows_xspans_buffer?
+
+    // and consider that they are wide pixels as well.
+    //  perhaps wide pixels could be a useful concept for pixel buffers.
+    //   but really this is about encoding the total image data in a smaller amount, so that less data needs to be shifted around
+    //   with some operations such as flood fill. The data is already compressed in a way that fits the logic of the operation.
+
+    // An arrays implementation could be most convenient to make and for testing / comparison.
+    // Each y value being an array.
+    //  Then points inside.
+
+    // Could even see about making a typed array and proxy implementation that actually matches that API - and comparing the speed.
+    // May need to try a few implementations to get to the fastest.
+
+    // May need to use slightly different APIs in some cases as different calling and data transfer methods could be more optimal
+    //  Such as putting params into a typed array that's already part of the object.
+    //  And maybe having an API that helps do that too....
+
+    
+
+
+
+
+
+
+
+
+    
+
+
+    // yrows_xspans_image makes sense.
+    //  and just having set and get pixel will be enough for many things.
+
+    // May be worth making specific versions for 1bipp.
+    //  Because it can work in 'toggle' mode.
+
+    // Or just make the general one, have it hold maybe more data than strictly needed, but get algorithms working quick in
+    //  a more standard way at first.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
 
     copy_rect_by_bounds_to_24bipp(ta_bounds, pb_target) {
 
@@ -2445,6 +2516,7 @@ class Pixel_Buffer_Core {
             throw 'NYI';
         }
     }
+
     each_px_convolution(ta_size, pb_conv_window, ta_pos, callback) {
 
         console.trace();
@@ -2521,6 +2593,11 @@ class Pixel_Buffer_Core {
     // Threshold above, below, equal?
     //  Could be in the options?
     //   Threshold passes whats above.
+
+
+    // to_1bipp
+    // threshold to 1bipp???
+
     get_1bipp_threshold_8bipp(ui8_threshold) {
         const bipp = this.bits_per_pixel;
 
@@ -2604,6 +2681,8 @@ class Pixel_Buffer_Core {
 
     }
 
+
+    // greyscaling...
     to_8bipp() {
         const bipp = this.bits_per_pixel;
 
@@ -2733,6 +2812,9 @@ class Pixel_Buffer_Core {
             // will remove the channel.
             // iterate through each pixel?
 
+            console.trace();
+            throw 'NYI';
+
             while (i_px < num_px) {
                 const col_32 = this.get_pixel_by_idx_32bipp(i_px)
                 i_px += bypp;
@@ -2812,6 +2894,11 @@ class Pixel_Buffer_Core {
         return this;
     }
 
+
+    // to_cropped?
+    //  just self cropping would make more sense.
+    //   again, could have reference implementation as well as optimised ones.
+
     crop(size) {
 
         // new_cropped for getting a new cropped version?
@@ -2864,10 +2951,14 @@ class Pixel_Buffer_Core {
 
     color_rect(bounds, color) {
         // ltrb
+        console.trace();
+        throw 'NYI';
     }
     // couldn't we do a simpler for loop throughout the length.
 
     // Could use a for loop looping through pixel indexes elsewhere.
+
+    // A generator function may be better syntax.
 
     each_pixel_index(cb) {
         const buf = this.buffer, l = buf.length, bpp = this.bytes_per_pixel;
@@ -3082,6 +3173,7 @@ class Pixel_Buffer_Core {
     // Only worth doing that when there are 64 or more pixels left in the line.
     //  Could do bitwise ops to read from a 64 pixel block?
     //  
+
 
 
 
@@ -3604,6 +3696,9 @@ class Pixel_Buffer_Core {
         return this.ta.slice(byte, byte + 4);
     }
 
+
+    // Could see about overwriting the functions when bipp changes.
+
     'get_pixel_by_idx'(idx) {
         const bipp = this.bits_per_pixel;
 
@@ -3650,46 +3745,6 @@ class Pixel_Buffer_Core {
         // no 7 - ???
 
         return ((this.ta[byte] & 128 >> (idx & 0b111)) !== 0) ? 1 : 0;
-
-        //return ((this.ta[byte] & 128 >> 7 - (idx & 0b111)) !== 0) ? 1 : 0;
-
-        //return ((this.ta[byte] & 1 << 7 - (idx & 0b111)) !== 0) ? 1 : 0;
-
-        // Bit shifting to the right then comparing with 1 may be best.
-
-
-
-        //console.log('byte, bit', [byte, bit]);
-
-        // use roots of some sort?
-
-        // bit shift left instead???
-
-        // decent optimisation.
-        //const pow = 1 << bit;
-
-        // Seems OK re operator precedence.
-        
-
-
-
-        //const pow = Math.pow(2, bit);
-        // use AND with POW
-        //console.log('get_pixel_1bipp 1 ? 0 : (this.ta[byte] & pow) === pow', 1 ? 0 : (this.ta[byte] & pow) === pow);
-
-        //console.log('');
-        //console.log('this.ta[byte]', this.ta[byte]);
-        //console.log('pow', pow);
-        //console.log('this.ta[byte] & pow) !== 0', (this.ta[byte] & pow) !== 0);
-        //console.log('');
-        
-
-        
-
-        //return ((this.ta[idx >> 3] & 1 << (7 - (idx % 8))) !== 0) ? 1 : 0;
-
-        //return ((this.ta[byte] & pow) === pow) ? 1 : 0;
-        //return 1 ? 0 : (this.ta[byte] & pow) === pow;
     }
     'get_pixel_8bipp'(pos) {
         const idx = pos[1] * this.size[0] + pos[0];
@@ -3704,6 +3759,9 @@ class Pixel_Buffer_Core {
     }
     'get_pixel_32bipp'(pos) {
         
+        // this.bytes_per_row * y perhaps?
+        //  then add the x * 4?
+
         const idx = pos[1] * this.size[0] + pos[0];
         const byte = idx * 4;
 
@@ -3732,6 +3790,15 @@ class Pixel_Buffer_Core {
     }
 
     // or a getter function for split_rgb_channels?
+
+
+    // get_channel
+    //  to_single_channel_pb perhaps.
+
+    // Choose which channel...
+    //  then could rapidly iterate through the pb extracting that channel.
+
+
 
     get split_rgb_channels() {
 
@@ -3807,16 +3874,43 @@ return a.every((val, i) => val === b[i]);
 
     */
     equals(other_pixel_buffer) {
-        let buf1 = this.buffer;
-        let buf2 = other_pixel_buffer.buffer;
-        if (buf1.length === buf2.length) {
-            return buf1.every((val, i) => val === buf2[i]);
-        } else {
-            return false;
+        let buf1 = this.ta;
+        let buf2 = other_pixel_buffer.ta;
+        // Compare the colorspace too...?
+
+        const other_colorspace = other_pixel_buffer.ta_colorspace;
+        const my_colorspace = other_pixel_buffer.ta_colorspace;
+
+        if (my_colorspace.length === other_colorspace.length) {
+            if(my_colorspace.every((val, i) => val === other_colorspace[i])) {
+
+                if (buf1.length === buf2.length) {
+                    return buf1.every((val, i) => val === buf2[i]);
+                } else {
+                    
+                }
+
+            } else {
+
+            }
         }
+        return false;
+
+        
     }
 
+    // Maybe look into pixel_pos_list in more detail.
+    // But an xspans or xonspans list may work (much) better.
+    //  Perhaps we only need them (in some cases) for sequential access.
+    //  Reading and writing them sequentially could help a lot for copying.
 
+    //  Or could get them in that format, then put them into a more flexible format for modification.
+
+
+
+
+    // May be better to do a rapid iteration using those pixel positions?
+    //  Though no doubt this has a specific purpose
 
     copy_pixel_pos_list_region(pixel_pos_list, bg_color) {
         // find the bounds of that pixel pos list.
@@ -3882,8 +3976,6 @@ return a.every((val, i) => val === b[i]);
 
     // Do an 'or' placement???
     //  Seems the way when placing some 1bipp pbs in some cases.
-    
-
 
     // 
 
@@ -4165,8 +4257,6 @@ return a.every((val, i) => val === b[i]);
 
             // Placing a 1bipp image at a chosen color within a 24 or 32 bipp image?
 
-
-
             const dest_w = this.size[0];
             const dest_h = this.size[1];
             const dest_buffer_line_length = dest_w * 4;
@@ -4197,7 +4287,6 @@ return a.every((val, i) => val === b[i]);
             //   However, bitmaps may be out of line at 1 bpp.
 
             // Do it the simple, reliable way to start with.
-
             // 
 
             if (pixel_buffer.bipp === 1) {
@@ -4205,6 +4294,9 @@ return a.every((val, i) => val === b[i]);
                 //console.log('options.or', options.or);
 
                 if (options.or === true) {
+
+                    // Could use an x on span (iteration) implementation that will be faster.
+
                     const pb_source = pixel_buffer;
 
                     //console.log('pb_source.meta', pb_source.meta);
@@ -4480,10 +4572,8 @@ return a.every((val, i) => val === b[i]);
 
 
     'draw_horizontal_line_24bipp'(xspan, y, color) {
-
         // Aware the xspan is inclusive! ????? (or not???)
         //  As in, 0,0 is 1 pixel wide. 0,2 would actually span 3 pixels (0, 1, 2). 
-
         //console.log('[xspan, y, color]', [xspan, y, color]);
         const [x1, x2] = xspan;
         
@@ -4514,14 +4604,42 @@ return a.every((val, i) => val === b[i]);
             ta[w++] = b;
         }
         //console.log('2) w', w);
+        
+    }
+    'draw_horizontal_line_32bipp'(xspan, y, color) {
+        // Aware the xspan is inclusive! ????? (or not???)
+        //  As in, 0,0 is 1 pixel wide. 0,2 would actually span 3 pixels (0, 1, 2). 
+        //console.log('[xspan, y, color]', [xspan, y, color]);
+        const [x1, x2] = xspan;
+        
+        // Use a pixel writing position local variable.
+        // Write [r, g, b] sequentially, incrementing that writing position variable.
 
+        // idx_start_byte
+        const {ta} = this;
 
+        const [width, height] = this.size;
 
+        // idx_byte_of_last_color (start byte of last color)
 
+        const start_pixel_idx = width * y + x1;
+        //const end_pixel_idx = width * y + x2;
 
+        // fo a loop through those pixel indexes - but will need to make use of bit indexes too.
 
+        const [r, g, b, a] = color;
 
+        let w = start_pixel_idx * 4;
 
+        //console.log('1) w', w);
+
+        for (let x = x1; x <= x2; x++) {
+            ta[w++] = r;
+            ta[w++] = g;
+            ta[w++] = b;
+            ta[w++] = a;
+        }
+        //console.log('2) w', w);
         
     }
 
@@ -4532,6 +4650,8 @@ return a.every((val, i) => val === b[i]);
             throw 'NYI';
         } else if (bipp === 24) {
             return this.draw_horizontal_line_24bipp(xspan, y, color);
+        } else if (bipp === 32) {
+            return this.draw_horizontal_line_32bipp(xspan, y, color);
         } else {
             console.trace();
             throw 'NYI';
@@ -4555,7 +4675,6 @@ return a.every((val, i) => val === b[i]);
             const {ta} = this;
 
             let last_op_num_bits_advanced = 0;
-
             const length = x2 - x1 + 1;
             //console.log('');
             //console.log('length (num pixels)', length);
@@ -4571,6 +4690,9 @@ return a.every((val, i) => val === b[i]);
 
             //console.log('[x1, x2]', [x1, x2]);
 
+            // Maybe more inlined versions of these...?
+            //  
+
 
             const ox1 = this.get_pixel_byte_bit_BE_1bipp([x1, y]);
             const ox2 = this.get_pixel_byte_bit_BE_1bipp([x2, y]);
@@ -4581,7 +4703,7 @@ return a.every((val, i) => val === b[i]);
             // So could go through the bytes working out how many (and which) bits of that byte need to be set to on.
             //  Calculate the byte mask.
 
-            let idx_bits_advanced = 0;
+            //let idx_bits_advanced = 0;
             let num_bits_remaining = length;
 
             let byte_mask = 0|0;
@@ -4614,21 +4736,21 @@ return a.every((val, i) => val === b[i]);
                     //console.log('using_byte_mask length:', length);
 
 
-                    if (length === 1) {
+                    if (num_bits_remaining === 1) {
                         byte_mask = 128;
-                    } else if (length === 2) {
+                    } else if (num_bits_remaining === 2) {
                         byte_mask = 192;
-                    } else if (length === 3) {
+                    } else if (num_bits_remaining === 3) {
                         byte_mask = 224;
-                    } else if (length === 4) {
+                    } else if (num_bits_remaining === 4) {
                         byte_mask = 240;
-                    } else if (length === 5) {
+                    } else if (num_bits_remaining === 5) {
                         byte_mask = 248;
-                    } else if (length === 6) {
+                    } else if (num_bits_remaining === 6) {
                         byte_mask = 252;
-                    } else if (length === 7) {
+                    } else if (num_bits_remaining === 7) {
                         byte_mask = 254;
-                    } else if (length === 8) {
+                    } else if (num_bits_remaining === 8) {
                         byte_mask = 255;
                     } else {
                         console.trace();
@@ -4698,7 +4820,11 @@ return a.every((val, i) => val === b[i]);
                     throw 'stop - unexpected bit value (expected 0 to 7)';
                 }
 
-                ta[i_byte] = ta[i_byte] | byte_mask;
+
+
+                ta[i_byte] |= byte_mask;
+
+                //ta[i_byte] = ta[i_byte] | byte_mask;
 
 
 
@@ -4710,6 +4836,10 @@ return a.every((val, i) => val === b[i]);
                 i_byte++;
 
                 //console.log('1) num_bits_remaining', num_bits_remaining);
+
+
+                // Could even try for 64 bits remaining at once - using bigint setting.
+
 
                 // Too much going on???
                 while (num_bits_remaining >= 8) {
@@ -4749,40 +4879,6 @@ return a.every((val, i) => val === b[i]);
 
 
             }
-
-
-            
-
-
-
-
-            // Then how many bits are left?
-            // Are there 8 or more bits left?
-
-
-
-
-
-            // Then do & on that pixel with the byte mask.
-
-            
-
-            // then have a counter that goes through the bytes?
-            // or check / keep checking if we have a full byte ahead to advance....
-
-
-
-
-
-
-
-
-
-            //console.trace();
-            //throw 'NYI';
-
-
-
         }
 
     }
@@ -4839,6 +4935,19 @@ return a.every((val, i) => val === b[i]);
     //      Could check them both as accelerated paths when we have a bit on in the 3rd position (indexed from left from 1), 2nd position indexed from 0 as we will.
     //  Could have quite a lot of constants / magic numbers within the if statements.
 
+    // Could / should x spans be specified in a more normal way?
+    //  eg 0,1 being 1 pixel wide?
+    //  It may make the find overlaps logic a little trickier?
+    //   Or need to have the logic for it interpreting it as really going to x2-1.
+
+    // A class that particularly deals with x spans (even x spans on) could be really useful.
+
+
+    * 'iterate_arr_row_x_on_spans_1bipp'(y) {
+
+    }
+
+
     'calculate_arr_row_x_on_spans_1bipp'(y) {
 
         // Will try other implementations.
@@ -4889,7 +4998,16 @@ return a.every((val, i) => val === b[i]);
             return res;
         }
 
-        const inlined_consecutive_value_checking_no_x_loop_implementation = () => {
+
+        // Try a 64 bit at once read too.
+        //  Not sure about trying it every byte?
+        //   May be worth it though.
+
+        const _64x0 = BigInt(0);
+        const _64x1 = ~_64x0;
+
+
+        const broken_64bit_optimisation_attempt_inlined_consecutive_value_checking_no_x_loop_implementation = () => {
 
             const COLOR_LOOKING_FOR = 1;
             const COLOR_NOT_LOOKING_FOR = 0;
@@ -4898,6 +5016,9 @@ return a.every((val, i) => val === b[i]);
             const res = [];
             const width = this.size[0];
             const {ta} = this;
+
+            const ab = ta.buffer;
+            const dv = new DataView(ab);
 
             // Starting at the color not looking for...?
             //  Would be a change. Maybe it's better logic.
@@ -4937,8 +5058,11 @@ return a.every((val, i) => val === b[i]);
 
 
             let has_just_done_multi_read = false;
-
             let byte_val = 0 | 0;
+
+            let _8_byte_val = BigInt(0);
+
+
 
             while (num_bits_remaining > 0) {
 
@@ -4960,7 +5084,263 @@ return a.every((val, i) => val === b[i]);
                 has_just_done_multi_read = false;
 
 
+                // Not sure how much faster 64 bits at once (in a bigint) would be.
+
+                // 
+
+
+
                 if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+
+
+                    if (num_bits_remaining >= 64) {
+
+                        _8_byte_val = dv.getBigInt64(idx_bit_overall >> 3);
+
+                        if (_8_byte_val === _64x0) {
+
+                            last_color = 0;
+                            has_just_done_multi_read = true;
+                            idx_bit_overall += 64;
+                            x += 64;
+                            num_bits_remaining -= 64;
+
+                        } else if (_8_byte_val === _64x1) {
+
+                            if (last_color === 1) {
+                            
+                                //last_color = 1;
+                                if (res.length === 0) {
+                                    arr_last = [x, x + 63];
+                                    res.push(arr_last);
+                                } else {
+                                    arr_last[1] += 64;
+                                }
+    
+    
+    
+                            } else {
+                                // A shift, so make a new array item.
+    
+                                arr_last = [x, x + 63];
+                                res.push(arr_last);
+                                
+                                
+                            }
+                            x += 8;
+                            last_color = 1;
+                            num_bits_remaining -= 64;
+                            idx_bit_overall += 64;
+                            has_just_done_multi_read = true;
+
+                        }
+
+
+
+
+
+                    } else {
+
+                    }
+
+
+                    if (!has_just_done_multi_read) {
+
+
+                        // Attempt a multi-read here.
+                        //  And probably use 'else' for other cases....
+                        //   or set it so it's doing a multi-read and not the next part?
+                        //    because it may need to stop / not do the multi-read and get on with the next part...
+
+                        byte_val = ta[idx_bit_overall >> 3];
+                        if (byte_val === 255) {
+
+                            // read 8x1 values...
+
+                            // COLOR_NOT_LOOKING_FOR
+
+                            // But we are looking for this...
+
+                            if (last_color === 1) {
+                                
+                                //last_color = 1;
+                                if (res.length === 0) {
+                                    arr_last = [x, x + 7];
+                                    res.push(arr_last);
+                                } else {
+                                    arr_last[1] += 8;
+                                }
+
+
+
+                            } else {
+                                // A shift, so make a new array item.
+
+                                arr_last = [x, x + 7];
+                                res.push(arr_last);
+                                
+                                
+                            }
+                            x += 8;
+                            last_color = 1;
+                            num_bits_remaining -= 8;
+                            idx_bit_overall += 8;
+                            has_just_done_multi_read = true;
+                            
+
+                        } else if (byte_val === 0) {
+
+                            last_color = 0;
+                            has_just_done_multi_read = true;
+                            idx_bit_overall += 8;
+                            x += 8;
+                            num_bits_remaining -= 8;
+
+                            
+
+                        } else {
+                            // No multi read this time.
+                        }
+
+
+                    }
+
+
+
+                    
+
+                    // set has_just_done_multi_read to true if necessary.
+
+                }
+
+                if (!has_just_done_multi_read) {
+                    //idx_byte = idx_bit_overall >> 3;
+                    current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_within_byte)) !== 0) ? 1 : 0;
+                    //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                    if (current_color === 1) {
+                        if (current_color === last_color) {
+                            if (res.length === 0) {
+                                arr_last = [x, x];
+                                res.push(arr_last);
+                            } else {
+                                arr_last[1]++;
+                            }
+                        } else {
+                            arr_last = [x, x];
+                            res.push(arr_last);
+                        }
+                    }
+                    last_color = current_color;
+                    idx_bit_overall++;
+                    x++;
+                    num_bits_remaining--;
+                }
+            }
+            return res;
+        }
+
+
+        // An iterator could be really useful.
+        //  In some cases, only want to iterate through these rather than needing the whole array.
+
+        // Need a version more suitable to be an iterator. A version that delays the pushing of the xspan to the array.
+
+
+        const inlined_consecutive_value_checking_no_x_loop_implementation = () => {
+
+            const COLOR_LOOKING_FOR = 1;
+            const COLOR_NOT_LOOKING_FOR = 0;
+
+
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+
+            const ab = ta.buffer;
+            const dv = new DataView(ab);
+
+            // Starting at the color not looking for...?
+            //  Would be a change. Maybe it's better logic.
+            //  Maybe try a modified 'off' version using consts for looking for and not looking for.
+
+            let last_color = 1; // Try keeping it for the moment.
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+            let num_bits_remaining = width;
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+            let has_just_done_multi_read = false;
+            let byte_val = 0 | 0;
+
+
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+                idx_bit_within_byte = idx_bit_overall & 0b111;
+
+
+                // then check if we can do just a few of the consecutive reading ops....
+
+                has_just_done_multi_read = false;
+
+
+                // Not sure how much faster 64 bits at once (in a bigint) would be.
+
+                // 
+
+
+
+                if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+
+                    /*
+
+                    if (num_bits_remaining >= 64) {
+
+
+
+                    } else {
+
+                    }
+                    */
+
+
+
                     // Attempt a multi-read here.
                     //  And probably use 'else' for other cases....
                     //   or set it so it's doing a multi-read and not the next part?
@@ -5047,14 +5427,440 @@ return a.every((val, i) => val === b[i]);
             return res;
         }
 
+        const inlined_consecutive_value_checking_no_x_loop_delayed_push_implementation = () => {
+
+            const COLOR_LOOKING_FOR = 1;
+            const COLOR_NOT_LOOKING_FOR = 0;
+
+
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+
+            const ab = ta.buffer;
+            const dv = new DataView(ab);
+
+            // Starting at the color not looking for...?
+            //  Would be a change. Maybe it's better logic.
+            //  Maybe try a modified 'off' version using consts for looking for and not looking for.
+
+            let last_color = 1; // Try keeping it for the moment.
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+            let num_bits_remaining = width;
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+            let has_just_done_multi_read = false;
+            let byte_val = 0 | 0;
+
+
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+                idx_bit_within_byte = idx_bit_overall & 0b111;
+
+
+                // then check if we can do just a few of the consecutive reading ops....
+
+                has_just_done_multi_read = false;
+
+
+                // Not sure how much faster 64 bits at once (in a bigint) would be.
+
+                // 
+
+
+
+                if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+
+                    /*
+
+                    if (num_bits_remaining >= 64) {
+
+
+
+                    } else {
+
+                    }
+                    */
+
+
+
+                    // Attempt a multi-read here.
+                    //  And probably use 'else' for other cases....
+                    //   or set it so it's doing a multi-read and not the next part?
+                    //    because it may need to stop / not do the multi-read and get on with the next part...
+
+                    byte_val = ta[idx_bit_overall >> 3];
+                    if (byte_val === 255) {
+
+                        // read 8x1 values...
+
+                        // COLOR_NOT_LOOKING_FOR
+
+                        // But we are looking for this...
+
+                        if (last_color === 1) {
+                            
+                            //last_color = 1;
+                            if (res.length === 0) {
+
+                                if (arr_last) {
+                                    res.push(arr_last);
+                                }
+
+                                arr_last = [x, x + 7];
+                                //res.push(arr_last);
+                            } else {
+                                arr_last[1] += 8;
+                            }
+
+
+
+                        } else {
+                            // A shift, so make a new array item.
+
+                            if (arr_last) {
+                                res.push(arr_last);
+                            }
+
+                            arr_last = [x, x + 7];
+                            //res.push(arr_last);
+                            
+                            
+                        }
+                        x += 8;
+                        last_color = 1;
+                        num_bits_remaining -= 8;
+                        idx_bit_overall += 8;
+                        has_just_done_multi_read = true;
+                        
+
+                    } else if (byte_val === 0) {
+
+                        last_color = 0;
+                        has_just_done_multi_read = true;
+                        idx_bit_overall += 8;
+                        x += 8;
+                        num_bits_remaining -= 8;
+
+                        
+
+                    } else {
+                        // No multi read this time.
+                    }
+
+                    // set has_just_done_multi_read to true if necessary.
+
+                }
+
+                if (!has_just_done_multi_read) {
+                    //idx_byte = idx_bit_overall >> 3;
+                    current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_within_byte)) !== 0) ? 1 : 0;
+                    //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                    if (current_color === 1) {
+                        if (current_color === last_color) {
+                            if (res.length === 0) {
+
+                                if (arr_last) {
+                                    res.push(arr_last);
+                                }
+
+                                arr_last = [x, x];
+                                //res.push(arr_last);
+                            } else {
+                                arr_last[1]++;
+                            }
+                        } else {
+
+                            if (arr_last) {
+                                res.push(arr_last);
+                            }
+
+                            arr_last = [x, x];
+                            //res.push(arr_last);
+                        }
+                    }
+                    last_color = current_color;
+                    idx_bit_overall++;
+                    x++;
+                    num_bits_remaining--;
+                }
+            }
+
+            if (arr_last) {
+                res.push(arr_last);
+            }
+
+            return res;
+        }
+
         // Seems much faster now.
-        return inlined_consecutive_value_checking_no_x_loop_implementation();
+        //return inlined_consecutive_value_checking_no_x_loop_implementation();
+
+        // The delayed push implementation is more viable to use in a generator function.
+
+        return inlined_consecutive_value_checking_no_x_loop_delayed_push_implementation();
         //return initial_implementation();
-
-
         
     }
 
+
+
+    // Iterate through all xspans (off and on)
+
+    // [x1, x2, y, color] or cb(x1, x2, y, color)
+    //  or when on or off is specified just cb(x1, x2, y);
+    // When iterating through them, may want to put them into a larger ta that contains many of them.
+
+
+
+
+    // iterate_arr_row_x_off_spans_1bipp
+
+
+    // iterate_row_xspans_1bipp
+
+
+
+
+    // Iterating through such arr_row_x_off_spans may be useful.
+    //  Could always return the y value because the y value will be needed when dealing with more than 1 row, which we often will be.
+    //  Though, it could perhaps read more condensed row-specific xspans data into a data structure that also stores all the y values.
+    //   Leaving out y values could be a decent part of compression when the y values are known / indicated elsewhere.
+
+
+    // and x2yc format too?
+
+    // arr_row_x_off_spans_x2y
+
+    // iterate_row_x_off_spans_x2
+    //  just the x values.
+
+    // And a yet more optimised way to count them???
+    //  There may well be some binary operations that will do this for many pixels at once (ie 64) and counting the number of shifts within it.
+    //  Byte or even 8 byte alignment would be essential for some SIMD-like operations.
+    //  Just counting the number of such spans within a line (very quickly) would help to work out how large some typed arrays would need to be.
+    //   May work better investing in some more dynamic data structures.
+
+
+    // Do need to pay some more attention to the optimised filled drawing algorithm.
+    //  An inlined draw polygon algorithm?
+    //   Be careful about inlining too much before the byte/bit alignment system is set up.
+    //   Could introduce padding bits / bytes at the (beginning of and) end of rows.
+    //    Would enable much faster copying over of data???
+    //     Using bitwise OR.
+
+    // May be worth advancing existing copy (read and draw) algorithms further.
+    //  Could see about re-aligning lines (as they are read).
+    //  May have some fast lower level bitwise ops algorithm that does it.
+
+    // Definitely want to get into how things can be copied / drawn as fast as possible.
+
+    // Some further low level optimised classes could help a lot.
+    // Representation of a 1bipp image as xon or xoff spans.
+    //  Operations on such an image (like pb) that draw pixels / lines.
+    //   However, would deal in terms of x spans.
+    //    May create new ones, extend / shrink old ones / join them together / separate them apart.
+    //    Could be very efficient indeed in terms of requiring few operations to draw a filled polygon.
+    //     Then see about more efficient copying it to a pixel_buffer.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //  Possibly use different underlying algorithms.
+    //  Possibly optimise / inline them.
+
+
+    // Want some gradual improvements to start with...
+    // Though the xonspan image format could be very effective.
+    //  Each line could itself be a linked list of spans.
+    //  May need a rather elaborate data structure that internally uses a small number of tas.
+    //   Can see how quickly it can do some specific operations.
+
+
+    // Maybe a more general low level xspans implementation.
+    //  Consider one which can only be sequentially built.
+    //  Then consider a more dynamic one that allows for spans to be inserted and removed.
+    //  Each row being its own linked list of xspans.
+    //   Would allow for faster modification of data held in any row.
+    //    Seems like this or better would be essential for drawing polygons.
+    //     Linked list should be efficient enough for most polygons. B+ tree would be more efficient for more complex polygons.
+
+    // Being able to read any row as xspans quickly.
+    // Accessing all of the rows together in this format
+    //  Held within one large typed array for efficiency.
+    //  A B+ tree / ordered list holding all of the spans seems like the best option.
+    //   B+ tree would help providing them with random access.
+    //  xstart, length seems like it may be the easiest format.
+    //   Just need to consider possible format differences when considering overlaps.
+    // 
+
+    // Having each row start on a byte could help a lot.
+    //  Some other tricks to change alignments could help.
+    //  Then could do some more rapid 64 bit OR operations.
+    //  Could see about rapidly realigning a line...
+    //  Or things like calculations of bit indexes from xspans.
+    //   Could get more precise or meta about which items to set and where.
+
+    // Shifting lines to the left or right by pixels...
+    //  May take 2 (mask + shift) operations per 64 bit value.
+
+    // Could see about some simpler algorithms.
+    //  Though the system of offsets and possibly row realignment could maybe be necessary for that.
+
+    // A B+ tree kind of is an arrangement of many linked lists.
+
+    // X_Span_Image
+
+    // x-span-image-core?
+    // x-span-image-reference-implementation ???
+    // x-span-image-array-reference-implementation
+    //  could set the API and have a not as algorithmically fast internal implementation.
+    //   though really want to use typed arrays from the start.
+    //    may have some slightly tricky sorting algorithms?
+    //    or a somewhat more complex linked-list or B+ tree structure to keep them sorted from the start.
+    //    A linked list implementation will be fast enough for most 
+    //  Could make an interface with a lot of proxy access to typed arrays.
+
+
+
+
+
+
+
+
+
+
+    // x-span-image-base could be a decent base class that has the methods (maybe don't do anything, could raise an error)
+    //   throw 'Subclass needs to implement the method: [method_name]'
+
+    // methods such as draw_polygon, draw_line
+    //  could use generic code that makes use of only set_pixel.
+    //   it would greatly rely on the speed of set_pixel.
+    //    Should be reasonably fast - but bear in mind flood fills will specifically interact with spans and contiguous groups of them.
+
+    // The x spans will be the raw data type.
+    //  As if each of them is a pixel.
+    //   Effectively it's wide pixels.
+    //   Maybe should implement this in Pixel_Buffer after all?
+    //    Could add another channel - number of pixels wide.
+
+    // Worth considering adding more flexibility to Pixel_Buffer.
+    //  Making a website that explains and maybe demos it could help a lot in the process too.
+
+    // jsgui3-pixel-buffer-doc?
+    //  Also focus on generating documentation files from source, editing the documentation with ammendments?
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // x-span-image
+    //  would have a compatible API with pixel_buffer (in many ways) but would hold the image in terms of multiple x spans.
+    //  May want to use a customised typed array.
+    //   Possibly a few convenience classes for very fast access to typed arrays.
+
+    // Want to benchmark some really simple operations.
+    //  Will try some things with iterators as well as callback functions.
+    //  See which are quicker. Could benchmark them.
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+    // Have optimised this a lot, but making a version that iterates through the spans in a row could work better.
     'calculate_arr_row_x_off_spans_1bipp'(y) {
 
         // Def worth looking into further low level optimisations.
@@ -5065,11 +5871,6 @@ return a.every((val, i) => val === b[i]);
         //  A binary search to find the number of consecutive 1s or 0s...
         //  Could do a few at once from the beginning???
         //   Though being able to detect something like 64 or 32 consecutive same bits will be helpful.
-
-
-
-
-
 
 
 
@@ -5193,12 +5994,6 @@ return a.every((val, i) => val === b[i]);
                 //   Could read the whole 64 bit bigint.
                 //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
 
-
-
-
-
-
-
                 //idx_byte = idx_bit_overall >> 3;
                 current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 : 0;
                 //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
@@ -5250,6 +6045,8 @@ return a.every((val, i) => val === b[i]);
             // idx_bit_within_byte_start
 
             let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+
+
             let arr_last;
 
             // idx_bit_within_byte could prove a useful variable.
@@ -5276,6 +6073,12 @@ return a.every((val, i) => val === b[i]);
             let has_just_done_multi_read = false;
 
             let byte_val = 0 | 0;
+
+            // change it to arr_current....
+            //  and only add it once shifting to a new color or ending the line.
+
+            let arr_current;
+
 
             while (num_bits_remaining > 0) {
 
@@ -5305,10 +6108,7 @@ return a.every((val, i) => val === b[i]);
 
                     byte_val = ta[idx_bit_overall >> 3];
                     if (byte_val === 255) {
-
                         // read 8x1 values...
-
-                        
                         last_color = 1;
                         has_just_done_multi_read = true;
                         idx_bit_overall += 8;
@@ -5316,19 +6116,18 @@ return a.every((val, i) => val === b[i]);
                         num_bits_remaining -= 8;
 
                     } else if (byte_val === 0) {
-
                         if (last_color === 0) {
-                            
                             //last_color = 1;
                             if (res.length === 0) {
+
+                                // And don't push it until complete...
+                                //  Will work better for porting
+
                                 arr_last = [x, x + 7];
                                 res.push(arr_last);
                             } else {
                                 arr_last[1] += 8;
                             }
-
-
-
                         } else {
                             // A shift, so make a new array item.
 
@@ -5376,21 +6175,268 @@ return a.every((val, i) => val === b[i]);
                 }
             }
 
+            return res;
+        }
+
+        // Want a version ready to be made into an iterator...
+        //  Don't want to push into the array as soon as the item is available.
+        //  Only push into the array when a new one is created?
+        //   And then the last one too (if there is one)
+
+        // Really fast algorithms that iterate through typed arrays for processing x spans would help a lot.
+        //  
 
 
-            
+        // The later push implementation would be a decent overall framework for a generator function.
+        
+        // byte aligned or 8 byte aligned rows would help a lot to make some operations as fast as possible.
 
 
+
+
+        const inlined_consecutive_value_checking_no_x_loop_later_push_implementation = () => {
+            const res = [];
+            const width = this.size[0];
+            const {ta} = this;
+            let last_color = 0;
+            let current_color;
+            const x_start = 0;
+
+
+            // idx_byte_start
+            // idx_bit_start
+            // idx_bit_within_byte_start
+
+            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+
+
+            let arr_last;
+
+            // idx_bit_within_byte could prove a useful variable.
+            //  when it is 0, we can check the full byte, and could detect 8 (or maybe more) consecutive values.
+
+
+            let num_bits_remaining = width;
+
+
+            // Loop and increment bits...
+
+            let x = 0; // an x local value is fine - will update it as necessary
+
+            // Could keep the ta byte value local....
+            //  Could maybe speed it up a little.
+            //  Could make some code clearer too.
+            //  Processing 8 bits at once may be relatively easy....
+            //  Maybe even 64.
+            //  May be worth just dealing with the 8 bit and 64 bit cases. Could be the essence of the fast algorithm.
+
+            // If there are more than 8 bits remaining...?
+
+
+            let has_just_done_multi_read = false;
+
+            let byte_val = 0 | 0;
+
+            // change it to arr_current....
+            //  and only add it once shifting to a new color or ending the line.
+
+            //let arr_current;
+
+
+            while (num_bits_remaining > 0) {
+
+                // Can attempt to read multiple bits at once....
+                //  Act differently if the bit position is divible by 8?
+                //   Could check for whole byte, and process appropriately.
+                //    Need to react to the color shifts over the byte boundary.
+                //  Act differently if the bit position is divisible by 64?
+                //   Could read the whole 64 bit bigint.
+                //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
+
+
+
+                idx_bit_within_byte = idx_bit_overall & 0b111;
+
+
+                // then check if we can do just a few of the consecutive reading ops....
+
+                has_just_done_multi_read = false;
+
+
+                if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
+                    // Attempt a multi-read here.
+                    //  And probably use 'else' for other cases....
+                    //   or set it so it's doing a multi-read and not the next part?
+                    //    because it may need to stop / not do the multi-read and get on with the next part...
+
+                    byte_val = ta[idx_bit_overall >> 3];
+                    if (byte_val === 255) {
+                        // read 8x1 values...
+                        last_color = 1;
+                        has_just_done_multi_read = true;
+                        idx_bit_overall += 8;
+                        x += 8;
+                        num_bits_remaining -= 8;
+
+                    } else if (byte_val === 0) {
+                        if (last_color === 0) {
+                            //last_color = 1;
+                            if (res.length === 0) {
+
+                                // And don't push it until complete...
+                                //  Will work better for porting
+
+                                if (arr_last) res.push(arr_last);
+
+                                arr_last = [x, x + 7];
+                                //res.push(arr_last);
+                            } else {
+                                arr_last[1] += 8;
+                            }
+                        } else {
+                            // A shift, so make a new array item.
+
+                            if (arr_last) res.push(arr_last);
+                            arr_last = [x, x + 7];
+                            //res.push(arr_last);
+                            
+                            
+                        }
+                        x += 8;
+                        last_color = 0;
+                        num_bits_remaining -= 8;
+                        idx_bit_overall += 8;
+                        has_just_done_multi_read = true;
+
+                    } else {
+                        // No multi read this time.
+                    }
+
+                    // set has_just_done_multi_read to true if necessary.
+
+                }
+
+                if (!has_just_done_multi_read) {
+                    //idx_byte = idx_bit_overall >> 3;
+                    current_color = ((ta[idx_bit_overall >> 3] & 128 >> (idx_bit_within_byte)) !== 0) ? 1 : 0;
+                    //current_color = ((ta[idx_byte] & 128 >> (idx_bit_overall & 0b111)) !== 0) ? 1 | 0 : 0 | 0;
+
+                    if (current_color === 0) {
+                        if (current_color === last_color) {
+                            if (res.length === 0) {
+                                if (arr_last) res.push(arr_last);
+                                arr_last = [x, x];
+                                //res.push(arr_last);
+                            } else {
+                                arr_last[1]++;
+                            }
+                        } else {
+                            if (arr_last) res.push(arr_last);
+                            arr_last = [x, x];
+                            //res.push(arr_last);
+                        }
+                    }
+                    last_color = current_color;
+                    idx_bit_overall++;
+                    x++;
+                    num_bits_remaining--;
+                }
+            }
+
+            if (arr_last) res.push(arr_last);
 
             return res;
         }
 
+
+        // Make a 'later push' version.
+        // Should be relatively simple.
+        
+
+
+        
+
         
 
 
 
         
 
+        // A reference implementation that builds arr_current rather than arr_last?
+        //  Would only push arr_current once it's complete (ie shifted over to color 1)
+
+        // And what about using a typed array?
+
+        // With a generator function, reusing a typed array could be quicker....
+
+        
+        const reference_implementation_later_push = () => {
+            const res = [];
+            const width = this.size[0];
+            // assume starting with 0; ???
+            let last_color = 0;
+            let current_color;
+            let ta_pos = new Uint16Array(2);
+            ta_pos[1] = y;
+
+            // need to work out the start and end position of the x spans off.
+
+            //console.log('width', width);
+
+            // Maybe this slows it down....
+            let arr_last; // Seems like it should probably help.
+            //  Maybe last_x1, last_x2 perhaps???
+
+            for (let x = 0; x < width; x++) {
+                ta_pos[0] = x;
+
+
+                current_color = this.get_pixel_1bipp(ta_pos);
+
+
+                if (current_color === 0) {
+                    if (current_color === last_color) {
+                        if (res.length === 0) {
+
+                            if (arr_last) {
+                                res.push(arr_last);
+                                //arr_last = undefined;
+                            }
+                            arr_last = [x, x];
+                            //res.push(arr_last);
+
+
+                            //res.push([x, x]);
+                        } else {
+                            //console.log('arr_last', arr_last);
+
+
+                            //res[res.length - 1][1]++;
+                            arr_last[1]++;
+                        }
+                    } else {
+
+                        if (arr_last) {
+                            res.push(arr_last);
+                            //arr_last = undefined;
+                        }
+                        
+
+                        arr_last = [x, x];
+                        //res.push(arr_last);
+                        //res.push([x, x]);
+                    }
+                }
+                last_color = current_color;
+            }
+
+            if (arr_last) {
+                res.push(arr_last);
+                //arr_last = undefined;
+            }
+
+            return res;
+        }
 
 
         const reference_implementation = () => {
@@ -5442,7 +6488,19 @@ return a.every((val, i) => val === b[i]);
         //return reference_implementation();
 
         // inlined_consecutive_value_checking_no_x_loop_implementation
-        return inlined_consecutive_value_checking_no_x_loop_implementation();
+
+        // The later push implementation is just a little bit slower.
+        //  Maybe making a generator function would be much quicker?
+        //  Should be a decent amount quicker when all we want is iteration.
+
+
+
+
+
+        return inlined_consecutive_value_checking_no_x_loop_later_push_implementation();
+
+        //return reference_implementation_later_push();
+        //return inlined_consecutive_value_checking_no_x_loop_implementation();
 
 
         // inlined_get_pixel_no_x_loop_implementation
@@ -5820,6 +6878,13 @@ return a.every((val, i) => val === b[i]);
         return res;
     }
 
+
+    // Could make a 'core-new-features' class perhaps?
+
+
+
+    // Probably should not be in the core.
+
     'calculate_arr_rows_ta_x_on_x2ygbspans_1bipp'() {
 
         // x2ygb items in a typed array....
@@ -5909,6 +6974,7 @@ return a.every((val, i) => val === b[i]);
     // For some operations we want only the 'on' or 'off' pixels.
 
 
+    // 
 
 
     get xspans() {

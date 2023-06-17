@@ -15,6 +15,31 @@
 const inspect = Symbol.for('nodejs.util.inspect.custom');
 
 
+// This looks like it should keep a list of positions OK.
+//  May be better though if it kept colors too.
+
+// Want quite a variety of lower level classes and optimisations to get some operations such as drawing a filled polygon
+//  working extremely quickly.
+//   Things like recognising which lines of pixels
+//   Or it could itself put together a series of drawing instructions.
+//    Drawing_Instructions with a typed array backing could work reqlly well.
+//    Maybe assembling them (or even iterating 1 at a time??? - probably not) and carrying out the drawing instructions in a way
+//     where many drawing instructions can be carried out - maybe it would indeed call the normal JS functions to do it,
+//      but probably versions with the specific optimisations.
+//       maybe could work really quickly, and it also help to determine which parts take the longest.
+//       plus low level drawing instructions could be a useful format to represent drawings.
+//        mid / high level could be useful for user undo systems.
+
+
+
+
+
+
+
+
+
+
+
 const Ui16toUi32 = (ui16) => {
     let res = new Uint32Array(ui16.length / 2);
     let dv = new DataView(ui16.buffer);
