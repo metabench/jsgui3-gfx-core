@@ -431,6 +431,7 @@ if (require.main === module) {
                     imageData[index + 2] = grayscale;
                   }
                 }
+              
                 return imageData;
               };
 
@@ -455,10 +456,6 @@ if (require.main === module) {
 
                 //const scaledWidth = zwwhw / width;
                 //const scaledHeight = zwhhh / height;
-
-
-
-
 
                 //const w_zcy = ;
 
@@ -531,256 +528,52 @@ if (require.main === module) {
                     //  Some shapes there could be useful to test drawing of.
                     //   Tree shapes are very available from fractals.
 
-
-
-
-
                     //const size = [6000, 6000];
                     const size = [2000, 2000];
+                    const mid_large_size = [4000, 4000];
                     const large_size = [8000, 8000];
 
-                    let pb = new Pixel_Buffer({
+                    let pb, ta_fractal, start, end, timeInNanos, zoomCenterX, zoomCenterY, zoomWindowWidth, canvasWidth, canvasHeight, zoomLevel;
+                    let example_size;
+                    let count_color_white, count_color_black;
+
+                    example_size = mid_large_size;
+
+                    pb = new Pixel_Buffer({
                         bits_per_pixel: 24,
-                        size: size
+                        size: example_size
                     });
-
-                    let start = process.hrtime();
-                    let end, timeInNanos;
-
-                    // Is reasonably fast....
-
-                    let ta_fractal = draw_fractal(size[0], size[1]);
-                    pb.ta.set(ta_fractal);
-                    end = process.hrtime(start);
-
-                    timeInNanos = end[0] * 1e9 + end[1];
-
-                    //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
-                    console.log('fractal ms:', timeInNanos / 1000000);
-
-                    // set_pixel(3, 3, 1);  // This could actually be faster though?
-                    // set_pixel([3, 3], 1);
-                    // set_pixel(ta_pos, 1);
-
-                    
-
-                    // output as PNG?
-                    //  as bmp?
-                    //console.log('pb.ta', pb.ta);
-
-                    //console.log('pb.num_px', pb.num_px);
-
-                    // then try changing it to 24bpp...
-
-                    //const pb24 = pb.to_24bipp();
-                    //console.log('pb24.ta', pb24.ta);
-
-                    //const pb24 = pb.to_24bipp();
-                    //console.log('pb24.ta.length', pb24.ta.length);
-
-                    //const pb8 = pb.to_8bipp();
-                    //console.log('pb8.ta.length', pb8.ta.length);
-
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg0.png', pb, {format: 'png'});
-
-
-                    // const draw_zoomed_fractal = (width, height, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight) => {
-
-
-                    //ta_fractal = draw_zoomed_fractal(size[0], size[1], 2, 1100, 800, 400, 400);
-
-                    // Basically not working????
-                    //  Does produce some interesting results.
-
-                    const [canvasWidth, canvasHeight] = size;
-
-                    let zoomLevel = 0;
-                    let zoomCenterX = 0.4;
-                    let zoomCenterY = 0.3;
-                    
-                    //const zoomWindowWidth = canvasWidth / 2;
-                    //const zoomWindowHeight = canvasHeight / 2;
-
-                    let zoomWindowWidth = canvasWidth / 20;
-                    let zoomWindowHeight = canvasHeight / 20;
-
-
-                    // Does definitely produce nice fractal images, but it's a little tricky getting the params right.
-
-                    // Generate the non-zoomed fractal image data
-
-                    let imageData;
-
-                    start = process.hrtime();
-                    //let end, timeInNanos;
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-
-
-                    //ta_fractal = draw_zoomed_fractal(size[0], size[1], 2, 0.5, 0.5, 10, 10);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-
-                    timeInNanos = end[0] * 1e9 + end[1];
-
-                    //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg1.png', pb, {format: 'png'});
-
-
-                    zoomCenterX = 0.4;
-                    zoomCenterY = 0.29;
-                    zoomWindowWidth = canvasWidth / 20;
-                    zoomWindowHeight = canvasHeight / 20;
-
-
-
-                    start = process.hrtime();
-                    //let end, timeInNanos;
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-
-
-                    //ta_fractal = draw_zoomed_fractal(size[0], size[1], 2, 0.5, 0.5, 10, 10);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-
-                    timeInNanos = end[0] * 1e9 + end[1];
-
-                    //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg2.png', pb, {format: 'png'});
-
-
-
-
-                    zoomCenterX = 0.39;
-                    zoomCenterY = 0.29;
-                    zoomWindowWidth = canvasWidth / 20;
-                    zoomWindowHeight = canvasHeight / 20;
-
-
-
-                    start = process.hrtime();
-                    //let end, timeInNanos;
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-
-
-                    //ta_fractal = draw_zoomed_fractal(size[0], size[1], 2, 0.5, 0.5, 10, 10);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-
-                    timeInNanos = end[0] * 1e9 + end[1];
-
-                    //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg3.png', pb, {format: 'png'});
-
-
-
-                    zoomCenterX = 0.39;
-                    zoomCenterY = 0.29;
-                    zoomWindowWidth = canvasWidth / 24;
-                    zoomWindowHeight = canvasHeight / 24;
-                    start = process.hrtime();
-                    //let end, timeInNanos;
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-                    timeInNanos = end[0] * 1e9 + end[1];
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg4.png', pb, {format: 'png'});
-
-
-
-                    zoomCenterX = 0.385;
-                    zoomCenterY = 0.29;
-                    zoomWindowWidth = canvasWidth / 24;
-                    zoomWindowHeight = canvasHeight / 24;
-                    start = process.hrtime();
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-                    timeInNanos = end[0] * 1e9 + end[1];
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg5.png', pb, {format: 'png'});
-
-
-                    // May be nice to put this into a function...
-                    //  Or something where each pixel gets assigned by a function.
-
-                    // Doing effects like erosion would be of use...
-                    //  Could make another library for generative images.
-                    //   Or multiple... maybe a fractal library / package.
-                    //   jsgui3-gfx-fractal
-
-
-
-
-
-
-
-
-
-
-                    zoomCenterX = 0.38;
-                    zoomCenterY = 0.29;
-                    zoomWindowWidth = canvasWidth / 24;
-                    zoomWindowHeight = canvasHeight / 24;
-                    start = process.hrtime();
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-                    pb.ta.set(imageData);
-                    end = process.hrtime(start);
-                    timeInNanos = end[0] * 1e9 + end[1];
-                    console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg6.png', pb, {format: 'png'});
-
-
-                    // Under 1s perf - not great in terms of aiming for full screen 60fps animation - still OK for image generation purposes.
-                    //  Multiple cores could help a lot...
-
-
-                    
-
-
-
-
 
                     zoomCenterX = 0.379;
                     zoomCenterY = 0.291;
-                    zoomWindowWidth = canvasWidth / 128;
-                    zoomWindowHeight = canvasHeight / 128;
+                    zoomWindowWidth = example_size[0] / 128;
+                    zoomWindowHeight = example_size[1] / 128;
                     start = process.hrtime();
-                    imageData = draw_zoomed_fractal(canvasWidth, canvasHeight, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
+                    imageData = draw_zoomed_fractal(example_size[0], example_size[1], zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
                     pb.ta.set(imageData);
                     end = process.hrtime(start);
                     timeInNanos = end[0] * 1e9 + end[1];
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg7.png', pb, {format: 'png'});
 
-                    // Turn it to 8bipp?
+                    const color_white = new Uint8ClampedArray([255, 255, 255]);
+                    count_color_white = pb.count_pixels_with_color(color_white);
+                    console.log('count_color_white', count_color_white);
+
+                    const color_black = new Uint8ClampedArray([0, 0, 0]);
+                    count_color_black = pb.count_pixels_with_color(color_black);
+                    console.log('count_color_black', count_color_black);
+
+                    // See about finding the first pixel of color...?
+                    //  Or getting the color frequencies.
+                    
+                    // Will consider luminosity of some color images.
 
 
 
 
 
-                  pb = new Pixel_Buffer({
-                      bits_per_pixel: 24,
-                      size: large_size
-                  });
 
-                  zoomCenterX = 0.379;
-                  zoomCenterY = 0.291;
-                  zoomWindowWidth = large_size[0] / 128;
-                  zoomWindowHeight = large_size[1] / 128;
-                  start = process.hrtime();
-                  imageData = draw_zoomed_fractal(large_size[0], large_size[1], zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-                  pb.ta.set(imageData);
-                  end = process.hrtime(start);
-                  timeInNanos = end[0] * 1e9 + end[1];
-                  console.log('zoomed fractal ms:', timeInNanos / 1000000);
+                    // count_color_black
                   
 
                   //timeInNanos = end[0] * 1e9 + end[1];
@@ -788,91 +581,11 @@ if (require.main === module) {
                   //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
                   //console.log('fractal ms:', timeInNanos / 1000000);
 
-                  await save_pixel_buffer('./fractal_pb24greyscale_eg8.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./enh_algorithm_fractal_0.png', pb, {format: 'png'});
 
 
 
 
-                    // Just marginally faster.
-                    let pb_gs8bipp = new Pixel_Buffer({
-                        bits_per_pixel: 8,
-                        size: size
-                    });
-
-                    // gs8bipp_draw_fractal
-
-                    start = process.hrtime();
-                    ta_fractal = gs8bipp_draw_fractal(size[0], size[1]);
-
-                    pb_gs8bipp.ta.set(ta_fractal);
-                    end = process.hrtime(start);
-
-                    timeInNanos = end[0] * 1e9 + end[1];
-
-                    //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
-                    console.log('gs8bipp fractal ms:', timeInNanos / 1000000);
-
-
-                    await save_pixel_buffer('./fractal_pb8greyscale_eg0.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
-
-
-                    pb_gs8bipp = new Pixel_Buffer({
-                      bits_per_pixel: 8,
-                      size: large_size
-                    });
-
-                    // gs8bipp_draw_fractal
-
-                    zoomCenterX = 0.379;
-                    zoomCenterY = 0.291;
-                    zoomWindowWidth = large_size[0] / 128;
-                    zoomWindowHeight = large_size[1] / 128;
-                    start = process.hrtime();
-                    imageData = gs8bipp_draw_zoomed_fractal(large_size[0], large_size[1], zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight);
-                    pb_gs8bipp.ta.set(imageData);
-                    end = process.hrtime(start);
-                    timeInNanos = end[0] * 1e9 + end[1];
-                    console.log('8bipp large zoomed fractal ms:', timeInNanos / 1000000);
-
-
-                    await save_pixel_buffer('./fractal_pb8greyscale_eg1.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
-
-
-                    // Then can we threshold it to 1bipp?
-
-                    let pb_1bipp = pb.extract_channel(0).get_1bipp_threshold_8bipp(128);
-
-                    await save_pixel_buffer('./fractal_thresh_eg0.png', pb_1bipp.to_24bipp(), {format: 'png'});
-
-                    pb_1bipp = pb.extract_channel(0).get_1bipp_threshold_8bipp(180);
-
-                    await save_pixel_buffer('./fractal_thresh_eg1.png', pb_1bipp.to_24bipp(), {format: 'png'});
-
-
-                    // Color fractals could be of use too....
-
-                    
-
-
-
-
-
-
-
-                    // Nice, this works. Could soon use this for come image composition.
-
-                    // Could save it here with sharp.
-                    // See about giving Sharp a 1 bit per pixel image.
-
-                    // Want to use this as a result for thresholding an image.
-                    //  new_pb_threshold(threshold value)
-
-                    // or a more flexible functional mask.
-
-                    // Will do individual set pixel and get pixel functions.
-                    //  Treat input using truthy or falsy.
-
-                    // if ... == true.
                     lg('End example 0\n');
                 },
                 async() => {

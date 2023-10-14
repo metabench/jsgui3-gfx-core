@@ -1,4 +1,10 @@
 
+// Want to make more optimised implementation that's dynamic and uses typed arrays.
+//  Maybe each y row will be a linked list or binary tree, or even b+ tree.
+//   Binary tree would likely be easier.
+//   The B+ tree would itself most likely use linked lists.
+
+
 
 // Could make a lower level Pos_Array where positions can be pushed or referenced by index, same API as an array (using proxies)
 // but has an underlying typed array implementation that is faster.
