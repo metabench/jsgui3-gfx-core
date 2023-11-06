@@ -3,13 +3,13 @@
     "main": "gfx-core.js",
     "license": "MIT",
     "dependencies": {
-        "fnl": "^0.0.33",
-        "lang-mini": "^0.0.36",
-        "obext": "^0.0.28"
+        "fnl": "^0.0.34",
+        "lang-mini": "^0.0.37",
+        "obext": "^0.0.30"
     },
     "devDependencies": {
         "fnlfs": "^0.0.29",
         "sharp": "^0.32.6"
     },
-    "version": "0.0.8"
+    "version": "0.0.9"
 }
