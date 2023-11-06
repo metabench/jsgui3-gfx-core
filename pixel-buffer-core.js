@@ -75,6 +75,7 @@
 
 // This has got huge so far....
 
+/*
 const _roadmap = {
     '0.0.22': [
         ['pb.bypp = 1 convert to greyscale', 'done', 3, 'Medium small task requiring writing of optimized algorithm']
@@ -261,6 +262,7 @@ const _roadmap = {
         'Facilitate usage of C++ acceleration.'
     ]
 }
+*/
 
 // Operating convolutions as / on windows to other pixel buffers makes the most sense to me.
 
