@@ -9,9 +9,38 @@
 // Could make a lower level Pos_Array where positions can be pushed or referenced by index, same API as an array (using proxies)
 // but has an underlying typed array implementation that is faster.
 
+
+// Maybe using functions to handle it for the moment will be better???
+
+// Could put in its own module for the moment....
+
+
+
+
 const oext = require('obext');
 
 const {ro, prop} = oext;
+
+
+// And each row has got various spans.
+
+// Calculating the xpans data...
+//   Representing shapes in the xpans format.
+//   See about having a format, that is easy, where it is all within a typed array.
+//     Basically have them as numbers representing on and off.
+//       And wrapping into the next line.
+
+// Technically only the width or the height would need to be stored, the other can be calculated.
+//   Prob only need to store the width.
+
+// May see about integrating x-spans (platform code for x-spans) into the drawing routines.
+
+// Will be the x-spans bitmap or mask format.
+
+
+
+
+
 
 
 class YRows_XSpans_Core_Reference_Implementation {

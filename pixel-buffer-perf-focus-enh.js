@@ -643,6 +643,53 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         //  Such as drawing 1bipp shapes onto 24bipp pixel buffers?
 
 
+        // Would be an array of pairs....
+        //   Maybe as a ta or sta?
+
+        // And want them to be filled in many cases.
+
+
+
+        // Drawing a shape to a 1 bipp pixel buffer that will then be used to draw to this....
+
+
+        draw_polygon_to_1bipp_pixel_buffer_mask(arr_points) {
+
+
+            const bb_points = get_points_bounding_box(arr_points);
+            // is that / could it be a typed array?
+            const offset = bb_points[0];
+            // + 1 to the polygon size, each dimension???
+            const polygon_size = [
+                [bb_points[1][0] - bb_points[0][0] + 1],
+                [bb_points[1][1] - bb_points[0][1] + 1]
+            ];
+            const pb_polygon = new this.constructor({
+                'bits_per_pixel': 1,
+                'size': polygon_size
+            });
+            // Maybe a faster way to calculate these offsets?
+
+
+
+            const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+            //console.log('pre draw 1bipp polygon');
+            //let t1 = Date.now();
+            // Draw polygon with offset?
+            pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+            pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
+
+            // return that???
+
+            pb_polygon.__offset = offset;
+
+            // and the offset too???
+
+            return pb_polygon;
+
+
+        }
+
 
         'draw_polygon'(arr_points, color, fill = false) {
 
@@ -770,7 +817,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
 
 
-                const fast_flood_fill_inner_implementation = () => {
+                const ____fast_flood_fill_inner_implementation = () => {
                     //const t0 = Date.now();
                     //console.log('fast_flood_fill_inner_implementation ------');
                     //console.log('-------------------------------------------\n');
@@ -787,13 +834,36 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                         'size': polygon_size
                     });
                     // Maybe a faster way to calculate these offsets?
+
+
+
                     const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
                     //console.log('pre draw 1bipp polygon');
                     //let t1 = Date.now();
                     // Draw polygon with offset?
                     pb_polygon.draw_polygon(down_offsetted_points, 1, false);
                     pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
+
+                    // 
+
+
                     this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
+                }
+
+                const fast_flood_fill_inner_implementation = () => {
+                    //const t0 = Date.now();
+                    //console.log('fast_flood_fill_inner_implementation ------');
+                    //console.log('-------------------------------------------\n');
+
+
+                    const pb_mask = this.draw_polygon_to_1bipp_pixel_buffer_mask(arr_points);
+                    const offset = pb_mask.__offset;
+                    
+
+                    // 
+
+
+                    this.draw_1bipp_pixel_buffer_mask(pb_mask, offset, color);
                 }
                 fast_flood_fill_inner_implementation();
             } else {
@@ -2690,15 +2760,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         // Including optimisations for flood filling color 1 from outer boundary in 1bipp images.
         //  Is particularly useful for drawing filled polygons / shapes.
 
-
-
-
-
-
-
-
-
-
         // Giving the pos as a ta may be more optimal in some ways.
         //  Seems like the standard syntax in many places.
         //   May also want to give it the stack / some of the stack to start with.
@@ -2733,18 +2794,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
         // May be (much?) better to have more of a representation of the network.
 
-
-    
-
-
-
-
-
-
-
-
-
-
+        // Will want to be able to create an x_spans ta on demand.
 
 
     
@@ -5172,8 +5222,10 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
         
 
-        // Iterating 
+        // Iterating x spans....
 
+        // Does look like having x_spans as a lower level feature will help a lot.
+        //   Mask to x_spans....
 
         
 
@@ -5181,6 +5233,12 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
 
 
+
+
+        // Quite advanced here....
+
+
+        // Seems like lower level implementation of x_spans would help here.
 
         flood_fill_inner_pixels_off_to_on_1bipp() {
 
@@ -5455,9 +5513,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                 }
 
             }
-
-
-
 
             // Is group 1 always the inner group?
             // group is boundary adjacent?

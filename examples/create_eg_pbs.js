@@ -42,7 +42,9 @@ const { PerformanceObserver, performance } = require('perf_hooks');
 
 const gfx = require('../gfx-core');
 
-const Pixel_Buffer = gfx.Pixel_Buffer.get_instance();
+const {Pixel_Buffer} = gfx;
+
+//const Pixel_Buffer = gfx.Pixel_Buffer.get_instance();
 
 
 
@@ -455,9 +457,6 @@ const generate_tp1 = () => {
 
                 toggler = !toggler;
             }
-
-
-
 
             //if (toggler) {
 

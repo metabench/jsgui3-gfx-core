@@ -29,10 +29,6 @@
     Polygon shape drawing seems core in terms of API, but somewhat higher level compared to some other features and algorithms.
     Possibly a Polygon that could draw itself to image data structures would work well.
 
-
-
-
-
 */
 
 
@@ -1085,9 +1081,9 @@ class Pixel_Buffer_Core {
 
     new_convolved(convolution) {
 
-        console.log('convolution', convolution);
-        console.log('convolution.size', convolution.size);
-        console.log('convolution.num_px', convolution.num_px);
+        //console.log('convolution', convolution);
+        //console.log('convolution.size', convolution.size);
+        //console.log('convolution.num_px', convolution.num_px);
 
         // Will use special case algos for 3x3 (and 5x5)
         //  Would be a good way to start boundary handling.
@@ -2921,6 +2917,10 @@ return a.every((val, i) => val === b[i]);
                         }
                     }
                 } else {
+
+                    console.log('color', color);
+                    console.trace();
+
                     throw 'NYI';
                 }
 
