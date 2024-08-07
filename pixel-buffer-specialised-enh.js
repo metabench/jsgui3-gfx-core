@@ -3,6 +3,25 @@ const Pixel_Buffer_Perf_Focus_Enh = require('./pixel-buffer-perf-focus-enh');
 
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = require('./ta-math');
 
+// This is already very much about x-spans.
+//   Maybe making x-spans a lower level fearure will work best.
+//     More clearly explained by the structure.
+
+// The flood filling polygon drawing already makes decent use of x-spans I think.
+//   Getting the image data as x-spans ta should help a lot.
+
+// Likely do need to have / keep them separated into lines for some things.
+//   Line / Y Line / Row / Y Row (separated) mode / form.
+
+// Contiguous x form....
+
+
+
+
+
+
+
+
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
@@ -315,28 +334,8 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         const bounds = this.ta_bounds;
         const bipp = this.bipp;
         if (bipp === 24) {
-
             const rgb = this.ta_rgb;
-
-            //console.log('bounds', bounds);
-            //console.log('rgb', rgb);
-
-
-            // However, don't want the full row as scratch.
-            //  Maybe better to create a new ta const here of the right size of the row of the data we are writing.
-
-            // Could compare direct byte writing through iteration with row write iteration.
-            //  Writing whole rows where possible definitely seems fastest in overview. In practise some less used functions in JS would be less optimized when compiled (JIT).
-
-            // Does look like getting and using a bounds / byte iterator looks best here.
-            //  byte index of the first pixel in the bounds
-            //   byte width of the bounds
-
             const bytes_per_bounds_row = (bounds[2] - bounds[0]) * this.bypp;
-            // bypbr - bytes per bounds row
-            //console.log('bytes_per_bounds_row', bytes_per_bounds_row);
-
-            // then can create a new temporary solid_row ta
             const solid_row = new Uint8ClampedArray(bytes_per_bounds_row);
             // fill it withthe pixels...
             // alternate rgb
@@ -1052,6 +1051,185 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         }
     }
 
+    // possibly each / iterating x spans....
+    //   a function with a callback could work better....
+
+
+    // x_on_spans....
+    //   maybe have initial value / bit to specify if the spans are on or off???
+
+    // Maybe only work on 1bipp pixel buffers too....?
+    //   Maybe have a pb - 1bipp specialised enhancements class.
+
+
+    // count the on xspans for the whole image....
+
+
+
+    // get contiguous (line wrapping) x-spans toggle sequence, starting 'off'.
+    //   so a span size of 0 immediately toggles it.
+
+    // These bare / contiguous x spans.
+    //   Does not include the img width data at the start.
+
+    // See about using this to cross-reference image data and scan for matches....
+    //   Parallel iteration may be the best method to use for this....
+    //     But advancing span by span rather than pixel by pixel.
+
+    // Though maybe splitting them into distinct rows will be better????
+    //   Could see about that later, but for now continue with the contiguous data.
+
+
+
+
+
+
+
+    // But then operations comparing them....
+    //   Checking for overlap....
+
+
+    
+
+    // And also see about comparing these to each other...
+    //   Getting a new contiguous spans ta with and, or, xor applied.
+
+    // will have other x-span processing functions....
+
+    // scan spans? not just x I suppose. scan-wrapping-x-spans perhaps....
+
+
+    // Working out overlaps etc could work fine with binary operations on the two tas....
+    //   However in some cases the x-spans and contiguous scanlines color span lengths may work better still.
+    //     Maybe moreso on larger images.
+
+    // Can see about combining them (| OR) using these contiguous spans....
+    //   And reconstructing / writing to pixel buffers by contiguous wrapped scanlines.
+
+    // Could use for very fast collision / image space intersection detection.
+
+
+    
+
+
+
+
+
+    
+
+    'get_ta_contiguous_spans_1bipp_toggle'() {
+        // maybe count them first????
+
+        // And the maximum length of any of these spans....
+
+        //let max_span_length = 0;
+
+        const get_count = () => {
+
+            const initial_color = 0;
+            let color = initial_color;
+            //let count_since_last_
+
+            let count_color_changes = 0;
+
+            // could simply do with pixel iteration first.
+            this.each_pixel(([x, y], px_color) => {
+                //console.log('[x, y, px_color]', [x, y, px_color]);
+                if (px_color !== color) {
+                    count_color_changes++;
+                }
+                color = px_color;
+                //bres[i++] = 255 - v;
+            });
+
+            // And the last one....
+            count_color_changes++;
+
+            return count_color_changes;
+
+        }
+
+        const get_max_span_length = () => {
+            const initial_color = 0;
+            let color = initial_color;
+            //let count_since_last_
+
+            //let count_color_changes = 0;
+            let l = 0;
+            let max_l = 0;
+
+            // could simply do with pixel iteration first.
+            this.each_pixel(([x, y], px_color) => {
+                //console.log('[x, y, px_color]', [x, y, px_color]);
+                if (px_color !== color) {
+                    //count_color_changes++;
+                    l = 0;
+                } else {
+                    l++;
+                    if (l > max_l) max_l = l;
+                }
+                color = px_color;
+                //bres[i++] = 255 - v;
+            });
+
+            return max_l + 1;
+        }
+
+        const nccs = get_count();
+        const max_xpan_l = get_max_span_length();
+
+        // Could see if it's 255 or less, so can fit within 8 bit values.
+
+        if (max_xpan_l <= 255) {
+            const res = new Uint8Array(nccs);
+
+            const initial_color = 0;
+            let color = initial_color;
+            //let count_since_last_
+
+            let count_color_changes = 0;
+            let l = -1;
+            //let max_l = 0;
+
+            // could simply do with pixel iteration first.
+            this.each_pixel(([x, y], px_color) => {
+                //console.log('[x, y, px_color]', [x, y, px_color]);
+                if (px_color !== color) {
+                    // but a special case of l of 0 in the for the first px if necessary?
+                    
+                    res[count_color_changes] = l + 1;
+
+                    count_color_changes++;
+
+
+                    l = 0;
+                } else {
+                    l++;
+                    //if (l > max_l) max_l = l;
+                }
+                color = px_color;
+                //bres[i++] = 255 - v;
+            });
+
+            //count_color_changes++;
+            //console.log('l', l);
+            //console.log('count_color_changes', count_color_changes);
+            res[count_color_changes] = l + 1;
+
+            // and then the very last one....
+            return res;
+
+        } else {
+            console.trace();
+            throw 'stop';
+        }
+
+        //console.log('nccs', nccs);
+        //console.log('max_xpan_l', max_xpan_l);
+
+    }
+
+
     'count_row_on_xspans_1bipp'(y) {
         let res = 0;
         const width = this.size[0];
@@ -1092,7 +1270,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
 
         const res = new Uint16Array(count_xoffspans * 5);
 
-        console.log('count_xoffspans', count_xoffspans);
+        //console.log('count_xoffspans', count_xoffspans);
 
         let i_w = 0;
 
@@ -1145,68 +1323,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         }
 
         return res;
-
-
-        // Could see about accelerated algorithms that will read 8 (or more) pixels at once.
-        //  May be worth doing first check on 64 pixels if they are all lined up so that can be done.
-
-        // With an Array_Reader or something similar like that, whatever it's called.
-        // Array_Buffer_Reader? Data_Reader???
-
-        // beware that the rows don't necessarily start on a new byte.
-        // need to be careful about that unless they are in byte aligned mode.
-        // may be worth considering 8byte aligned mode for rows. Would make algorithms using bigint considerably easier / more efficient.
-
-        // For the moment, deal with the rows as they are within the system (dense 1bipp data)
-
-
-        const old = () => {
-            const res = [];
-            const width = this.size[0];
-            // assume starting with 0;
-            let last_color = 0;
-            let current_color;
-            let ta_pos = new Uint16Array(2);
-            ta_pos[1] = y;
-
-            // need to work out the start and end position of the x spans off.
-
-            //console.log('width', width);
-
-            for (let x = 0; x < width; x++) {
-                ta_pos[0] = x;
-                current_color = this.get_pixel_1bipp(ta_pos);
-
-                // Not all that efficient at representing single pixel gaps.
-                //  But there won't be very many of them overall in some large drawings with thin polygon edges.
-
-                if (current_color === 0) {
-                    if (current_color === last_color) {
-                        if (res.length === 0) {
-                            res.push([x, x]);
-                        } else {
-                            res[res.length - 1][1]++;
-                        }
-                    } else {
-                        res.push([x, x]);
-                        if (res.length === 0) {
-                            //throw 'stop';
-                            //res.push([0, 0]); // a span of length 0
-                            //res.push([0, 1]);
-                        } else {
-
-                            // No item in result for non-0 pixels
-
-                            //res.push([x, x + 1]);
-                        }
-                    }
-                }
-                last_color = current_color;
-            }
-        }
-
         
-        return res;
     }
 
     // Have optimised this a lot, but making a version that iterates through the spans in a row could work better.
@@ -1696,28 +1813,6 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
 
             return res;
         }
-
-
-        // Make a 'later push' version.
-        // Should be relatively simple.
-        
-
-
-        
-
-        
-
-
-
-        
-
-        // A reference implementation that builds arr_current rather than arr_last?
-        //  Would only push arr_current once it's complete (ie shifted over to color 1)
-
-        // And what about using a typed array?
-
-        // With a generator function, reusing a typed array could be quicker....
-
         
         const reference_implementation_later_push = () => {
             const res = [];
@@ -1834,33 +1929,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             return res;
         }
 
-        //return reference_implementation();
-
-        // inlined_consecutive_value_checking_no_x_loop_implementation
-
-        // The later push implementation is just a little bit slower.
-        //  Maybe making a generator function would be much quicker?
-        //  Should be a decent amount quicker when all we want is iteration.
-
-
-
-
-
         return inlined_consecutive_value_checking_no_x_loop_later_push_implementation();
-
-        //return reference_implementation_later_push();
-        //return inlined_consecutive_value_checking_no_x_loop_implementation();
-
-
-        // inlined_get_pixel_no_x_loop_implementation
-        //return inlined_get_pixel_no_x_loop_implementation();
-        //return inlined_get_pixel_implementation();
-
-        // inlined_get_pixel_implementation
-
-
-
-
 
 
         
@@ -2633,8 +2702,6 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             let has_just_done_multi_read = false;
             let byte_val = 0 | 0;
 
-
-
             while (num_bits_remaining > 0) {
 
                 // Can attempt to read multiple bits at once....
@@ -2645,21 +2712,9 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
                 //   Could read the whole 64 bit bigint.
                 //    Then local processing of that would likely be faster, regardless of whether it's all 1s or all 0s.
 
-
-
                 idx_bit_within_byte = idx_bit_overall & 0b111;
-
-
                 // then check if we can do just a few of the consecutive reading ops....
-
                 has_just_done_multi_read = false;
-
-
-                // Not sure how much faster 64 bits at once (in a bigint) would be.
-
-                // 
-
-
 
                 if (idx_bit_within_byte === 0 && num_bits_remaining >= 8) {
 
@@ -2795,8 +2850,269 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         //return initial_implementation();
         
     }
-
-
 }
+
+
+// See about detecting whether any pixels at all overlap....
+//   But then also need to do this properly when offsets are involved, as well as unaligned scanlines....
+
+
+
+
+
+// Maybe this will indeed work very well in some longer term imaging plans.
+//   It could work as a very fast comparison format, and space efficient.
+//     Def looks important because of the sparse nature of some shapes.
+
+// Representing things as spans of x pixels definitely looks like it will make sense.
+//   Very rapid shape matching, on shapes stored efficiently in little data too.
+
+// Some operations are slightly (more) complex to write, but should lead to fast runtime.
+//   Dealing with spans of pixels rather than single pixels.
+
+// Maybe scanning to identify any match will be best.
+
+// Bascially in the output need to keep identifying the next segment to write.
+
+// Could first try scanning for any matching pixels.
+
+// Do want to see about constructing bitmap ta records of the renderings of various places.
+//   However, for the moment maybe this x-spans system is worth getting right.
+// Though, the fully rendered 1bipp bitmaps could be small enough....?
+//   Does seem like more gfx platform functionality concerning offsets will be needed too.
+//     The xspans system does look best for sparse data.
+
+// Should probably try some simpler and less memory efficient way of doing some things first.
+
+// Aligned bitmap comparisons....
+
+// May be worth seeing how it does in benchmarks in less optimised ways.
+
+
+// compute x spans operations....
+
+// Have to be aligned and same length....
+
+// Probably should rethink this algorithm.
+//   Maybe write it so it progresses through the output, with the input pointers catching up with the output one?
+
+
+// And some kind of multiple pixel buffer system too...?
+//   As in a 3D stack of them?
+
+const get_contig_x_spans_AND = (ta_contig_x_spans_1, ta_contig_x_spans_2) => {
+    // nope
+
+    if (true || ta_contig_x_spans_1.length === ta_contig_x_spans_2.length) {
+
+        // step-by-step. can cover multiple pixels.
+        //   Does seem best to count them first - as in counting how many contig spans there will be in the result.
+
+        // parallel iteration of the inputs....
+
+        const parallel_iterate_inputs = () => {
+            // positions in both of them.
+
+            const starting_color = 0;
+
+            const l1 = ta_contig_x_spans_1.length, l2 = ta_contig_x_spans_2.length;
+
+
+            // Byte index positions referring to the input, and the lengths that the input referrs to.
+            let r_pos_in_1 = 0, r_pos_in_2 = 0;
+            let px_idx_in_1 = 0, px_idx_in_2 = 0;
+
+
+
+            let color_in_1 = starting_color, color_in_2 = starting_color;
+
+            let color_in_output = starting_color;
+            let pos_idx_in_output = 0;
+
+            // where do they match? and not match?
+
+            //   maybe diagrams would be best for this.
+
+            // and we have an actual byte pos, and one of these inputs will be catching up with it....
+            //   Various different cases to consider.
+
+            // A type of read-ahead.
+
+            // and a first step????
+
+            //let res_byte_index_
+            // matching pos????
+
+            let are_in_sync = true;
+            let i_read_step = 0;
+
+
+            // But do we (just) want the array where they are in sync?
+            //   Possibly that will work with AND.
+            //   
+
+
+            const arr_res = [];
+
+
+            const read_step = () => {
+
+                // r_pos in 1
+                // pixel index pos in 1
+
+                const span_length_from_1 = ta_contig_x_spans_1[r_pos_in_1], span_length_from_2 = ta_contig_x_spans_2[r_pos_in_2];
+
+                console.log('');
+                console.log('i_read_step', i_read_step);
+                console.log('are_in_sync', are_in_sync);
+                console.log('span_length_from_1', span_length_from_1);
+                console.log('span_length_from_2', span_length_from_2);
+
+                if (are_in_sync) {
+
+                    // And are both matching positions even???
+                    //   Neither of them needing to catch up at this point.
+
+
+
+                    if (px_idx_in_1 === px_idx_in_2) {
+                        if (span_length_from_1 === span_length_from_2) {
+
+                            // if they are in sync, stay in sync for a while....
+
+                            if (are_in_sync) {
+                                const same_length_in_sync = span_length_from_1;
+                                console.log('same_length_in_sync', same_length_in_sync);
+
+                                px_idx_in_1 += same_length_in_sync;
+                                px_idx_in_2 += same_length_in_sync;
+                                pos_idx_in_output += same_length_in_sync;
+
+                                r_pos_in_1++;
+                                r_pos_in_2++;
+
+                                arr_res.push(same_length_in_sync);
+
+                                // but then the colours swap.
+
+                                color_in_1 = color_in_1 === 1 ? 0 : 1;
+                                color_in_2 = color_in_2 === 1 ? 0 : 1;
+                                color_in_output = color_in_output === 1 ? 0 : 1;
+
+
+
+                                // change the color of both....
+
+                            } else {
+                                console.trace();
+                                throw 'NYI';
+                            }
+
+
+                            // The same....
+
+                            // Stay in sync for a while.
+                            //   Though this would be overlap for when they are 'off'...
+
+                        } else if (span_length_from_1 > span_length_from_2) {
+
+
+                            if (are_in_sync) {
+                                // how many more are they in sync for?
+
+                                const num_remaining_in_sync = span_length_from_2;
+                                
+                                arr_res.push(num_remaining_in_sync);
+
+
+                                // only write to output when both in sync?
+                                //   or ignore output for the moment....
+                                
+
+                                
+
+                                // 
+
+                                // so advance the write position....
+
+
+
+
+
+
+                                console.trace();
+                                throw 'NYI';
+
+                            } else {
+                                console.trace();
+                                throw 'NYI';
+                            }
+
+                            // Will go out of sync....
+                            //   it's in sync for the shorter one.
+
+
+
+
+                        } else {
+                            console.trace();
+                            throw 'NYI';
+                        }
+                    } else {
+                        console.trace();
+                        throw 'NYI';
+                    }
+
+                    // which will go out of sync first....
+
+                    
+
+                } else {
+
+                    console.trace();
+                    throw 'NYI';
+
+                }
+
+
+                // Need to build the picture of where they match as we go along.
+
+                // If they are syncronysed at the current point, where they become unsyncronysed.
+
+                // are they syncronysed???
+
+                // Are they the same?
+                //   then otherwise which is lower?
+
+
+
+
+                i_read_step++;
+            }
+
+            read_step();
+            console.log('arr_res', arr_res);
+            read_step();
+
+
+
+
+        }
+
+        parallel_iterate_inputs();
+
+
+
+
+
+
+    } else {
+        console.trace();
+        throw 'Length Mismatch';
+
+    }
+}
+
+Pixel_Buffer_Specialised_Enh.get_contig_x_spans_AND = get_contig_x_spans_AND;
 
 module.exports = Pixel_Buffer_Specialised_Enh;

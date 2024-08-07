@@ -38,6 +38,9 @@ class Pixel_Buffer_Idiomatic_Enh extends Pixel_Buffer_Advanced_TypedArray_Proper
     }
 
     // Some will need to be a bit more optimised for perf rather than readability. Do want clear code though.
+
+    // Not quite sure why this is failing on 1 bipp right now....
+
     each_pixel(callback) {
         // Want optimised but still idiomatic
         const {ta_pos_scratch, bipp, bypp, size, ta} = this;
@@ -49,9 +52,53 @@ class Pixel_Buffer_Idiomatic_Enh extends Pixel_Buffer_Advanced_TypedArray_Proper
 
         // Could call each_pixel_pos, and increment a byte index.
 
+        // read_bit_from_byte
+
+        //const bfb = (byte, bit_index) => (byte >> bit_index) & 1;
+
         if (bipp === 1) {
-            console.trace();
-            throw 'NYI';
+
+            // Should not be too hard to implement....
+
+            //let i_pixel = 0;
+            // and the number of pixels....
+            const [w, h] = size;
+
+            let i_byte = 0, i_bit = 0;
+            //let input_byte = ta[0];
+
+            const ta_cb_pos = new Uint32Array(2);
+
+            for (let y = 0; y < h; y++) {
+                ta_cb_pos[1] = y;
+                for (let x = 0; x < w; x++) {
+                    ta_cb_pos[0] = x;
+                    //const px_color = (input_byte >> i_bit) & 1;
+                    // not sure why this is not working right.
+
+                    const got_px_color = this.get_pixel_1bipp(ta_cb_pos);
+
+                    
+                    callback(ta_cb_pos, got_px_color);
+
+                    //i_bit++;
+                    if (i_bit === 8) {
+                        //i_byte++;
+                        //i_bit = 0;
+                        //input_byte = ta[i_byte];
+                    }
+                    //i_pixel++;
+                }
+
+            }
+
+
+            
+
+
+
+            //console.trace();
+            //throw 'NYI';
         } else if (bipp === 8) {
             // Function to iterate through positions could work.
             // Nested for loops seems a bit simpler...

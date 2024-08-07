@@ -1,5 +1,6 @@
 const Pixel_Buffer_Idiomatic_Enh = require('./pixel-buffer-idiomatic-enh');
 
+const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write');
 
 /*
 
@@ -48,6 +49,60 @@ module.exports = Pixel_Buffer_Perf_Focus_Enh;
 
 
 
+
+
+                    if (num_bits_remaining === 1) {
+                        byte_mask = 128;
+                    } else if (num_bits_remaining === 2) {
+                        byte_mask = 192;
+                    } else if (num_bits_remaining === 3) {
+                        byte_mask = 224;
+                    } else if (num_bits_remaining === 4) {
+                        byte_mask = 240;
+                    } else if (num_bits_remaining === 5) {
+                        byte_mask = 248;
+                    } else if (num_bits_remaining === 6) {
+                        byte_mask = 252;
+                    } else if (num_bits_remaining === 7) {
+                        byte_mask = 254;
+                    } else if (num_bits_remaining === 8) {
+                        byte_mask = 255;
+                    } else {
+                        console.trace();
+                        throw 'stop';
+                    }
+
+                    
+
+
+                if (b1 === 0) {
+                    // do the full pixel, 255
+                    byte_mask = 255;
+                } else if (b1 === 1) {
+                    // 01111111
+                    byte_mask = 127;
+                } else if (b1 === 2) {
+                    // 00111111
+                    byte_mask = 63;
+                } else if (b1 === 3) {
+                    // 00111111
+                    byte_mask = 31;
+                } else if (b1 === 4) {
+                    // 00111111
+                    byte_mask = 15;
+                } else if (b1 === 5) {
+                    // 00111111
+                    byte_mask = 7;
+                } else if (b1 === 6) {
+                    // 00111111
+                    byte_mask = 3;
+                } else if (b1 === 7) {
+                    // 00111111
+                    byte_mask = 1;
+                } else {
+                    throw 'stop - unexpected bit value (expected 0 to 7)';
+                }
+
 */
 
 
@@ -56,6 +111,8 @@ module.exports = Pixel_Buffer_Perf_Focus_Enh;
 
 
 
+const byte_masks_to_end_byte = new Uint8Array([0, 128, 192, 224, 240, 248, 252, 254, 255]);
+const byte_masks_from_beginning_byte = new Uint8Array([255, 127, 63, 31, 15, 7, 3, 1]);
 
 
 const lang = require('lang-mini');
@@ -163,251 +220,86 @@ const get_points_bounding_box = (points) => {
 
 class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
-        // Has some decent functions, but want some more useful / intelligent flood fills.
-        //  Flood fill the inside parts of a 1 bipp image.
-        //   So it fills in the line drawing (allowing for holes)
+    // Setting bits per pixel to 8
+    //  greyscale 256
+    constructor(spec) {
+        //spec.__type_name = spec.__type_name || 'pixel_buffer';
+        super(spec);
 
-        // For each pixel, checking how many contiguous pixel it crosses to reach the edge of the image.
+        //this.tabrw = new Typed_Array_Binary_Read_Write(this.ta);
+    }
 
-        //  Be able to get / iterate through the pixels in each direction from that pixel...?
-
-        // .each_pixel_moving_up_down_left_right_from_pixel().
-
-        // .each_pixel_horiz_left_of_pixel
-        // 
-
-
-
-
-
-
-
-
-
-        // Setting bits per pixel to 8
-        //  greyscale 256
-        constructor(spec) {
-            //spec.__type_name = spec.__type_name || 'pixel_buffer';
-            super(spec);
-        }
-
-
-    'draw_horizontal_line_on_1bipp'([x1, x2], y) {
-        // [x1, x2], y would be better.
-        //  More consistent with other functions.
-
-
-
-
-        if (x1 > x2) {
-            throw 'Expected: x1 <= x2';
-        } else if (x1 === x2) {
-            return this.set_pixel_on_1bipp([x1, y]);
+    'draw_horizontal_line_off_1bipp_inclusive'([x1, x2], y) {
+        const {size, ta} = this;
+        const number_of_pixels_to_draw = (x2 - x1) + 1;
+        if (number_of_pixels_to_draw === 1) {
+            const pixel_index = (y * size[0]) + x1;
+            ta[pixel_index >> 3] &= (~(128 >> (pixel_index & 0b111))) & 255;
+        } else if (number_of_pixels_to_draw === 2) {
+            let pixel_index = (y * size[0]) + x1;
+            ta[pixel_index >> 3] &= (~(128 >> ((pixel_index & 0b111)))) & 255
+            pixel_index++;
+            ta[pixel_index >> 3] &= (~(128 >> ((pixel_index & 0b111)))) & 255
+            pixel_index++;
         } else {
-
-            const {ta} = this;
-
-            let last_op_num_bits_advanced = 0;
-            const length = x2 - x1 + 1;
-            //console.log('');
-            //console.log('length (num pixels)', length);
-
-            // and the number of bits too...?
-
-            // Maybe this should get the bit index as well?
-
-
-            // Maybe want a BE notation version of this though???
-            //  Or has the format been wrong somehow???
-
-
-            //console.log('[x1, x2]', [x1, x2]);
-
-            // Maybe more inlined versions of these...?
-            //  
-
-
-            const ox1 = this.get_pixel_byte_bit_BE_1bipp([x1, y]);
-            const ox2 = this.get_pixel_byte_bit_BE_1bipp([x2, y]);
-
-            //console.log('ox1', ox1);
-            //console.log('ox2', ox2);
-
-            // So could go through the bytes working out how many (and which) bits of that byte need to be set to on.
-            //  Calculate the byte mask.
-
-            //let idx_bits_advanced = 0;
-            let num_bits_remaining = length;
-
-            let byte_mask = 0|0;
-
-            let i_byte = ox1.byte;
-
-            const b1 = ox1.bit; // now it's BE?
-
-
-            // Special case where it's less than the full byte?
-            //  So just a few pixels...?
-
-            // Number of bits remaining to set to 'on' in byte...?
-
-            //  Overall process should make drawing very fast.
-
-            if (ox1.byte === ox2.byte) {
-
-                // just do setpixels for the moment....
-                //  or could possibly come up with a mask? could be faster.
-                //  use a constant depending on the length....
-
-                // length of 0???
-
-
-                // ???
-
-                const using_byte_mask = () => {
-
-                    //console.log('using_byte_mask length:', length);
-
-
-                    if (num_bits_remaining === 1) {
-                        byte_mask = 128;
-                    } else if (num_bits_remaining === 2) {
-                        byte_mask = 192;
-                    } else if (num_bits_remaining === 3) {
-                        byte_mask = 224;
-                    } else if (num_bits_remaining === 4) {
-                        byte_mask = 240;
-                    } else if (num_bits_remaining === 5) {
-                        byte_mask = 248;
-                    } else if (num_bits_remaining === 6) {
-                        byte_mask = 252;
-                    } else if (num_bits_remaining === 7) {
-                        byte_mask = 254;
-                    } else if (num_bits_remaining === 8) {
-                        byte_mask = 255;
-                    } else {
-                        console.trace();
-                        throw 'stop';
-                    }
-
-                    //console.log('1) byte_mask', byte_mask);
-    
-                    //if (b1 === 1)
-    
-                    byte_mask = byte_mask >>> b1;
-
-                    //console.log('2) byte_mask', byte_mask);
-    
-                    ta[i_byte] = ta[i_byte] | byte_mask;
-                }
-
-                // using set pixel
-                // The ranges are inclusive
-
-
-                const using_set_pixel = () => {
-                    for (let x = x1; x <= x2; x++) {
-                        this.set_pixel_1bipp([x, y], 1);
-                    }
-                }
-
-                return using_byte_mask();
-
-
-
+            const [w] = size;
+            const starting_pixel_index = ((y * w) + x1) | 0;
+            const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
+            const starting_byte_index = starting_pixel_index >> 3;
+            const starting_bit_within_byte_index = (starting_pixel_index & 7);
+            const ending_byte_index = ending_pixel_index >> 3;
+            const ending_bit_within_byte_index = (ending_pixel_index & 7);
+            const bits_from_end_of_byte = 7 - ending_bit_within_byte_index;
+            const number_of_bytes_with_any_coverage = (ending_byte_index - starting_byte_index) + 1;
+            if (starting_byte_index === ending_byte_index) {
+                ta[starting_byte_index] &= (~((((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)) >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
+            }  else if (number_of_bytes_with_any_coverage === 2) {
+                ta[starting_byte_index] &= (~(((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index))&255;
+                ta[ending_byte_index] &= (~((255 >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
             } else {
-
-
-                //console.log('0) num_bits_remaining', num_bits_remaining);
-                //console.log('b1', b1);
-
-                // Do the masking for the first byte...
-
-
-
-                if (b1 === 0) {
-                    // do the full pixel, 255
-                    byte_mask = 255;
-                } else if (b1 === 1) {
-                    // 01111111
-                    byte_mask = 127;
-                } else if (b1 === 2) {
-                    // 00111111
-                    byte_mask = 63;
-                } else if (b1 === 3) {
-                    // 00111111
-                    byte_mask = 31;
-                } else if (b1 === 4) {
-                    // 00111111
-                    byte_mask = 15;
-                } else if (b1 === 5) {
-                    // 00111111
-                    byte_mask = 7;
-                } else if (b1 === 6) {
-                    // 00111111
-                    byte_mask = 3;
-                } else if (b1 === 7) {
-                    // 00111111
-                    byte_mask = 1;
-                } else {
-                    throw 'stop - unexpected bit value (expected 0 to 7)';
+                ta[starting_byte_index] &= (~((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)))&255;
+                for (let x = starting_byte_index + 1; x < ending_byte_index; x++) {
+                    ta[x] = 0;
                 }
+                ta[ending_byte_index] &= (~((255 >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
+            }
+        }
+    }
 
+    // May do more lower level / general purpose work on line drawing....
 
-
-                ta[i_byte] |= byte_mask;
-
-                //ta[i_byte] = ta[i_byte] | byte_mask;
-
-
-
-
-                last_op_num_bits_advanced = 8 - b1;
-
-                //idx_bits_advanced += last_op_num_bits_advanced;
-                num_bits_remaining -= last_op_num_bits_advanced;
-                i_byte++;
-
-                //console.log('1) num_bits_remaining', num_bits_remaining);
-
-
-                // Could even try for 64 bits remaining at once - using bigint setting.
-
-
-                // Too much going on???
-                while (num_bits_remaining >= 8) {
-                    ta[i_byte++] = 255;
-                    //last_op_num_bits_advanced = 8;
-                    //idx_bits_advanced += last_op_num_bits_advanced;
-                    num_bits_remaining -= 8;
+    'draw_horizontal_line_on_1bipp_inclusive'([x1, x2], y) {
+        const {size, ta} = this;
+        const number_of_pixels_to_draw = (x2 - x1) + 1;
+        if (number_of_pixels_to_draw === 1) {
+            const pixel_index = (y * size[0]) + x1;
+            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+        } else if (number_of_pixels_to_draw === 2) {
+            let pixel_index = (y * size[0]) + x1;
+            // Seems possibly wrong op....
+            //   Maybe this would really be best doing the 16 bit way.
+            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+            pixel_index++;
+            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+            pixel_index++;
+        } else {
+            const [w, h] = size;
+            const starting_pixel_index = ((y * w) + x1) | 0;
+            const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
+            //const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
+            const starting_byte_index = starting_pixel_index >> 3;
+            const starting_bit_within_byte_index = (starting_pixel_index & 7);
+            const ending_byte_index = ending_pixel_index >> 3;
+            const ending_bit_within_byte_index = (ending_pixel_index & 7);
+            const bits_from_end_of_byte = 7 - ending_bit_within_byte_index;
+            if (starting_byte_index === ending_byte_index) {
+                ta[starting_byte_index] |= (((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)) >> bits_from_end_of_byte) << bits_from_end_of_byte;
+            } else {
+                ta[starting_byte_index] |= ((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index;
+                for (let x = starting_byte_index + 1; x < ending_byte_index; x++) {
+                    ta[x] = 255;
                 }
-
-                // then how many bits left???
-
-                //console.log('2) num_bits_remaining', num_bits_remaining);
-
-                if (num_bits_remaining > 0) {
-                    if (num_bits_remaining === 1) {
-                        // 10000000
-                        byte_mask = 128;
-
-
-                    } else if (num_bits_remaining === 2) {
-                        byte_mask = 192;
-                    } else if (num_bits_remaining === 3) {
-                        byte_mask = 224;
-                    } else if (num_bits_remaining === 4) {
-                        byte_mask = 240;
-                    } else if (num_bits_remaining === 5) {
-                        byte_mask = 248;
-                    } else if (num_bits_remaining === 6) {
-                        byte_mask = 252;
-                    } else if (num_bits_remaining === 7) {
-                        byte_mask = 254;
-                    }
-
-                    ta[i_byte] = ta[i_byte] | byte_mask;
-                }
+                ta[ending_byte_index] |= (255 >> bits_from_end_of_byte) << bits_from_end_of_byte;
             }
         }
     }
@@ -590,15 +482,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         //    Maybe could have more efficient internal representation.
 
 
-
-
-
-
-
-
-
-
-
         'draw_line'(pos1, pos2, color) {
 
             // options would help....
@@ -637,77 +520,71 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             }
         }
 
-
         // Seems like some polygon drawing is not working right in some cases.
         // Probably need to test and fix and optimise from some earlier drawing principles.
         //  Such as drawing 1bipp shapes onto 24bipp pixel buffers?
 
-
         // Would be an array of pairs....
         //   Maybe as a ta or sta?
 
+        // ta_point_list
+
         // And want them to be filled in many cases.
-
-
 
         // Drawing a shape to a 1 bipp pixel buffer that will then be used to draw to this....
 
+        // And the option of not having a stroke color or having that to be 0?
 
-        draw_polygon_to_1bipp_pixel_buffer_mask(arr_points) {
+        draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points) {
+            if (arr_points.length >= 2) {
+                    // filled polygon!!!
+                const bb_points = get_points_bounding_box(arr_points);
+                // is that / could it be a typed array?
+                const offset = bb_points[0];
+                // + 1 to the polygon size, each dimension???
+                const polygon_size = [
+                    [bb_points[1][0] - bb_points[0][0] + 1],
+                    [bb_points[1][1] - bb_points[0][1] + 1]
+                ];
+                const pb_polygon = new this.constructor({
+                    'bits_per_pixel': 1,
+                    'size': polygon_size
+                });
+                // Maybe a faster way to calculate these offsets?
 
 
-            const bb_points = get_points_bounding_box(arr_points);
-            // is that / could it be a typed array?
-            const offset = bb_points[0];
-            // + 1 to the polygon size, each dimension???
-            const polygon_size = [
-                [bb_points[1][0] - bb_points[0][0] + 1],
-                [bb_points[1][1] - bb_points[0][1] + 1]
-            ];
-            const pb_polygon = new this.constructor({
-                'bits_per_pixel': 1,
-                'size': polygon_size
-            });
-            // Maybe a faster way to calculate these offsets?
 
+                const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+                //console.log('pre draw 1bipp polygon');
+                //let t1 = Date.now();
+                // Draw polygon with offset?
+                pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
 
+                // return that???
+                pb_polygon.__offset = offset;
+                // and the offset too???
 
-            const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
-            //console.log('pre draw 1bipp polygon');
-            //let t1 = Date.now();
-            // Draw polygon with offset?
-            pb_polygon.draw_polygon(down_offsetted_points, 1, false);
-            pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
+                return pb_polygon;
+            }
 
-            // return that???
+            // set pixel with polygon size of 1?????
 
-            pb_polygon.__offset = offset;
-
-            // and the offset too???
-
-            return pb_polygon;
+            
 
 
         }
 
 
-        'draw_polygon'(arr_points, color, fill = false) {
-
-            // But what about not using an array of polygons?
-            //  Even have a Polygon class?
-            //  It would then be able to draw and fill itself in its own Pixel_Buffer?
+        // fill_color perhaps....
 
 
 
-
-            // filled option...
-
-            // need filled shape compositing.
-            //  slightly more tricky.
-
-            // Need to find the bounding box for those points.
+        // Points and positions as typed arrays....
 
 
+        'draw_polygon'(arr_points, color, fill = false, stroke_color) {
+            const {bits_per_pixel} = this;
             if (fill === true) {
 
                 // Want to try the different 'flood fill inner pixels' for this polygon drawing.
@@ -855,15 +732,44 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     //console.log('fast_flood_fill_inner_implementation ------');
                     //console.log('-------------------------------------------\n');
 
+                    //console.log('!!arr_points', !!arr_points);
 
-                    const pb_mask = this.draw_polygon_to_1bipp_pixel_buffer_mask(arr_points);
-                    const offset = pb_mask.__offset;
+                    //console.log('arr_points.length', arr_points.length);
+
+                    if (arr_points.length >= 2) {
+                        const pb_mask = this.draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points);
+                        //  Draw filled polygon I think.
+                        
+                        const offset = pb_mask.__offset;
+                        // 
+
+                        // But if there is a stroke color....
+
+                        /*
+                        if (stroke_color !== undefined) {
+                            if (bits_per_pixel === 1) {
+
+                            } else {
+                                console.trace();
+                                throw 'NYI';
+                            }
+                        }
+                        */
+
+
+                        this.draw_1bipp_pixel_buffer_mask(pb_mask, offset, color);
+
+                        if (stroke_color !== undefined) {
+                            this.draw_polygon(arr_points, stroke_color, false);
+                        }
+                    }
+
+
                     
 
-                    // 
+                    // then the basic draw unfilled polygon....
 
 
-                    this.draw_1bipp_pixel_buffer_mask(pb_mask, offset, color);
                 }
                 fast_flood_fill_inner_implementation();
             } else {
@@ -991,35 +897,20 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         '__maybe_broken_count_directional_color_boundaries'(pixel_pos, default_color = 0) {
 
             // No, count the directional edges
-
-
-
             // But better to count edges / contiguous color pixels.
 
-
-
             let [l, u, r, b] = [0, 0, 0, 0];
-
             const central_pixel = this.get_pixel(pixel_pos);
-
             //console.log('central_pixel', central_pixel);
             //throw 'stop';
-
             let prev_pixel_color = central_pixel;
 
-
             this.each_pixel_horiz_left_of_pixel(pixel_pos, (pixel, pos) => {
-
                 //console.log('pixel', pixel);
-
                 if (pixel !== prev_pixel_color) {
-
                     l++;
                     prev_pixel_color = pixel;
                 }
-
-
-
                 // Is it different color from the pixel?
 
                 //console.log('(pixel, pos)', [pixel, pos]);
@@ -1255,9 +1146,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         // Could have a 'paint' file / module.
         'paint_solid_border'(thickness, color) {
 
-
             // separate methods for different bipps, this fn chooses one?
-
 
             return this.process((me, res) => {
                 let x, y;
@@ -1940,17 +1829,8 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         //     Could have a subclass that has the algorithmic optimisations.
         //     Could test the more concise and idiomatic algorithms next to ones that are less readable.
 
-
-
         // Maybe an Idiomatic_Algorithms class level.
         // And Optimised_Algorithms class level too.
-
-
-
-
-
-
-
 
         count_pixels_with_color(...args) {
 
@@ -1996,17 +1876,10 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     }
                     //scratch_32[1]++;
                 }
-                // Traverse the image quickly
-
                 return scratch_32[4];
             } else {
                 return super.count_pixels_with_color(...args);
             }
-
-
-
-            
-
         }
 
 
@@ -2491,11 +2364,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
 
         }
-
         // Maybe try a (much) simpler flood fill algorithm to start with.
-
-
-
 
         // 
         'flood_fill_self_get_pixel_pos_list'(pos, color) {
@@ -2509,9 +2378,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             if (this.bytes_per_pixel === 4) {
                 throw 'NYI'
             } else if (this.bytes_per_pixel === 1) {
-
-
-
                 const using_ta_pixels_visited = () => {
                     const res = new Pixel_Pos_List();
                     //console.log('flood_fill_self_get_pixel_pos_list this.bytes_per_pixel', this.bytes_per_pixel);
@@ -3145,14 +3011,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
                         return res;
                     }
-
-
-
-
-
-
-
-
 
                     // Probably is getting them right....
                     //  Maybe it's best to use an algorithm to determine the graph network between them?
@@ -5593,7 +5451,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                 for (const [x_span, y] of arr_all_inner_xspans) {
                     //console.log('[x_span, y]', [x_span, y]);
                     // xspan then y.
-                    this.draw_horizontal_line_on_1bipp(x_span, y);
+                    this.draw_horizontal_line_on_1bipp_inclusive(x_span, y);
                 }
             }
 
@@ -5603,7 +5461,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     //console.log('idx', idx);
                     //arr_all_inner_xspans.push([arr_all_x_spans[idx].x0_span, arr_all_x_spans[idx].y]);
                     xspan = arr_all_x_spans[idx];
-                    this.draw_horizontal_line_on_1bipp(xspan.x0_span, xspan.y);
+                    this.draw_horizontal_line_on_1bipp_inclusive(xspan.x0_span, xspan.y);
                 }
             }
             
