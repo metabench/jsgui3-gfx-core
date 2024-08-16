@@ -359,11 +359,45 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
             if (pixel_buffer.bipp === 1) {
 
+                // Will do it a more efficient way....
+                //    Possibly using 64bit alignments.
+
+                // But how many pixels should either the reading or the writing be offset by, and in what direction.
+
+
+                // Should be able to get this done really quickly....
+                //   But only on 64 bit matching aligned images?
+
+                // Both must have 64 bit aligned row lengths.
+
+
+                // and an x-span rows algorithm could be moderately fast too.
+                //   rows, x-spans
+
+                // So, iterating through reading 64 bit ranges from the source...
+
+
+
+
+
+
+
+                // 
+
                 //console.log('options.or', options.or);
+
+                // 'or' is using it as a mask.
 
                 if (options.or === true) {
 
+                    return this.draw_1bipp_pixel_buffer_mask_1bipp(pixel_buffer, dest_pos);
+                    // draw_1bipp_pixel_buffer_mask_1bipp
+
+
+
                     // Could use an x on span (iteration) implementation that will be faster.
+
+                    /*
 
                     const pb_source = pixel_buffer;
 
@@ -403,8 +437,41 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                         //}
 
                     })
+
+                    */
                 } else {
+
+
+                    // An aligned / realigned copy?
+                    //   Logic that will read 64 bits at a time?
+                    //   And write them?
+
+
+
+
                     const pb_source = pixel_buffer;
+
+
+                    // First check if it can do a fully aligned copy procedure...
+                    //   Maybe use the 'set' statement for various lines too?
+
+
+
+
+                    // But a row-unaligned 64 bit operation???
+                    //   Would be more complex to do with different shifts and recombinations to do.
+
+                    // Could see about having the numeric structures which then inform which 64 bit values to take, and what to take from them.
+                    //   So there would be a range of the 64 bit values in the dest to write to.
+                    //     And to read from? As in begin reading from a set amount of pixels in? And in from which direction?
+
+
+
+
+                    // Check the source for the 64 bit row alignments....
+                    // And check the dest for 64 bit row alignments.
+                    //   Then a realigning type of set / copy operation would work well.
+
                     const ta_pos = new Int16Array(2);
                     const ta_px_value = new Uint8ClampedArray(3);
                     // make general int info array support +-? Better able to hold (memory) offsets that way.
@@ -535,7 +602,26 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
         // And the option of not having a stroke color or having that to be 0?
 
+
+        // **************************
+        // 64 bit aligned rows could be really useful for optimised binary options in a few places.
+        //   Easily being able to divide by 64 * (row width 64 multiple) to get the row number.
+        //     Then combining that with more direct style reads too, x position will involve the division by 64 to get the 'velue cell' of 64 bits in
+        //     that row, then the remainder of that is the index within that cell (0 to 63)
+        // **************************
+
+        
+        // Could see which aligned parts it could copy successfully within the ranges.
+
+
+
+
+
+
+
         draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points) {
+            // Creates the new pixel buffer mask.
+
             if (arr_points.length >= 2) {
                     // filled polygon!!!
                 const bb_points = get_points_bounding_box(arr_points);
@@ -546,25 +632,77 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     [bb_points[1][0] - bb_points[0][0] + 1],
                     [bb_points[1][1] - bb_points[0][1] + 1]
                 ];
+
+                // Then revise the polygon size....
+                //console.log('polygon_size', polygon_size);
+
+                // if it's a tiny polygon.....
+
+                if (polygon_size[0] === 1 && polygon_size[1] === 1 ) {
+                    const pb_polygon = new this.constructor({
+                        'bits_per_pixel': 1,
+                        'size': polygon_size
+                    });
+                    pb_polygon.ta[0] = 128;
+                    pb_polygon.__offset = offset;
+                    // and the offset too???
+                    return pb_polygon;
+                } else if (polygon_size[0] === 2 && polygon_size[1] === 1 || polygon_size[0] === 1 && polygon_size[1] === 2) {
+                    // only 2 pixels, both on.
+                    const pb_polygon = new this.constructor({
+                        'bits_per_pixel': 1,
+                        'size': polygon_size
+                    });
+                    pb_polygon.ta[0] = 192;
+                    pb_polygon.__offset = offset;
+                    // and the offset too???
+                    return pb_polygon;
+                    //pb_polygon.set_pixel_on_1bipp()
+                } else {
+                    const pb_polygon = new this.constructor({
+                        'bits_per_pixel': 1,
+                        'size': polygon_size
+                    });
+                    // Maybe a faster way to calculate these offsets?
+                    const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
+                    //console.log('pre draw 1bipp polygon');
+                    //let t1 = Date.now();
+                    // Draw polygon with offset?
+                    pb_polygon.draw_polygon(down_offsetted_points, 1, false);
+                    pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
+                    // return that???
+                    pb_polygon.__offset = offset;
+                    // and the offset too???
+                    return pb_polygon;
+                }
+
+
+
+
+
+                // So, the smallest polygons....
+                //   In that case it would only be drawing 2 pixels.
+                //   May want to see about some kind of byte-copying for polygons?
+                //     But rows at 64bits long or multiples of 64 bits will help some lower level things.
+                // And also, 8x8 would be 64 bits in total, may be efficient in some ways when drawing them.
+                //   Could program special cases for drawing 8x8 polygons.
+
+
+
+
+
+
+
+
+                
+            } else if (arr_points.length === 1) {
                 const pb_polygon = new this.constructor({
                     'bits_per_pixel': 1,
                     'size': polygon_size
                 });
-                // Maybe a faster way to calculate these offsets?
-
-
-
-                const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
-                //console.log('pre draw 1bipp polygon');
-                //let t1 = Date.now();
-                // Draw polygon with offset?
-                pb_polygon.draw_polygon(down_offsetted_points, 1, false);
-                pb_polygon.flood_fill_inner_pixels_off_to_on_1bipp();
-
-                // return that???
+                pb_polygon.ta[0] = 128;
                 pb_polygon.__offset = offset;
                 // and the offset too???
-
                 return pb_polygon;
             }
 
@@ -737,6 +875,9 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     //console.log('arr_points.length', arr_points.length);
 
                     if (arr_points.length >= 2) {
+
+                        // But make the mask have rows that round to 64 bit....
+
                         const pb_mask = this.draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points);
                         //  Draw filled polygon I think.
                         
@@ -3084,18 +3225,11 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                                     }
                                 }
                                 last_color = current_color;
-
-
                             }
                             return res;
-
-
                         }
-
                         const row_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y);
-
                         console.log('----------------');
-
                         console.log('row_x_off_spans', row_x_off_spans);
 
                         // Maybe we want to do it for the whole image?
@@ -3107,25 +3241,15 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                         // Not having to calculate the row above and below x off spans too many times.
                         //  Though could keep them in an object or array easily enough though.
 
-
-
-
                         if (y > 0) {
                             const row_above_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y - 1);
                             // And can detect overlapping x off spans above.
                             console.log('row_above_x_off_spans', row_above_x_off_spans);
-
                             // Go through all this row's x off spans.
-
                             // Sequential traversal through both would work best.
                             //  Identifying overlaps with one pass through.
 
-
-
                             //  ?????Then do a binary search to find the first x off span in the row above that begins within 
-
-
-
                         }
                         if (y < this.size[1] - 1) {
                             const row_below_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y + 1);
@@ -3155,28 +3279,9 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                             // Put the row_x_off_spans functionality into the core.
                             //  Seems like core functionality that will be worth integrating very centrally into the system because of its
                             //  possible efficiency gains for a variety of purposes.
-
-
-
-
-
-
-
-
-
-
-
-
                         }
 
                         console.log('----------------');
-
-
-
-
-
-
-
 
                         /*
 
@@ -4923,13 +5028,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             px = this.get_pixel(ta_pos);
             callback(px, ta_pos);
     
-    
-    
             //throw 'stop';
-    
-    
-    
-    
         }
 
 
@@ -5428,6 +5527,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
 
             // Could write them directly...
 
+            /*
             const create_then_write = () => {
                 const arr_all_inner_xspans = [];
 
@@ -5454,6 +5554,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     this.draw_horizontal_line_on_1bipp_inclusive(x_span, y);
                 }
             }
+                */
 
             const write_direct = () => {
                 let xspan;

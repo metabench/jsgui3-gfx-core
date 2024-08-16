@@ -1695,19 +1695,95 @@ if (require.main === module) {
                         // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
                         //  Want to be able to draw 60+ times per second, including multiple larger polygons.
                         //   Not that great perf yet but still pushing what JS can do.
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+                        const pb8 = pb.to_8bipp();
+                        //console.log('pb8.ta.length', pb8.ta.length);
+                        await save_pixel_buffer('./pb1_pb8_eg8.png', pb8, {format: 'png'});
+
+                        lg('End example 8\n');
+                    }
+                },
+                async() => {
+                    // just lg for log???
+                    if (size_limit !== 'small') {
+                        lg('');
+                        lg('Begin example 9 - size_limit: ' + size_limit);
+                        lg('');
+
+                        // Now, can this be optimised...
+                        //   Hopefully, keeping the high-level API using arrays, but using typed arrays better and more on a lower level.
+
+                        //console.log('size_limit', size_limit);
+                        // Draw a pattern....
+                        //   Make that pattern repeat.
+
+                        // Could make the partern out of inversions too....
+                        const pb = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [4000, 4000]
+                        });
+                        let start = process.hrtime();
+                        // // Draw rectangles all over it....???
+                        // Such as drawing 40 rectangles
+                        // and a 'color' property to begin with....
+                        // a 'color' property in the spec could help.
+
+                        const tile_full_w = 124, tile_full_h = 94;
+                        const tile_margin_w = 4, tile_margin_h = 4;
+                        const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
+
+                        const pb_rect_tile = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [tile_inner_w, tile_inner_h]
+                        });
+                        pb_rect_tile.ta.fill(255);
+                        // 
+                        //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                        //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+
+                        pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 2, (tile_inner_h >> 1) + 4], 0);
+                        pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 2], 0);
+
+                        // Then past that rectangular tile in a variety of positions....
+                        const num_tile_columns = 30;
+                        const num_tile_rows = 38;
+                        // tile x spacing
+                        //const tile_x_spacing = 124;
+                        //const tile_y_spacing = 94;
+                        let px_x = tile_margin_w, px_y = tile_margin_h;
+                        // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
+                        for (let row = 0; row < num_tile_rows; row++) {
+                            px_x = tile_margin_w;
+                            for (let column = 0; column < num_tile_columns; column++) {
+                                
+                                // then some kind of paint pixel buffer to pixel buffer.
+
+                                // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
+
+                                pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                                px_x += tile_full_w;
+                            }
+                            px_y += tile_full_h;
+                        }
+
+                        //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+
+                        let end = process.hrtime(start);
+                        let timeInNanos = end[0] * 1e9 + end[1];
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+
+                        // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
+                        //  Want to be able to draw 60+ times per second, including multiple larger polygons.
+                        //   Not that great perf yet but still pushing what JS can do.
 
                         console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
-
 
                         const pb8 = pb.to_8bipp();
                         //console.log('pb8.ta.length', pb8.ta.length);
 
-                        await save_pixel_buffer('./pb1_pb8_eg8.png', pb8, {format: 'png'});
-
-                        
-
-
-                        lg('End example 8\n');
+                        await save_pixel_buffer('./pb1_pb8_eg9.png', pb8, {format: 'png'});
+                        lg('End example 9\n');
                     }
 
                     
@@ -1715,82 +1791,78 @@ if (require.main === module) {
                 },
                 async() => {
                     // just lg for log???
-
-                    
-
                     if (size_limit !== 'small') {
                         lg('');
-                        lg('Begin example 9 - size_limit: ' + size_limit);
+                        lg('Begin example 10 - size_limit: ' + size_limit);
                         lg('');
+
+                        // Now, can this be optimised...
+                        //   Hopefully, keeping the high-level API using arrays, but using typed arrays better and more on a lower level.
+
+
+
+
                         //console.log('size_limit', size_limit);
-
-
                         // Draw a pattern....
                         //   Make that pattern repeat.
 
+                        // So is a lot faster doing the direct aligned bitwise operations.
+
+
+
                         // Could make the partern out of inversions too....
-
-
-
-
-
                         const pb = new Pixel_Buffer({
                             bits_per_pixel: 1,
-                            size: [2000, 2000]
+                            size: [3200, 3200]
                         });
                         let start = process.hrtime();
-
                         // // Draw rectangles all over it....???
-
                         // Such as drawing 40 rectangles
-
-
                         // and a 'color' property to begin with....
-
                         // a 'color' property in the spec could help.
 
-
+                        const tile_full_w = 128, tile_full_h = 64;
+                        const tile_margin_w = 0, tile_margin_h = 0;
+                        const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
 
                         const pb_rect_tile = new Pixel_Buffer({
                             bits_per_pixel: 1,
-                            size: [120, 90]
+                            size: [tile_inner_w, tile_inner_h]
                         });
                         pb_rect_tile.ta.fill(255);
 
+                        // 
+                        //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                        //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+
+                        pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 2, (tile_inner_h >> 1) + 4], 0);
+                        pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 2], 0);
+
                         // Then past that rectangular tile in a variety of positions....
-
-                        const num_tile_columns = 4;
-                        const num_tile_rows = 10;
-
+                        const num_tile_columns = 20;
+                        const num_tile_rows = 45;
                         // tile x spacing
+                        //const tile_x_spacing = 124;
+                        //const tile_y_spacing = 94;
+                        let px_x = tile_margin_w, px_y = tile_margin_h;
 
-                        const tile_x_spacing = 124;
-                        const tile_y_spacing = 94;
+                        // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
 
-                        let px_x = 0, px_y = 0;
 
 
                         for (let row = 0; row < num_tile_rows; row++) {
-                            
-                            
+                            px_x = tile_margin_w;
                             for (let column = 0; column < num_tile_columns; column++) {
-                                px_x = 0;
+                                
                                 // then some kind of paint pixel buffer to pixel buffer.
 
-                                
+                                // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
 
-
+                                pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                                px_x += tile_full_w;
                             }
+                            px_y += tile_full_h;
                         }
-                        
-
-
-
-
-
-
-
-
 
                         //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
 
@@ -1809,17 +1881,322 @@ if (require.main === module) {
                         const pb8 = pb.to_8bipp();
                         //console.log('pb8.ta.length', pb8.ta.length);
 
-                        await save_pixel_buffer('./pb1_pb8_eg8.png', pb8, {format: 'png'});
-
-                        
+                        await save_pixel_buffer('./pb1_pb8_eg10.png', pb8, {format: 'png'});
 
 
-                        lg('End example 8\n');
+                        lg('End example 10\n');
+                    }
+
+                    
+
+                },
+                async() => {
+                    // just lg for log???
+                    if (size_limit !== 'small') {
+                        lg('');
+                        lg('Begin example 11 - size_limit: ' + size_limit);
+                        lg('');
+
+                        // Could make the partern out of inversions too....
+                        const pb = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [3200, 3200]
+                        });
+                        let start = process.hrtime();
+                        // // Draw rectangles all over it....???
+                        // Such as drawing 40 rectangles
+                        // and a 'color' property to begin with....
+                        // a 'color' property in the spec could help.
+
+                        const tile_full_w = 128, tile_full_h = 64;
+                        const tile_margin_w = 0, tile_margin_h = 0;
+                        const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
+
+                        const pb_rect_tile = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [tile_inner_w, tile_inner_h]
+                        });
+                        pb_rect_tile.ta.fill(255);
+
+                        // 
+                        //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                        //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+
+                        pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 2, (tile_inner_h >> 1) + 4], 0);
+                        pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 2], 0);
+
+                        // Then past that rectangular tile in a variety of positions....
+                        const num_tile_columns = 20;
+                        const num_tile_rows = 45;
+                        // tile x spacing
+                        //const tile_x_spacing = 124;
+                        //const tile_y_spacing = 94;
+                        let px_x = tile_margin_w, px_y = tile_margin_h;
+                        // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
+
+                        for (let row = 0; row < num_tile_rows; row++) {
+                            px_x = tile_margin_w;
+                            for (let column = 0; column < num_tile_columns; column++) {
+                                
+                                // then some kind of paint pixel buffer to pixel buffer.
+
+                                // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
+
+                                pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                                px_x += tile_full_w;
+                            }
+                            px_y += tile_full_h;
+                        }
+
+                        //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+
+                        let end = process.hrtime(start);
+                        let timeInNanos = end[0] * 1e9 + end[1];
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+
+                        // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
+                        //  Want to be able to draw 60+ times per second, including multiple larger polygons.
+                        //   Not that great perf yet but still pushing what JS can do.
+
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+
+
+                        const pb8 = pb.to_8bipp();
+                        //console.log('pb8.ta.length', pb8.ta.length);
+
+                        await save_pixel_buffer('./pb1_pb8_eg11.png', pb8, {format: 'png'});
+
+
+                        lg('End example 11\n');
+                    }
+
+                    
+
+                },
+                async() => {
+                    // just lg for log???
+                    if (size_limit !== 'small') {
+                        lg('');
+                        lg('Begin example 12 - size_limit: ' + size_limit);
+                        lg('');
+
+                        // Now, can this be optimised...
+                        //   Hopefully, keeping the high-level API using arrays, but using typed arrays better and more on a lower level.
+
+
+
+
+                        //console.log('size_limit', size_limit);
+                        // Draw a pattern....
+                        //   Make that pattern repeat.
+
+                        // So is a lot faster doing the direct aligned bitwise operations.
+
+
+
+                        // Could make the partern out of inversions too....
+                        const pb = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [3200, 3200]
+                        });
+                        let start = process.hrtime();
+                        // // Draw rectangles all over it....???
+                        // Such as drawing 40 rectangles
+                        // and a 'color' property to begin with....
+                        // a 'color' property in the spec could help.
+
+
+                        // Will want some kind of realignment of it.
+
+                        // When they are not fully aligned, make sure the original parts of what was there get left / put back.
+
+                        // Basically will be a lot better to write 64 pixels at once with few operations.
+
+                        // Determine how to realign it while copying....
+                        //   How much it would be out by, and where.
+
+                        // Should be possible to build it back up properly.
+                        //   Knowing the details of what operations to do first.
+
+                        // The shifted-read copy seems like one of the best ways???
+                        //   Or shifted-write, as going through the source is a simpler process.
+
+                        const tile_full_w = 128 + 16, tile_full_h = 64 + 16;
+                        const tile_margin_w = 16, tile_margin_h = 16;
+
+                        // See about doing realigning writes....
+
+                        const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
+                        const pb_rect_tile = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [tile_inner_w, tile_inner_h]
+                        });
+                        pb_rect_tile.ta.fill(255);
+                        // 
+                        //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                        //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+
+                        pb_rect_tile.draw_rect([1, (tile_inner_h >>> 1) - 4], [tile_inner_w - 2, (tile_inner_h >>> 1) + 4], 0);
+                        pb_rect_tile.draw_rect([(tile_inner_w >>> 1) - 4, 1], [(tile_inner_w >>> 1) + 4, tile_inner_h - 2], 0);
+
+                        // Then past that rectangular tile in a variety of positions....
+                        const num_tile_columns = 18;
+                        const num_tile_rows = 28;
+                        // tile x spacing
+                        //const tile_x_spacing = 124;
+                        //const tile_y_spacing = 94;
+                        let px_x = tile_margin_w, px_y = tile_margin_h;
+                        // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
+                        for (let row = 0; row < num_tile_rows; row++) {
+
+                            // moving from right to left....
+
+                            px_x = tile_margin_w + tile_full_w * (num_tile_columns - 1);
+
+
+                            for (let column = 0; column < num_tile_columns; column++) {
+                                // then some kind of paint pixel buffer to pixel buffer.
+                                // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
+                                pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                                px_x -= tile_full_w;
+                            }
+                            px_y += tile_full_h;
+                        }
+                        //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+                        let end = process.hrtime(start);
+                        let timeInNanos = end[0] * 1e9 + end[1];
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+
+                        // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
+                        //  Want to be able to draw 60+ times per second, including multiple larger polygons.
+                        //   Not that great perf yet but still pushing what JS can do.
+
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+                        const pb8 = pb.to_8bipp();
+                        //console.log('pb8.ta.length', pb8.ta.length);
+
+                        await save_pixel_buffer('./pb1_pb8_eg12.png', pb8, {format: 'png'});
+
+
+                        lg('End example 12\n');
+                    }
+
+                    
+
+                },
+                async() => {
+                    // just lg for log???
+                    if (size_limit !== 'small') {
+                        lg('');
+                        lg('Begin example 13 - size_limit: ' + size_limit);
+                        lg('');
+
+
+                        // Could make the partern out of inversions too....
+                        const pb = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [3200, 3200]
+                        });
+                        let start = process.hrtime();
+                        // // Draw rectangles all over it....???
+                        // Such as drawing 40 rectangles
+                        // and a 'color' property to begin with....
+                        // a 'color' property in the spec could help.
+
+
+                        // Will want some kind of realignment of it.
+
+                        // When they are not fully aligned, make sure the original parts of what was there get left / put back.
+
+                        // Basically will be a lot better to write 64 pixels at once with few operations.
+
+                        // Determine how to realign it while copying....
+                        //   How much it would be out by, and where.
+
+                        // Should be possible to build it back up properly.
+                        //   Knowing the details of what operations to do first.
+
+                        // The shifted-read copy seems like one of the best ways???
+                        //   Or shifted-write, as going through the source is a simpler process.
+
+                        const tile_full_w = (128 * 2) + 16, tile_full_h = (64 * 2) + 16;
+                        const tile_margin_w = 16, tile_margin_h = 16;
+
+                        // See about doing realigning writes....
+
+                        const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
+                        const pb_rect_tile = new Pixel_Buffer({
+                            bits_per_pixel: 1,
+                            size: [tile_inner_w, tile_inner_h]
+                        });
+                        pb_rect_tile.ta.fill(255);
+                        // 
+                        //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                        //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+
+                        pb_rect_tile.draw_rect([1, (tile_inner_h >>> 1) - 4], [tile_inner_w - 2, (tile_inner_h >>> 1) + 4], 0);
+                        pb_rect_tile.draw_rect([(tile_inner_w >>> 1) - 4, 1], [(tile_inner_w >>> 1) + 4, tile_inner_h - 2], 0);
+
+                        // Then past that rectangular tile in a variety of positions....
+                        const num_tile_columns = 10;
+                        const num_tile_rows = 18;
+                        // tile x spacing
+                        //const tile_x_spacing = 124;
+                        //const tile_y_spacing = 94;
+                        let px_x = tile_margin_w, px_y = tile_margin_h;
+                        // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
+                        for (let row = 0; row < num_tile_rows; row++) {
+
+                            // moving from right to left....
+
+                            px_x = tile_margin_w + tile_full_w * (num_tile_columns - 1);
+
+
+                            for (let column = 0; column < num_tile_columns; column++) {
+                                // then some kind of paint pixel buffer to pixel buffer.
+                                // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
+                                pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                                px_x -= tile_full_w;
+                            }
+                            px_y += tile_full_h;
+                        }
+                        //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
+                        let end = process.hrtime(start);
+                        let timeInNanos = end[0] * 1e9 + end[1];
+
+                        console.log('pb.draw_polygon timeInNanos:', timeInNanos);
+
+                        // 45 ms isn't so bad for drawing a large polygon - but ideally would be much lower still.
+                        //  Want to be able to draw 60+ times per second, including multiple larger polygons.
+                        //   Not that great perf yet but still pushing what JS can do.
+
+                        console.log('pb.draw_polygon ms:', timeInNanos / 1000000);
+                        const pb8 = pb.to_8bipp();
+                        //console.log('pb8.ta.length', pb8.ta.length);
+
+                        await save_pixel_buffer('./pb1_pb8_eg13.png', pb8, {format: 'png'});
+
+
+                        lg('End example 13\n');
                     }
 
                     
 
                 }
+
+
+                // Will make another one to use realigned-read 64 bit copy.
+                //   so would be able to copy to any dest pos.
+                //     think that is the single limitation it would overcome.
+
+
+
+                
+
+
+
                 // Thresholding image(s) to obtain 1bipp masks.
                 //  Then later will test the accelerated server versions of it. Will try WASM acceleration too.
 
