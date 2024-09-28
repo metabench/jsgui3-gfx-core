@@ -1,6 +1,6 @@
 
 
-const Pixel_Buffer = require('../pixel-buffer');
+const Pixel_Buffer = require('../core/pixel-buffer');
 
 const sharp = require('sharp');
 

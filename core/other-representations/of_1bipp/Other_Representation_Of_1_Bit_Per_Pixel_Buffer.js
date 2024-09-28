@@ -1,4 +1,4 @@
-const Other_Representation_Buffer = require("../../Other_Representation_Buffer");
+const Other_Representation_Buffer = require("../Other_Representation_Buffer");
 
 
 // An invariant that says that:

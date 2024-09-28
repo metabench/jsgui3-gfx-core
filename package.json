@@ -9,7 +9,7 @@
     },
     "devDependencies": {
         "fnlfs": "^0.0.32",
-        "sharp": "^0.33.4"
+        "sharp": "^0.33.5"
     },
-    "version": "0.0.13"
+    "version": "0.0.14"
 }
