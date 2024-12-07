@@ -27,11 +27,11 @@ class BitManipulator {
     // Set the bit using binary operations
     set_bit_binary(idx_bit, value) {
         const idx_byte = idx_bit >>> 3;
-        const idx_byte_bit = idx_bit & 7;
-        const byte_mask = 1 << idx_byte_bit;
-        const read_byte = this.dv.getUint8(idx_byte);
+        //const idx_byte_bit = idx_bit & 7;
+        const byte_mask = 1 << (idx_bit & 7);
+        //const read_byte = this.dv.getUint8(idx_byte);
         const value_mask = -value;
-        this.dv.setUint8(idx_byte, (read_byte & ~byte_mask) | (value_mask & byte_mask));
+        this.dv.setUint8(idx_byte, (this.dv.getUint8(idx_byte) & ~byte_mask) | (value_mask & byte_mask));
     }
 }
 
@@ -75,7 +75,7 @@ const bitManipulator = new BitManipulator(buffer);
 
 // Test for correctness before benchmarking
 if (test_correctness(bitManipulator)) {
-    const iterations = 1e6;
+    const iterations = 1e8;
 
     const time_if = benchmark(bitManipulator, bitManipulator.set_bit_if, iterations);
     console.log(`Time with if statement: ${time_if}ms`);

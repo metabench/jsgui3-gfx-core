@@ -72,6 +72,7 @@ class Rectangle extends Shape {
     // up = +1?
 
 
+    // This constructor system is maybe too slow for when many such rectangles get made.
 
     constructor(...a) {
         super(...a);
@@ -87,6 +88,8 @@ class Rectangle extends Shape {
 
         const sig = get_item_sig(a, 2);
         //console.log('sig', sig);
+
+        // 
 
         if (sig === '[[n,n],[n,n]]') {
             [[w, h], [x, y]] = a;

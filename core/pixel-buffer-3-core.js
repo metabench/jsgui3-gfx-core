@@ -125,29 +125,15 @@ const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write')
 const Pixel_Buffer_Painter = require('./pixel-buffer-painter');
 let ta_math = require('./ta-math')
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
-class Pixel_Buffer_Core {
+
+const Pixel_Buffer_Core_Reference_Implementations = require('./pixel-buffer-2-core-reference-implementations');
+
+class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     constructor(spec) {
-        if (spec instanceof Pixel_Buffer_Core) {
-            spec = {
-                bits_per_pixel: spec.bits_per_pixel,
-                size: spec.size,
-                ta: spec.ta
-            }
-        }
-        let silent_update_bits_per_pixel;
-        let silent_update_bytes_per_pixel;
-        if (spec.window_to) {
-            spec.bits_per_pixel = spec.window_to.bits_per_pixel;
-        }
+        super(spec);
         const pos = new Int16Array(2);
         const size = new Int16Array(2);
-        let ta; // flexible, can be redefined? Can still make read-only in userland.
-        ro(this, 'ta', () => {
-            return ta;
-        });
-        ro(this, 'buffer', () => {
-            return ta;
-        });
+        
         const ta_bpp = new Uint8Array(2);
         ta_bpp[1] = 8; // byte to bit multiplier. will stay as 8.
         const _24bipp_to_8bipp = () => {
@@ -172,105 +158,7 @@ class Pixel_Buffer_Core {
                 throw 'NYI';
             }
         }
-        const def_bipp = {
-            get() { return ta_bpp[0]; },
-            set(value) { 
-                console.log('value', value);
-                const old_bipp = ta_bpp[0];
-                ta_bpp[0] = value;
-                _change_bipp_inner_update(old_bipp, ta_bpp[0]);
-            },
-            enumerable: true,
-            configurable: false
-        }
-        Object.defineProperty(this, 'bits_per_pixel', def_bipp);
-        Object.defineProperty(this, 'bipp', def_bipp);
-        const def_bypp = {
-            get() { return ta_bpp[0] / 8; },
-            set(value) { 
-                const old_bipp = ta_bpp[0];
-                ta_bpp[0] = value * 8;
-                _change_bipp_inner_update(old_bipp, ta_bpp[0]);
-            },
-            enumerable: true,
-            configurable: false
-        }
-        Object.defineProperty(this, 'bytes_per_pixel', def_bypp);
-        Object.defineProperty(this, 'bypp', def_bypp);
-        const def_bypr = {
-            get() {
-                return size[0] * ta_bpp[0] / 8;
-            }
-        }
-        Object.defineProperty(this, 'bytes_per_row', def_bypr);
-        Object.defineProperty(this, 'bypr', def_bypr);
-        Object.defineProperty(this, 'pos', {
-            get() { return pos; },
-            set(value) {
-                if (value instanceof Int16Array) {
-                    if (value.length === 2) {
-                        pos[0] = value[0];
-                        pos[1] = value[1];
-                    }
-                }
-            },
-            enumerable: true,
-            configurable: false
-        });
-        const pos_bounds = new Int16Array(4);
-        const pos_center = new Int16Array(2);
-        const edge_offsets_from_center = new Int16Array(4);
-        ro(this, 'pos_center', () => pos_center);
-        ro(this, 'edge_offsets_from_center', () => edge_offsets_from_center);
-        Object.defineProperty(this, 'pos_bounds', {
-            get() {
-                return pos_bounds; 
-            },
-            set(value) {
-                const tv = tf(value);
-                if (tv === 'a') {
-                    if (value.length === 4) {
-                        pos_bounds.set(value);
-                    } else {
-                        throw 'Expected Array with .length 4, value.length: ' + value.length;
-                    }
-                } else {
-                    console.trace();
-                    console.log('pos_bounds set tv', tv);
-                    throw 'Expected Array';
-                }
-            },
-            enumerable: true,
-            configurable: false
-        });
-        const minus_pos = new Int16Array(2);
-        Object.defineProperty(this, 'minus_pos', {
-            get() {
-                if (pos) {
-                    minus_pos[0] = pos[0] * -1;
-                    minus_pos[1] = pos[1] * -1;
-                    return minus_pos;
-                }
-            },
-            enumerable: true,
-            configurable: false
-        });
-        Object.defineProperty(this, 'size', {
-            get() { return size; },
-            set(value) {
-                if (value instanceof Int16Array) {
-                    if (value.length === 2) {
-                        size[0] = value[0];
-                        size[1] = value[1];
-                    }
-                } else {
-                    console.trace();
-                    throw 'NYI';
-                }
-            },
-            enumerable: true,
-            configurable: false
-        });
+        
         if (spec instanceof Pixel_Pos_List) {
             throw 'NYI - change to 1bipp';
             const ppl = spec;
@@ -290,182 +178,9 @@ class Pixel_Buffer_Core {
                 buf[(bpr * (pixel_pos[1] - bounds[1])) + (pixel_pos[0] - bounds[0])] = 0;
             });
         } else {
-            if (spec.buffer) {
-                if (spec.buffer instanceof Buffer) {
-                    ta = new Uint8ClampedArray(spec.buffer.buffer);
-                } else {
-                    ta = spec.buffer;
-                }
-            }
-            if (spec.ta) {
-                ta = spec.ta;
-            }
-            if (spec.size) {
-                size[0] = spec.size[0];
-                size[1] = spec.size[1];
-            } else {
-                throw 'Expected: size [x, y] property in the Pixel_Buffer_Core specification';
-            }
-            if (spec.bytes_per_pixel && !spec.bits_per_pixel) spec.bits_per_pixel = spec.bytes_per_pixel * 8;
-            spec.bits_per_pixel = spec.bits_per_pixel || 32;
-            if (spec.bits_per_pixel) {
-                if (spec.bits_per_pixel != 1 && spec.bits_per_pixel != 8 && spec.bits_per_pixel != 24 && spec.bits_per_pixel != 32) {
-                    console.log('spec.bits_per_pixel', spec.bits_per_pixel);
-                    console.trace();
-                    throw 'Invalid bits_per_pixel value of ' + spec.bits_per_pixel + ', must be 8, 24 or 32, default is 32.';
-                } else {
-                    // bits per row...
-
-
-                    //   but there could be some kind of round to 64 bit row alignment for 1bipp.
-
-                    
-
-
-                    ta_bpp[0] = spec.bits_per_pixel;
-                }
-            }
-            /*
-            const bytes_per_pixel = this.bytes_per_pixel = this.bits_per_pixel / 8;
-            this.bytes_per_row = bytes_per_pixel * this.size[0];
-            */
-
-            let auto_adjust_ta_length_to_multiple_of_8 = true;
-            //    if it would be tiny anyway, don't.
-
-
-            // Then will try doing some operations using a ui64array.
-            //   See about implementing some drawing code using it.
-            //   Also see about making some lower level operations available that will power drawing code.
-
-            //   Copying pixels around in 1bipp mode, 64 at a time, should be very effective.
-            //     When pasting somewhere, could set up a pixel buffer so that the ta indexes are offset somehow.
-
-
-
-
-
-            // But also aligning rows to 64 bit length?
-            //   Aligning them to that size could be best.
-            //     Maybe still actually having them in the rows, as in the rows are longer, but keeping that hidden somehow.
-            //       .size returning something false? Or it's the 'selected' or 'active' size, rather than the 'available' or 'memory defined' size.
-            // So having each row a multiple of 8 bytes long could be very effective.
-
-            //  That alignment would be tricky with some kind of scanline wrapping spans.
-
-
-            // Definitely want to get some features working which will enable a variety of faster operations.
-            //   The much more rapid image drawing should be of use.
-
-
-            // Maybe do more work on the rows' x spans?
-
-            // An algorithm that builds them into a typed array?
             
-            // The wrapping scanlines format could be more effective though.
-
-
-            // A typed-array backed multi-y-row x spans class?
-
-
-
-
-
-
-
-
-
-
-
-
-
-            if (size && !this.buffer) {
-                //ta = new Uint8ClampedArray(Math.ceil((ta_bpp[0] / 8) * this.size[0] * this.size[1]));
-
-                this.bits_per_row = size[0] * this.bits_per_pixel;
-
-                let proposed_ta_length = Math.ceil((ta_bpp[0] / 8) * (size[0] * size[1]));
-
-                if (auto_adjust_ta_length_to_multiple_of_8) {
-                    const r8 = proposed_ta_length % 8;
-                    if (r8 > 0) {
-                        proposed_ta_length += (8 - r8);
-                    }
-                }
-                
-                ta = new Uint8Array(proposed_ta_length);
-            }
-            if (spec.color) {
-                this.color_whole(spec.color);
-            }
         }
-        ro(this, 'meta', () => {
-            return {
-                size: this.size,
-                bits_per_pixel: this.bits_per_pixel,
-                bytes_per_pixel: this.bytes_per_pixel,
-                bytes_per_row: this.bytes_per_row
-            }
-        });
-        if (spec.window_to || spec.source || spec.window_to_source) {
-            pb_source = spec.window_to || spec.source || spec.window_to_source;
-            const log_info = () => {
-                console.log('Pixel_Buffer_Core (or subclass) needs to act as a window to another Pixel Buffer.')
-                console.log('pb_source', pb_source);
-                console.log('pb_source.size', pb_source.size);
-                console.log('spec.pos', spec.pos);
-                console.log('spec.pos_center', spec.pos_center);
-                console.log('this.pos', this.pos);
-                console.log('this.pos_my_center_within_source', this.pos_my_center_within_source);
-                console.log('spec', spec);
-            }
-        }
-        if (spec.pos_bounds) {
-            this.pos_bounds = spec.pos_bounds;
-        }
-        this.move = ta_2d_vector => {
-            pos[0] += ta_2d_vector[0];
-            pos[1] += ta_2d_vector[1];
-            if (this.source) {
-                this.copy_from_source();
-            }
-        }
-        this.each_pos_within_bounds = (callback) => {
-            const has_source = !!this.source;
-            for (pos[1] = pos_bounds[1]; pos[1] < pos_bounds[3]; pos[1] ++) {
-                for (pos[0] = pos_bounds[0]; pos[0] < pos_bounds[2]; pos[0] ++) {
-                    if (has_source) this.copy_from_source();
-                    callback();
-                }
-            }
-        }
-        this.move_next_px = () => {
-            const source_size = this.source.size;
-            if (pos[0] + size[0] < source_size[0]) {
-                pos[0]++;
-            } else {
-                if (pos[1] + size[1] < source_size[1]) {
-                    pos[0] = 0;
-                    pos[1]++;
-                } else {
-                    return false;
-                }
-            }
-            if (this.source) {
-                this.copy_from_source();
-            }
-            return pos;
-        }
-        this.paint = new Pixel_Buffer_Painter({
-            pb: this
-        });
-        /*
-        ro(this, 'bytes_per_row', () => {
-            return this.size[0] * this.bytes_per_pixel;
-        });
-        */
-        this.tabrw = new Typed_Array_Binary_Read_Write(ta);
-        this.dv = this.tabrw.dv;
+        
     }
     new_convolved(convolution) {
         const res = this.blank_copy();
@@ -863,6 +578,12 @@ class Pixel_Buffer_Core {
     set_pixel_on_1bipp_by_pixel_index(pixel_index) {
         this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
     }
+
+    'set_pixel_on_1bipp_xy'(x, y) {
+        const pixel_index = y * this.size[0] + x;
+        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+    }
+
     'set_pixel_on_1bipp'(pos) {
         const pixel_index = pos[1] * this.size[0] + pos[0];
         this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
@@ -1143,43 +864,65 @@ return a.every((val, i) => val === b[i]);
             // Getting it as an arr_rows_arr_x_on_spans representation using a class could help.
             //   Or the 'other representaion' type class.
 
+            // May be able to have a faster internal algorithm for that.
+            //   Maybe a typed array backed class? Maybe a typed array.
 
             const arr_rows_arr_on_xspans = pb_1bipp_mask.calculate_arr_rows_arr_x_on_spans_1bipp();
             const [width, height] = pb_1bipp_mask.size;
 
+            const [dest_x, dest_y] = dest_pos;
+
+            /*
+            for (const row of arr_rows_arr_on_xspans) {
+
+                for (const xonspan of row) {
+                    xonspan[0] += dest_x;
+                    xonspan[1] += dest_x;
+                }
+                
+                //this.draw_horizontal_line_on_1bipp_inclusive(xonspan, y + dest_y);
+            }
+                */
+            
             // Not sure the spans are inclusive...
 
             if (color === 1) {
-                let y = 0;
-                let [dest_x, dest_y] = dest_pos;
-                for (y = 0; y < height; y++) {
-                    const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
-                    if (arr_row_xspans_on.length > 0) {
-                        for (const xonspan of arr_row_xspans_on) {
-                            xonspan[0] += dest_x;
-                            xonspan[1] += dest_x;
-                            this.draw_horizontal_line_on_1bipp_inclusive(xonspan, y + dest_y);
-                        }
+                //let y = 0;
+                //let [dest_x, dest_y] = dest_pos;
+                for (let y = 0; y < height; y++) {
+                    //const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
+                    const target_y = y + dest_y;
+                    //if (arr_row_xspans_on.length > 0) {
+                    for (const xonspan of arr_rows_arr_on_xspans[y]) {
+                        xonspan[0] += dest_x;
+                        xonspan[1] += dest_x;
+                        this.draw_horizontal_line_on_1bipp_inclusive(xonspan, target_y);
                     }
+                    //}
                 }
             } else {
-                let y = 0;
-                let [dest_x, dest_y] = dest_pos;
-                for (y = 0; y < height; y++) {
-                    const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
-                    if (arr_row_xspans_on.length > 0) {
-                        for (const xonspan of arr_row_xspans_on) {
-                            xonspan[0] += dest_x;
-                            xonspan[1] += dest_x;
-                            this.draw_horizontal_line_off_1bipp_inclusive(xonspan, y + dest_y);
-                        }
+                //let y = 0;
+                
+                for (let y = 0; y < height; y++) {
+                    //const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
+                    const target_y = y + dest_y;
+                    //if (arr_row_xspans_on.length > 0) {
+                    for (const xonspan of arr_rows_arr_on_xspans[y]) {
+                        xonspan[0] += dest_x;
+                        xonspan[1] += dest_x;
+                        this.draw_horizontal_line_off_1bipp_inclusive(xonspan, target_y);
                     }
+                    //}
                 }
             }
 
             // Get it as an other representation of a 1 bipp image
             
         }
+
+        // Possibly a faster way to do it?
+
+
 
         // realigned 64 bit???
 
@@ -2334,63 +2077,7 @@ return a.every((val, i) => val === b[i]);
         });
         return res;
     }
-    'draw_horizontal_line_8bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
-        const {ta} = this;
-        const [width, height] = this.size;
-        const start_pixel_idx = width * y + x1;
-        //const [r, g, b] = color;
-        let w = start_pixel_idx;
-        for (let x = x1; x <= x2; x++) {
-            ta[w++] = color;
-        }
-    }
-    'draw_horizontal_line_24bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
-        const {ta} = this;
-        const [width, height] = this.size;
-        const start_pixel_idx = width * y + x1;
-        const [r, g, b] = color;
-        let w = start_pixel_idx * 3;
-        for (let x = x1; x <= x2; x++) {
-            ta[w++] = r;
-            ta[w++] = g;
-            ta[w++] = b;
-        }
-    }
-    'draw_horizontal_line_32bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
-        const {ta} = this;
-        const [width, height] = this.size;
-        const start_pixel_idx = width * y + x1;
-        const [r, g, b, a] = color;
-        let w = start_pixel_idx * 4;
-        for (let x = x1; x <= x2; x++) {
-            ta[w++] = r;
-            ta[w++] = g;
-            ta[w++] = b;
-            ta[w++] = a;
-        }
-    }
-    'draw_horizontal_line'(xspan, y, color) {
-        const {bipp} = this;
-        if (bipp === 1) {
-            if (color === 1) {
-                return this.draw_horizontal_line_on_1bipp_inclusive(xspan, y);
-            } else {
-                return this.draw_horizontal_line_off_1bipp_inclusive(xspan, y);
-            }
-        } else if (bipp === 8) {
-            return this.draw_horizontal_line_8bipp(xspan, y, color);
-        } else if (bipp === 24) {
-            return this.draw_horizontal_line_24bipp(xspan, y, color);
-        } else if (bipp === 32) {
-            return this.draw_horizontal_line_32bipp(xspan, y, color);
-        } else {
-            console.trace();
-            throw 'NYI';
-        }
-    }
+    
     draw_rect(pos_corner, pos_other_corner, color) {
         /*
         const paint_bounds = new Int16Array([20, 300, 180, 320]);

@@ -1,5 +1,10 @@
-const Pixel_Buffer_Perf_Focus_Enh = require('./pixel-buffer-perf-focus-enh');
-let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = require('./ta-math');
+const Pixel_Buffer_Perf_Focus_Enh = require('./pixel-buffer-6-perf-focus-enh');
+let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp,
+
+    get_ta_bits_that_differ_from_previous_as_1s, each_1_index
+
+
+} = require('./ta-math');
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
@@ -289,6 +294,10 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             console.log('rect_size matches target size.')
         }
     }
+
+
+    // And this could be done in a more optimised bitwise way.
+
     'get_ta_contiguous_spans_1bipp_toggle'() {
         const get_count = () => {
             const initial_color = 0;
@@ -471,7 +480,509 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             if (arr_last) res.push(arr_last);
             return res;
     }
-    'calculate_arr_rows_arr_x_off_spans_1bipp'() {
+
+    // Could see about a more optimised way to do it that does not go row-by-row.
+
+
+    // Do want a simpler way....
+
+    // Want something with a callback for each y value.....
+
+
+
+    // Does seem a bit tricky for the moment.
+
+    // Want to streamline it more!
+
+
+
+
+
+    'opt_calculate_arr_rows_arr_x_off_spans_1bipp'() {
+
+        // Think we need to redo this.....
+        // Have a handle_y_change function.
+
+        
+
+
+        const ta_x_span_toggle_bits = get_ta_bits_that_differ_from_previous_as_1s(this.ta);
+
+        // Or get a typed array of the 1 indexes.
+
+
+
+        // Then an interator of that, by rows....?
+        // says which row each of these is?
+        // provides an array of x positions for each row?
+
+        // Or other type of iteration, go through the values, track the rows. Got a bit stuck with that way though.
+
+
+
+
+
+
+
+        //const c_all = count_1s(ta_x_span_toggle_bits);
+
+        const [w, h] = this.size;
+
+
+        const get_arr_arr_toggle_positions = () => {
+            let prev_y = -1;
+            let prev_x = -1;
+
+            let arr_positions_in_row;
+            const res = new Array(h);
+
+            // complete a row...
+
+            // complete it...?
+            
+
+            const handle_row_complete = (y, arr_x_toggle_positions) => {
+                res[y] = arr_x_toggle_positions;
+            }
+
+            // Where it iterates through the rows, and for each row it runs a 'catch up and complete' function?
+            //   Or read until we have one that is not in that row?
+
+            // Row by row iteration does seem best.
+
+            // .row_bitindex_ranges????
+
+            // And an algorithm that checks and groups with rows above too?
+            
+
+
+
+
+
+
+
+            each_1_index(ta_x_span_toggle_bits, i => {
+            
+                // Should probably iterate them (better) by rows.
+
+                // And when it's the first in a row?
+
+                //console.log('i', i);
+
+
+
+                const y = Math.floor(i / w);
+                const x = i % w;
+
+                //current_y = y;
+
+                if (y !== prev_y) {
+                    
+                    //console.log('y', y);
+
+                    const y_diff = y - prev_y;
+
+                    // complete it...????
+                    if (arr_positions_in_row) {
+                        arr_positions_in_row.push(prev_x);
+                        handle_row_complete(prev_y, arr_positions_in_row);
+
+                    }
+
+                    if (y_diff > 1) {
+                        // then the empty rows....
+
+                        //const num_empty_rows = y_diff - 1;
+                        for (let y2 = prev_y + 1; y2 < y; y2++) {
+                            handle_row_complete(y2, []);
+                        }
+
+                    }
+
+                    arr_positions_in_row = [x];
+
+                    // then begin the new row.
+                    //  do we have a toggle position already????
+
+
+                    
+
+                    // then write the previous line????
+                    //   Let's just track the values for that row.
+
+
+
+                    
+                    //handle_y_change_from_new_toggle_position(prev_y, y, x);
+
+                    
+
+                    // then recognise the first span of the row.
+                    
+                } else {
+                    arr_positions_in_row.push(x);
+                }
+
+                prev_x = x;
+                prev_y = y;
+
+                //current_i++;
+
+            });
+
+            return res;
+        }
+
+        const arr_arr_toggle_positions = get_arr_arr_toggle_positions();
+        console.log('arr_arr_toggle_positions.length', arr_arr_toggle_positions.length);
+        console.log('h', h);
+
+        throw 'stop'
+
+
+        
+
+
+        const _second_attempt = () => {
+
+            let prev_y = -1;
+            //let current_y = -1;
+            let current_i = 0;
+            let current_color = 0;
+            let arr_current_row_arr_off_spans;
+            let current_span_start_x, current_span_end_x;
+
+            let is_first_span_in_row = true;
+
+            // current span end x
+
+            let res = [];
+            
+            
+            const handle_row_complete = (arr_row, prev_y, new_y) => {
+                if (arr_row) {
+                    res.push(arr_row);
+                    
+                }
+                arr_current_row_arr_off_spans = [];
+                
+                //current_y
+            }
+
+            const handle_span_off_start = (x, y) => {
+                current_span_start_x = x;
+            }
+            const handle_span_off_end = (x, y) => {
+                current_span_end_x = x;
+                arr_current_row_arr_off_spans.push([current_span_start_x, current_span_end_x]);
+            }
+
+            const place_empty_row = () => {
+                res.push([0, w - 1]);
+            }
+
+            const handle_y_change_from_new_toggle_position = (prev_y, y, x) => {
+
+
+                // finish current row.
+                // write any empty rows in between.
+                // start the span in the current row.
+                handle_row_complete(arr_current_row_arr_off_spans, prev_y, y);
+                prev_y++;
+
+                while (prev_y < y) {
+                    // empty row....
+                    place_empty_row();
+                    prev_y++;
+                }
+
+                is_first_span_in_row = true;
+                if (x === 0) {
+                    current_color = 1;
+                } else {
+
+                    if (current_color === 1) {
+                        handle_span_off_start(x, y);
+                        current_color = 0;
+                    } else {
+                        handle_span_off_start(0, y);
+                        handle_span_off_end(x - 1, y);
+                        current_color = 1;
+                    }
+
+
+                    //current_color = 0;
+                    
+                }
+
+            }
+
+            // Need simpler toggle position logic.
+            //   Grouping them by their rows could help.
+
+
+
+            
+
+            each_1_index(ta_x_span_toggle_bits, i => {
+        
+                // Should probably iterate them (better) by rows.
+
+                // And when it's the first in a row?
+
+                //console.log('i', i);
+
+
+
+                const y = Math.floor(i / w);
+                const x = i % w;
+
+                //current_y = y;
+
+                if (y !== prev_y) {
+                    handle_y_change_from_new_toggle_position(prev_y, y, x);
+
+                    
+
+                    // then recognise the first span of the row.
+                }
+
+
+                current_i++;
+
+            });
+
+            return res;
+
+        }
+
+        
+
+
+
+        
+
+
+        // But the size will be offset somehow.....
+
+        //console.log('this._offset', this._offset);
+
+        //console.log('this.size', this.size);
+
+        //console.log('[w, h]', [w, h]);
+
+        //console.log('this.ta[0]', this.ta[0]);
+
+        //console.log('this.ta', this.ta);
+
+        //throw 'stop';
+
+        
+
+
+
+        const old_attempt = () => {
+                // Iterate those toggle bits....
+
+                let prev_x = 0, prev_y = 0;
+
+                const arr_rows_arr_x_off_spans_1bipp = [];
+    
+                let current_row = [];
+    
+                //let prev_i;
+    
+                // All spans?
+    
+                // Maybe better by far to operate on the rows explicitly.
+    
+                let current_color = 0;
+    
+                // See about upgrading the flood fill function / find x off spans.
+    
+                // Probably need to redo this.
+                //   Have an iterator that provides an array of all the rows.
+    
+                // each_row_x_span_toggle_bits perhaps.
+    
+                // or a handle new row inner function?
+    
+                each_1_index(ta_x_span_toggle_bits, i => {
+    
+                    // Should probably iterate them (better) by rows.
+    
+                    // And when it's the first in a row?
+    
+                    //console.log('i', i);
+    
+    
+    
+                    const y = Math.floor(i / w);
+                    const x = i % w;
+    
+                    //console.log('[x, y]', [x, y]);
+    
+                    //throw 'stop';
+    
+                    // detect the row starting color being 1????
+                    //   so an absence of it means there is an x span.
+    
+                    // a callback with the points even?
+    
+    
+    
+                    if (y > prev_y) {
+    
+                        // End the row we were on.
+    
+    
+    
+                        // it's another row.
+                        //   write the prev row.
+    
+                        // and the previous index...???
+                        //   what is the distance????
+    
+                        // finish the current_row row....
+    
+                        //const span_length = x - prev_x;
+                        //const span_color = current_color;
+    
+    
+                        
+    
+                        if (current_color === 0) {
+                            //const span_pair = [[prev_x, prev_y], [w, prev_y]];
+                            //console.log('span_pair', span_pair);
+                            //current_row.push([[prev_x, prev_y], [w - 1, prev_y]]);
+    
+                            current_row.push([prev_x, w - 1]);
+                        }
+                        // span until the end of the row.
+    
+    
+    
+                        //console.log('current_row', current_row);
+    
+    
+    
+                        // May differ by more than one.
+                        arr_rows_arr_x_off_spans_1bipp.push(current_row);
+                        current_row = [];
+                        prev_y++;
+                        prev_x = 0;
+                        
+    
+                        while (y > prev_y) {
+                            // it's another row.
+                            //   write the prev row.
+            
+                            // May differ by more than one.
+            
+                            // it's an off x span.
+                            current_row.push([0, w - 1]);
+            
+                            arr_rows_arr_x_off_spans_1bipp.push(current_row);
+                            current_row = [];
+                            prev_y++;
+                            prev_x = 0;
+                        }
+    
+                        current_color = 0;
+                        current_row = [[0, x]];
+                        
+                        prev_x = x;
+    
+                    }
+                    
+    
+                    // Start a span.
+    
+                    if (x === 0) {  
+                        current_color = 1;
+                    } else {
+                        
+                        // and how many since the prev x
+    
+                        //const span_length = x - prev_x;
+                        //const span_color = current_color;
+    
+    
+                        
+    
+                        if (current_color === 0) {
+                            //const span_pair = [[prev_x, y], [x, y]];
+                            //console.log('span_pair', span_pair);
+                            current_row.push([prev_x + 1, x]);
+                        }
+    
+                        current_color ^= 1;
+                        
+                        //current_color = current_color === 0 ? 1 : 0;
+    
+                    }
+    
+                    //console.log('[x, y]', [x, y]);
+                    //console.log('w', w);
+                    //console.log('i / w', i / w);
+    
+                    prev_y = y;
+                    //prev_i = i;
+                    prev_x = x;
+                });
+    
+                // finish the current row
+    
+                if (current_color === 0) {
+                    //const span_pair = [[prev_x, prev_y], [w, prev_y]];
+                    //console.log('span_pair', span_pair);
+                    current_row.push([prev_x, w - 1]);
+                    arr_rows_arr_x_off_spans_1bipp.push(current_row);
+                }
+    
+    
+                const last_row_y = (h - 1);
+    
+                let y = prev_y;
+    
+                //console.log('prev_y', prev_y);
+                //throw 'stop';
+    
+                y++;
+    
+                if (y < h) {
+    
+                    
+                    //current_row.push([[prev_x, prev_y], [w, prev_y]]);
+                    
+    
+                    //for (let y = prev_y + 1; y < h; y++) {
+                        //arr_rows_arr_x_off_spans_1bipp.push([[[0, y], [w, y]]]);
+                    //}
+    
+                    while (y < h) {
+                        arr_rows_arr_x_off_spans_1bipp.push([[0, w - 1]]);
+                        y++;
+                    }
+                    arr_rows_arr_x_off_spans_1bipp.push([[0, w - 1]]);
+                    //arr_rows_arr_x_off_spans_1bipp.push([[[0, y], [w, y]]]);
+                }
+    
+                //console.log(JSON.stringify(arr_rows_arr_x_off_spans_1bipp, null, 4));
+    
+                //console.log('h', h);
+    
+                //console.log('arr_rows_arr_x_off_spans_1bipp.length', arr_rows_arr_x_off_spans_1bipp.length);
+    
+                //throw 'stop';
+    
+                return arr_rows_arr_x_off_spans_1bipp;
+        }
+
+        
+
+    }
+    'simpler_calculate_arr_rows_arr_x_off_spans_1bipp'() {
         const [width, height] = this.size;
         const res = new Array(height);
         for (let y = 0; y < height; y++) {
@@ -479,6 +990,37 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         }
         return res;
     }
+
+    'calculate_arr_rows_arr_x_off_spans_1bipp'() {
+
+        // Will have a more optimised way to do this....
+        //   Bitwise ops involved.
+        return this.simpler_calculate_arr_rows_arr_x_off_spans_1bipp();
+        
+
+        const scalc = this.simpler_calculate_arr_rows_arr_x_off_spans_1bipp();
+
+        console.log(JSON.stringify(scalc).slice(0, 2000).replaceAll(',', ', '));
+
+        //return this.opt_calculate_arr_rows_arr_x_off_spans_1bipp();
+
+        const ocalc = this.opt_calculate_arr_rows_arr_x_off_spans_1bipp();
+
+
+        console.log('\n\n');
+
+        console.log(JSON.stringify(ocalc).slice(0, 2000).replaceAll(',', ', '));
+        
+
+        return ocalc;
+        /*
+
+        
+
+        */
+    }
+
+
     'calculate_arr_rows_arr_x_on_spans_1bipp'() {
         const [width, height] = this.size;
         const res = new Array(height);

@@ -17,7 +17,7 @@ const oext = require('obext');
 
 const {ro, prop} = oext;
 
-const Pixel_Buffer_Core = require('./pixel-buffer-core');
+const Pixel_Buffer_Core = require('./pixel-buffer-3-core');
 
 class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
 
@@ -101,6 +101,8 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
                 }
                 return ta_pos_scratch;
             });
+
+            // and a 2nd pos scratch ta?
     
             ro(this, 'ta_pos_iterator', () => {
                 if (!ta_pos_iterator) {

@@ -1,1 +1,1 @@
-module.exports = require('./pixel-buffer-enh');
+module.exports = require('./pixel-buffer-8-enh');
