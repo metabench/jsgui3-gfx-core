@@ -5,112 +5,6 @@ const Pixel_Buffer = require('../core/pixel-buffer');
 const sharp = require('sharp');
 
 
-/*
-const find_next_set_bit = (num, start_index) => {
-    // Step 1: Check if start_index is out of range
-    if (start_index >= 31) return false;
-
-    // Step 2: Create a mask with 1s starting at start_index
-    let mask = 0xFFFFFFFF << start_index;
-
-    // Step 3: Apply the mask to num
-    let masked_num = num & mask;
-
-    // Step 4: If no bits are set after start_index, return false
-    if (masked_num === 0) return false;
-
-    // Step 5: Find the next set bit using clz32 and return the bit index
-    return 31 - Math.clz32(masked_num);
-};
-
-*/
-/*
-const find_next_set_bit = (num, start_index) => {
-    // Step 1: Check if start_index is out of range
-    if (start_index >= 31) return false; // No bits can be set after index 31
-
-    // Step 2: Create a mask to check bits from start_index + 1 to 31
-    let mask = (0xFFFFFFFF >>> start_index) ^ 0xFFFFFFFF;
-
-    // Step 3: Apply the mask to num
-    let masked_num = num & mask;
-
-    // Step 4: If no bits are set after start_index, return false
-    if (masked_num === 0) return false;
-
-    // Step 5: Find the next set bit using clz32
-    // Get the position of the highest set bit in masked_num
-    const next_index = 31 - Math.clz32(masked_num);
-
-    // Ensure the returned index is greater than start_index
-    return next_index > start_index ? next_index : false;
-};
-*/
-/*
-const find_next_set_bit = (num, start_index) => {
-    // Step 1: Check if start_index is out of range
-    if (start_index >= 31) return false; // No bits can be set after index 31
-
-    // Step 2: Iterate from start_index + 1 to 31 to find the next set bit
-    for (let i = start_index + 1; i < 32; i++) {
-        // Check if the ith bit is set
-        if ((num & (1 << i)) !== 0) {
-            return i; // Return the index of the next set bit
-        }
-    }
-
-    // If no set bit is found after start_index, return false
-    return false;
-};
-*/
-
-
-
-const reference_find_next_set_bit = (num, start_index) => {
-    // Step 1: Check if start_index is out of range
-    if (start_index < -1 || start_index >= 31) return false; // Must be in the range [0, 31]
-
-    // Step 2: Iterate from start_index + 1 to 31 to find the next set bit
-    for (let i = start_index + 1; i < 32; i++) {
-        // Check if the ith bit is set (from the left)
-        if ((num & (1 << (31 - i))) !== 0) {
-            return i; // Return the index of the next set bit (left counting)
-        }
-    }
-
-    // If no set bit is found after start_index, return false
-    return false;
-};
-
-
-
-
-const fast_find_next_set_bit = (num, start_index) => {
-    // Step 1: Check if start_index is out of range
-    if (start_index < -1 || start_index > 31) return false; // Ensure start_index is within the valid range
-
-    // Step 2: Handle case where start_index is 31 (no more bits after that)
-    if (start_index === 31) return false;
-
-    // Step 3: Mask out all bits up to and including the start_index
-    if (start_index >= 0) {
-        // Shift bits to the left to clear bits up to start_index
-        num = num & ((1 << (31 - start_index)) - 1);
-    }
-
-    // Step 4: Use clz32 to find the number of leading zeros
-    if (num === 0) return false; // No bits set after start_index
-    
-    const next_set_bit = Math.clz32(num); // Number of leading zeros in remaining bits
-    return next_set_bit < 32 ? next_set_bit : false; // Return the index of the next set bit
-};
-
-const {count_1s, get_ta_bits_that_differ_from_previous_as_1s, each_1_index} = require('../core/ta-math');
-
-
-//const find_next_set_bit = reference_find_next_set_bit;
-
-const find_next_set_bit = fast_find_next_set_bit;
 
 if (require.main === module) {
     const lg = console.log;
@@ -409,12 +303,12 @@ if (require.main === module) {
                 const ta_pos = new Uint16Array(2);
                 ta_pos[0] = 0;
                 ta_pos[1] = 0;
-                pb.set_pixel(ta_pos, 1);
+                pb.set_pixel(ta_pos, pastel_lavender);
                 ta_pos[0] = 3;
                 ta_pos[1] = 3;
-                pb.set_pixel(ta_pos, 1);
+                pb.set_pixel(ta_pos, pastel_lavender);
                 ta_pos[0] = 4;
-                pb.set_pixel(ta_pos, 1);
+                pb.set_pixel(ta_pos, pastel_lavender);
                 return pb;
             },
             () => {
@@ -755,7 +649,7 @@ if (require.main === module) {
                     size: [2048, 2048]
                 });
                 const star_points = generate_star_points([100, 100], [1800, 1800], 0.67, 72);
-                pb.draw_polygon(star_points, pastel_rose, true);
+                pb.draw_polygon(star_points, pastel_mint, true);
                 return pb;
                 
 
@@ -1498,11 +1392,11 @@ if (require.main === module) {
         //await run_examples(1024, 512);
         //await run_examples(0);
 
-        await run_examples(9, 9);
+        //await run_examples(9, 9);
 
         //await run_examples(32, 4);
 
-        //await run_examples(66);
+        await run_examples(66, 25);
 
         //await run_examples(4000);
     })();

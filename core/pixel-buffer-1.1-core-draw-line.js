@@ -309,7 +309,6 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
 
     }
 
-
     // May do more lower level / general purpose work on line drawing....
 
     'draw_horizontal_line_on_1bipp_inclusive'([x1, x2], y) {

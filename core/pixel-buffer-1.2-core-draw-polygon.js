@@ -419,7 +419,7 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                         for (const [y, x1, x2] of processor.iterate_process()) {
                             //console.log('[y, x1, x2]', [y, x1, x2]);
 
-                            this.draw_horizontal_line_24bipp([x1, x2], y, color);
+                            this.draw_horizontal_line([x1, x2], y, color);
 
                         }
                     }
@@ -502,13 +502,7 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                 }
                 this.draw_line([prev_x, prev_y], arr_points[0], color);
             }
-
-
         }
-
-
-
-
         
 
         // But a filled polygon is more complex to draw.
