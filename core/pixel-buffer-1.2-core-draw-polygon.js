@@ -1,10 +1,6 @@
-
-
-
 const Pixel_Buffer_Core_Draw_Lines = require('./pixel-buffer-1.1-core-draw-line');
 
 const Polygon_Scanline_Edges = require('./shapes/Polygon_Scanline_Edges');
-
 
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp,
 
@@ -18,24 +14,15 @@ let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_
 
 
 const Polygon = require('./shapes/Polygon');
-
 const ScanlineProcessor = require('./shapes/ScanlineProcessor');
-
 class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
     constructor(spec) {
         
         super(spec);
-
-        
-        
         
     }
 
     gpt_draw_polygon_filling(polygon) {
-
-
-
-
         const edges = [];
         const num_points = polygon.length / 2;
 
@@ -111,51 +98,34 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
     }
 
     class_enh_gpt_draw_polygon_filling(polygon) {
-        // Ensure the polygon is in the correct format
-        polygon = Polygon.ensure_is(polygon);
-    
-        // Create a Polygon_Scanline_Edges instance for the polygon
-        const polygon_scanline_edges = new Polygon_Scanline_Edges(polygon);
-    
-        // Get the size of the target bitmap (e.g., width and height)
         const [w, h] = this.size;
-    
-        // Create a ScanlineProcessor instance to handle the rendering logic
+        polygon = Polygon.ensure_is(polygon);
+        const polygon_scanline_edges = new Polygon_Scanline_Edges(polygon);
         const processor = new ScanlineProcessor(polygon_scanline_edges, w, h, this.ta);
-        // Start processing and filling the polygon
         processor.process();
     }
 
-    gpt_draw_filled_polygon(polygon) {
-        draw_polygon_outline_to_ta_1bipp(this.ta, this.size[0], polygon);
-        // Really want faster scanline drawing.
-        // class_enh_gpt_draw_polygon_filling
-        this.class_enh_gpt_draw_polygon_filling(polygon);
-        //this.gpt_draw_polygon_filling(polygon);
+    gpt_draw_filled_polygon_1bipp(polygon) {
+        polygon = Polygon.ensure_is(ensure_polygon_is_ta(polygon));
+        const scanline_processor = new ScanlineProcessor(
+            polygon.scanline_edges, 
+            this.size[0], 
+            this.size[1], 
+            this.ta, 
+            { draw_edges: true } // Enable edge drawing
+        );
+        scanline_processor.process_1bipp();
     }
 
     
 
     draw_color_1_filled_polygon_1bipp(polygon) {
-        //return this._polygon_class_xspans_attempt_draw_color_1_filled_polygon_1bipp(polygon);
-        //return this.__bitwise_attempt_draw_color_1_filled_polygon_1bipp(polygon);
-        return this.gpt_draw_filled_polygon(polygon);
+        return this.gpt_draw_filled_polygon_1bipp(polygon);
     }
-
-
-    // use ensure is polygon class instance function.
-    // Polygon.ensure_is
 
     draw_polygon_1bipp(polygon, stroke_color, fill_color = false) {
 
         polygon = ensure_polygon_is_ta(polygon);
-
-        // Ensure the polygon is provided as a ta...
-        //   
-
-        // Get polygon point coords, as in all the points.
-
-
         if (fill_color === undefined || fill_color === false) {
             let x, y;
             let prev_x, prev_y;
@@ -178,37 +148,13 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
             //x = polygon[r++];
             //y = polygon[r++];
             this.draw_line([prev_x, prev_y], [polygon[0], polygon[1]], stroke_color);
-            //console.log('polygon outline drawn.');
-
-            /*
-
-            for ([x, y] of arr_points) {
-                //console.log('[x, y]', [x, y]);
-                if (!is_first) {
-                    this.draw_line([prev_x, prev_y], [x, y], stroke_color);
-                }
-                [prev_x, prev_y] = [x, y];
-                is_first = false;
-            }
-            this.draw_line([prev_x, prev_y], arr_points[0], stroke_color);
-
-            */
         } else {
-            //console.log('[stroke_color, fill_color]', [stroke_color, fill_color]);
-            //console.trace();
-
-            // Getting all the pixels for the outline?????
-            //   This could be used to determine the x color 0 spans quickly I suppose, without having to draw things to any buffer bitmap first.
-            //     Really want to detect the x color 0 spans that are contiguous with the very edges of the image.
-
-            //throw 'NYI';
             if (stroke_color === 1) {
                 if (fill_color === 1) {
                     // A filled polygon
 
                     // Get filled polygon x-spans
                     //   Draw those x-spans.
-
                     return this.draw_color_1_filled_polygon_1bipp(polygon);
 
 
@@ -242,36 +188,16 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
 
             }
         }
-
-        
-
-
-
-        
-
-
-
     }
 
 
     'draw_polygon'(arr_points, color, fill = false, stroke_color) {
-
-
-        // Probably best to have separate 1bipp code path selected at the beginning
-
-        // Convert it to the flat ta of points....
-        //   Maybe could get the bounding box at the same time?
-
-
-
-
 
         const {bits_per_pixel} = this;
 
         if (bits_per_pixel === 1) {
 
             if (fill === true) {
-
                 if (stroke_color === undefined) {
                     return this.draw_polygon_1bipp(arr_points, color, color);
                 } else {
@@ -288,110 +214,38 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                     //
                     
                 }
-
-                
-
-
             } else {
                 return this.draw_polygon_1bipp(arr_points, color);
 
             }
-
-
         } else {
-
             if (fill === true) {
+
+                // Let's have a faster way to draw these.
+                //   Likely will use ta.set to set some larger number of pixels all at once, with 24bipp would need to do a num both divisible by 4 and by 3, so use a factor of 12.
+                //     Like 144 bytes at once, ie 48 pixels at once.
+
+
+
+
+
+
 
                 // Want to try the different 'flood fill inner pixels' for this polygon drawing.
                 //  Will before long try on larger images. Maybe much larger too.
 
 
-                const flood_fill_from_outside_invert_merge_implementation = () => {
-                    const bb_points = get_points_bounding_box(arr_points);
-                    // And want to get the size / range.
-
-                    // Or, make a pixel_buffer that represents that space.
-                    //  Having that pb handle offsets could be very useful.
-                    //   Though maybe it would need some lower level changes?
-                    //    Don't want to have to complicate code with offset handling all over the place.
-                    //     Do offsets in the easiest way, then add further convenience features.
-
-                    //console.log('bb_points', bb_points);
-
-                    const offset = bb_points[0];
-
-                    // + 1 to the polygon size, each dimension???
-                    const polygon_size = [
-                        [bb_points[1][0] - bb_points[0][0] + 1],
-                        [bb_points[1][1] - bb_points[0][1] + 1]
-                    ];
-
-                    //console.log('polygon_size', polygon_size);
-
-                    const pb_polygon = new this.constructor({
-                        'bits_per_pixel': 1,
-                        'size': polygon_size
-                    })
-
-                    //console.log('pb_polygon.ta.length', pb_polygon.ta.length);
-
-                    //throw 'stop';
-
-                    // Then draw the polygon to there...
-
-                    const down_offsetted_points = arr_points.map(point => [point[0] - offset[0], point[1] - offset[1]]);
-
-                    //console.log('down_offsetted_points', down_offsetted_points);
-
-                    // or draw the polygon here in color 1?
-                    //  as it's going to be used as a mask-type object.
-
-                    let t1 = Date.now();
-
-
-                    console.log('pre draw 1bipp polygon');
-                    pb_polygon.draw_polygon(down_offsetted_points, 1, false);
-                    let t2 = Date.now();
-                    let td = t2 - t1;
-                    console.log('post draw 1bipp polygon ms: ' + td);
-
-                    const pb_polygon_unfilled = pb_polygon.clone();
-
-                    t1 = Date.now();
-
-                    // This flood fill from outside part of the drawing is the slowest part.
-                    //  Likely we need a quicker way of checking if any pixels have already been visited.
-                    //   Possibly could even use a 1bipp pixel buffer.
-
-                    console.log('pre 1bipp flood fill from outside');
-
-                    pb_polygon.flood_fill_off_pixels_from_outer_boundary_on_1bipp();
-                    t2 = Date.now();
-                    td = t2 - t1;
-
-                    console.log('post 1bipp flood fill from outside ms:', td);
-                    pb_polygon.invert();
-                    pb_polygon.or(pb_polygon_unfilled);
-                    
-                    console.log('pre draw mask');
-                    t1 = Date.now();
-
-                    // Could speed this up using xspan drawing.
-                    this.draw_1bipp_pixel_buffer_mask(pb_polygon, offset, color);
-                    t2 = Date.now();
-                    td = t2 - t1;
-                    console.log('post draw mask ms:', td);
-                }
 
                 // Iterate scanline spans????
 
                 const iterate_class_polygon_scanline_spans_implementation = () => {
 
+                    /*
                     const draw_stroke = () => {
-                        let x, y;
+                        //let x, y;
                         let prev_x, prev_y;
                         let is_first = true;
-                        for ([x, y] of arr_points) {
+                        for (const [x, y] of arr_points) {
                             //console.log('[x, y]', [x, y]);
                             if (!is_first) {
                                 this.draw_line([prev_x, prev_y], [x, y], color);
@@ -401,6 +255,7 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                         }
                         this.draw_line([prev_x, prev_y], arr_points[0], color);
                     }
+                    */
 
 
                     const draw_filling = () => {
@@ -414,73 +269,42 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                         const [w, h] = this.size;
                     
                         // Create a ScanlineProcessor instance to handle the rendering logic
-                        const processor = new ScanlineProcessor(polygon_scanline_edges, w, h, this.ta);
+                        const processor = new ScanlineProcessor(polygon_scanline_edges, w, h, this.ta, { draw_edges: true });
 
-                        for (const [y, x1, x2] of processor.iterate_process()) {
-                            //console.log('[y, x1, x2]', [y, x1, x2]);
+                        // Create the pre-populated array???
 
-                            this.draw_horizontal_line([x1, x2], y, color);
-
-                        }
-                    }
-
-                    draw_stroke();
-                    draw_filling();
-
-                    
-
-
-                    
-
-
-
-                }
-
-
-
+                        if (bits_per_pixel === 24) {
+                            //const ppal = 96 * 3;
+                            const ppal = 64 * 3;
+                            const pre_populated_array = new Uint8Array(ppal); // 96 pixels, 288 bytes
                 
+                            for (let i = 0; i < ppal;) {
+                                pre_populated_array[i++] = color[0];
+                                pre_populated_array[i++] = color[1];
+                                pre_populated_array[i++] = color[2];
+                            }
 
-                const fast_flood_fill_inner_implementation = () => {
-                    //const t0 = Date.now();
-                    //console.log('fast_flood_fill_inner_implementation ------');
-                    //console.log('-------------------------------------------\n');
+                            for (const [y, x1, x2] of processor.iterate_process()) {
+                                this.draw_horizontal_line_24bipp_y_x1_x2(y, x1, x2, color, pre_populated_array, false);
 
-                    //console.log('!!arr_points', !!arr_points);
+                            }
+                        } else {
+                            for (const [y, x1, x2] of processor.iterate_process()) {
+                                //console.log('[y, x1, x2]', [y, x1, x2]);
 
-                    //console.log('arr_points.length', arr_points.length);
+                                //this.draw_horizontal_line([x1, x2], y, color);
+                                this.draw_horizontal_line_y_x1_x2(y, x1, x2, color);
 
-                    if (arr_points.length >= 2) {
+                                // draw_horizontal_line_y_x1_x2
 
-                        // But make the mask have rows that round to 64 bit....
-
-                        // Should not need to create a new pb for the mask.
-                        //   Making a new pb is a bit slow. Speed that up somehow?
-
-                        // A more direct way of drawing would be much better.
-                        //  Draw it to a specially designed efficient and compact data structure.
-                        //   Directly drawing the shape to an x off/on spans system?
-                        // Drawing it to a scratch / buffer ta rather than a new pb.
-
-
-                        // .ta2 - would create it if needed. Empty to start with.
-                        //   Drawing a filled polygon to an empty ta, possibly a new one, possibly not.
-
-
-
-                        const pb_mask = this.draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points);
-                        //  Draw filled polygon I think.
-                        const offset = pb_mask.__offset;
-
-
-                        this.draw_1bipp_pixel_buffer_mask(pb_mask, offset, color);
-                        if (stroke_color !== undefined) {
-                            this.draw_polygon(arr_points, stroke_color, false);
+                            }
                         }
-                    }
-                    // then the basic draw unfilled polygon....
 
+                        
+                    }
+                    //draw_stroke();
+                    draw_filling();
                 }
-                //fast_flood_fill_inner_implementation();
 
                 iterate_class_polygon_scanline_spans_implementation();
             } else {
@@ -489,10 +313,10 @@ class Pixel_Buffer_Core_Draw_Polygons extends Pixel_Buffer_Core_Draw_Lines {
                 //   Will not use set_pixel, but will track the pixel index, work out the offset for whichever move (could look it up from ta of 8) and adjust the pixel index, then do an inline set pixel on the ta.
 
 
-                let x, y;
+                //let x, y;
                 let prev_x, prev_y;
                 let is_first = true;
-                for ([x, y] of arr_points) {
+                for (const [x, y] of arr_points) {
                     //console.log('[x, y]', [x, y]);
                     if (!is_first) {
                         this.draw_line([prev_x, prev_y], [x, y], color);

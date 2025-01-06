@@ -908,7 +908,6 @@ return a.every((val, i) => val === b[i]);
                 }
             }
         }
-        
 
         const chatgpto1_draw_bitmap_implementation = () => {
             draw_bitmap(this.ta, this.size[0], pb_1bipp_mask.ta, pb_1bipp_mask.size[0], pb_1bipp_mask.size[1], dest_pos[0], dest_pos[1]);
@@ -977,6 +976,604 @@ return a.every((val, i) => val === b[i]);
         }
 
         
+
+        const bit_realigned_64_bit_implementation = () => {
+
+            const pb_source = pb_1bipp_mask;
+            const pb_dest = this;
+
+
+            const size_source = pb_source.size;
+            //  And each row width should be / is divisible by 64.
+            const w_source = size_source[0];
+            const h_source = size_source[1];
+
+
+            const size_dest = pb_dest.size;
+            //  And each row width should be / is divisible by 64.
+            const w_dest = size_dest[0];
+            //const h_dest = size_dest[1];
+
+            //const ta_source = pb_source.ta;
+            //const ta_dest = pb_dest.ta;
+
+            const iterate_dest_shift_reads = () => {
+
+                //console.log('');
+
+                // Maybe best to find the full range.
+                //   Or the range for the rows?
+                //   No, get it fully precise.
+
+                
+                // Dest start pxi
+                // Dest end pxi
+
+                // Pxi of the start of the first row (won't be selected if ourside of draw range)
+                // Pxi of the end of the last row    (won't be selected if ourside of draw range)
+
+                // Better to get a smaller writing range....
+                //   Though 
+
+
+                const dest_start_pxi = (dest_pos[1] * pb_dest.size[0]) + dest_pos[0];
+
+
+                const dest_start_row_end_pxi = dest_start_pxi + pb_source.size[0];
+
+                //const dest_end_pxi = dest_start_row_end_pxi + (pb_source.size[1] * pb_dest.size[0]);
+
+                //const dest_end_pxi = (dest_pos[1] + pb_source.size[1]) * pb_dest.size[0] + dest_pos[0] + pb_source.size[0];
+
+
+                // How long is that range?
+
+                //const num_px_in_dest_draw_range = dest_end_pxi - dest_start_pxi;
+
+
+                //console.log('num_px_in_dest_draw_range', num_px_in_dest_draw_range);
+                // Needs to be divisible by 64???
+
+                //console.log('num_px_in_dest_draw_range % 64', num_px_in_dest_draw_range % 64);
+                //   Probably does need be be divisible by 64, at least for now.
+
+
+                // And how many px (bits) is the draw range from the start of each row?
+
+
+                const num_px_from_dest_row_start_to_draw_box_start = dest_pos[0];
+                // num px to row end from shape end...
+
+                const num_px_from_draw_box_end_to_dest_row_end = pb_dest.size[0] - pb_source.size[0] - num_px_from_dest_row_start_to_draw_box_start;
+                
+
+                //console.log('num_px_from_dest_row_start_to_draw_box_start', num_px_from_dest_row_start_to_draw_box_start);
+                //console.log('num_px_from_draw_box_end_to_dest_row_end', num_px_from_draw_box_end_to_dest_row_end);
+
+
+                const num_px_line_jump = num_px_from_draw_box_end_to_dest_row_end + dest_pos[0];
+
+                const num_ui64_line_jump = (num_px_line_jump >>> 6) - 1; // This part looks right at least.
+
+
+
+                // Then how many full bytes?
+                // How many full 64 bit chunks?
+
+
+                // Anyway, iterate these 64 bit values, within, or not fully within, the draw range.
+                //   Will have some overlaps, need to be careful about handling that correctly.
+
+                // so, need the 64 bit index.
+
+                // i64 could make sense - index within 64 bit space.
+
+                const dest_start_i64 = dest_start_pxi >>> 6;
+                const dest_start_i64_rb = dest_start_pxi % 64;
+
+                //console.log('dest_start_i64', dest_start_i64);
+                //console.log('dest_start_i64_rb', dest_start_i64_rb);
+
+
+                const dest_start_row_end_i64 = dest_start_row_end_pxi >>> 6;
+                //const dest_start_row_end_i64_rb = dest_start_row_end_pxi % 64;
+
+                //console.log('dest_start_row_end_i64', dest_start_row_end_i64);
+                //console.log('dest_start_row_end_i64_rb', dest_start_row_end_i64_rb);
+
+
+                // dest_start_row_end_i64_rb px into the last one.
+                //  so it will be an inclusive number of them.
+
+                const num_64_bit_at_least_partial_parts_per_row = (dest_start_row_end_i64 - dest_start_i64) + 1;
+                //console.log('num_64_bit_at_least_partial_parts_per_row', num_64_bit_at_least_partial_parts_per_row);
+                // number of pixels to offset to the left????
+                //   or really, it's 32 pixels in.....
+                // do the 0th one...
+                // Maybe best to read the dest to a local variable, keep it rather than read it twice from the ta.
+                // dest_start_row_end_pxi
+                // dest start row end....
+                
+                // And the end of the first line....
+
+                // 
+
+                // And the number of 64 bit chunks to write...
+                //   How much of each one will be written to?
+
+
+                // And the remainder at the end too....
+
+
+                // So best to go through each row????
+                // Maybe iterating the 'y' coordinates of the dest space that will be drawn to.
+                //    Does make most sense really....
+
+                let i64_dest = dest_start_i64;
+
+                let i64_source = 0;
+
+                const y_top = dest_pos[1], y_bottom = y_top + h_source;
+                const sta64 = new BigUint64Array(pb_source.ta.buffer, pb_source.ta.byteOffset, pb_source.ta.byteLength / 8);
+                //const dta64 = new BigUint64Array(pb_dest.ta.buffer, pb_dest.ta.byteOffset + byte_start); // To the end I think???
+
+                const dta64 = new BigUint64Array(pb_dest.ta.buffer, pb_dest.ta.byteOffset, pb_dest.ta.byteLength / 8); // To the end I think???
+                const bi_dest_start_i64_rb = BigInt(dest_start_i64_rb);
+                //  and then 64 minus that
+                // so how many bits to shift the right part to the right????
+                const bi_right_right_shift_bits = 64n - bi_dest_start_i64_rb;
+                const dest_row_middle_ui64_count = num_64_bit_at_least_partial_parts_per_row - 2;
+
+                for (let y = y_top; y < y_bottom; y++) {
+                    const process_0th_64bit_part = () => {
+                        // Maybe could even do it using bytes????
+                        //   Though doing it in one operation really will be best.
+                        // So, need to read from the beginning of the dest row....
+                        //console.log('dest_row_starting_ui64', dest_row_starting_ui64);
+                        //console.log('dest_row_starting_ui64_but_only_with_the_original_left_part_there', dest_row_starting_ui64_but_only_with_the_original_left_part_there);
+
+                        // Then add in the part from the destination....
+                        //   But the left part needs to be moved to the right.
+                        //const source_row_starting_ui64_but_left_part_is_shifted_right = (sta64[i64_source] >> bi_dest_start_i64_rb) >> 32n;
+
+                        // Hmmmm not so sure on endianness here - is that messing things up.
+
+                        // left shift here???
+                        //   not sure why that works! endianness problem.
+                        //     as these numbers are LE, not BE, so I think.
+
+
+                        //const dest_row_starting_ui64 = dta64[i64_dest];
+                        //const dest_row_starting_ui64_but_only_with_the_original_left_part_there = (dest_row_starting_ui64 << bi_right_right_shift_bits) >> bi_right_right_shift_bits;
+                        //const source_row_starting_ui64_but_left_part_is_shifted_right = (sta64[i64_source] << bi_dest_start_i64_rb);
+                        //const new_value_to_write = dest_row_starting_ui64_but_only_with_the_original_left_part_there | source_row_starting_ui64_but_left_part_is_shifted_right;
+                        //dta64[i64_dest] = new_value_to_write;
+
+
+                        dta64[i64_dest] = ((dta64[i64_dest] << bi_right_right_shift_bits) >> bi_right_right_shift_bits) | (sta64[i64_source] << bi_dest_start_i64_rb);
+
+                        // Could use an XOR mask I think.
+                        //   With all 1s on the right.
+
+                        // 2 to the power of 
+                        // so would be an 'or' operation upon something which has had that part removed already.
+                        i64_dest++;
+
+
+                        //  Would not have completed copying the 1st 64bit value from the source.
+                        //i64_source++;
+    
+                    }
+                    // and a local variable for the previous / left item from the source.
+
+                    const process_middle_64bit_parts = () => {
+                        // And a loop on the inner part....
+
+                        //console.log('dest_row_middle_ui64_count', dest_row_middle_ui64_count);
+
+
+                        for (let i_mid = 0; i_mid < dest_row_middle_ui64_count; i_mid++) {
+                            // Will need to read 2 parts from the source....
+                            // left_source_ui64 
+                            // the index of the left source one.
+                            //const left_source_ui64_as_read = sta64[i64_source];
+                            //const right_source_ui64_as_read = sta64[i64_source + 1];
+                            // How many bits from the left, how many bits from the right?
+                            // But it's the right part from the source left.
+                            //const left_source_ui64_right_part_used = left_source_ui64_as_read >> bi_right_right_shift_bits;
+                            // and the left part will be used on the right
+                            //const right_source_left_part_used = right_source_ui64_as_read << bi_dest_start_i64_rb;
+                            //const combined_lr = left_source_ui64_right_part_used | right_source_left_part_used;
+                            //dta64[i64_dest] = combined_lr;
+                            dta64[i64_dest++] = (sta64[i64_source] >> bi_right_right_shift_bits) | (sta64[i64_source + 1] << bi_dest_start_i64_rb);
+                            //const left_source_left_only = 
+                            // then the value to write - 
+                            //i64_dest++;
+                            i64_source++;
+                        }
+                        // num_inner_64bit_parts
+                    }
+
+                    
+    
+                    const process_last_64bit_part = () => {
+    
+                        // just write to max ui64???????
+                        // get the right part of the dest row....
+                        //const right_source_ui64_as_read = sta64[i64_source];
+                        //const right_part_of_source_shifted_left = (right_source_ui64_as_read >> bi_right_right_shift_bits);
+                        //const dest_row_ending_ui64 = dta64[i64_dest];
+                        //const masked_dest_row_ending_ui64 = (dest_row_ending_ui64);
+                        //const new_value_to_write = masked_dest_row_ending_ui64 | right_part_of_source_shifted_left;
+                        //dta64[i64_dest] = new_value_to_write;
+
+
+                        dta64[i64_dest] = (dta64[i64_dest]) | (sta64[i64_source] >> bi_right_right_shift_bits);
+
+                        i64_dest++;
+                        i64_source++;
+                    }
+
+                    process_0th_64bit_part();
+                    process_middle_64bit_parts();
+                    process_last_64bit_part();
+
+                    // Then do the line jump.
+
+                    i64_dest += num_ui64_line_jump;
+                    //console.log('process_0th_64bit_part', process_0th_64bit_part);
+
+                }
+
+
+                //for (let y = dest_pos[0], )
+
+
+            }
+
+            iterate_dest_shift_reads();
+
+
+
+            // May be easier to do shifted reads....
+
+            //   So would iterare through every 64bit value being written.
+
+
+            /*
+
+            const first_attempt_shifting_writes = () => {
+
+                if (w_source > 0) {
+                    // and then the number of (complete) 64 bit parts....
+                    const num_complete_64_bit_parts_per_row = w_source >>> 6;
+                    const num_bits_per_row_remaining_after_complete_64_bit_parts = w_source % 64;
+
+                    console.log('num_complete_64_bit_parts_per_row', num_complete_64_bit_parts_per_row);
+                    console.log('num_bits_per_row_remaining_after_complete_64_bit_parts', num_bits_per_row_remaining_after_complete_64_bit_parts);
+
+                    // so iterate through the values in the rows....
+
+                    const sta64 = new BigUint64Array(pb_source.ta.buffer, pb_source.ta.byteOffset);
+                    const dta64 = new BigUint64Array(pb_dest.ta.buffer, pb_dest.ta.byteOffset);
+
+                    let rpos_64 = 0;
+
+                    // byte index perhaps....
+
+                    let bit_index = 0;
+
+
+                    // The writing bit index....?
+
+                    //   The coordinates etc only get complex with writing it. Reading it this way is simple.
+
+                    // Also have some dest_x, dest_y???
+                    //   Have code in the loop advance the dest pb to the next line.
+                    // OK, so what is the dest line skip in bytes????
+
+                    const dest_line_wrap_num_skip_bits = (w_dest - w_source);
+                    const dest_line_wrap_num_skip_bytes = dest_line_wrap_num_skip_bits >>> 3;
+
+                    // and then is the number of bytes divisible by 8????
+
+                    // What is the 'shift to right when writing' bits offset?
+                    //   Or shift to left?
+                    //    It could depend on where the space is available, if it comes to it.
+
+                    // Do want to identify the contiguous 64 bit chunks in the dest?
+                    //   Though it is tricky because of misalignment.
+
+                    // For every read value, need to know where and what type of shift to do.
+                    //   Shift in from right, keeping the existing bits on the left.
+
+                    //   Shift in from the left, keeping the existing bits on the right.
+
+                    // And need to know how the values that get read are to be split in the destination.
+                    //   Each of the reads in the realigned write will be split to be written in 2 separate values.
+                    //     So probably need to use 'or' logic quite a lot, at least when writing the second one.
+                    //       But at start and end, its as though the first or second parts of that chunk are already in place.
+
+
+                    // So calculate which 2 64 bit values are to be written to.
+                    //   maybe have pos1 and pos2, increment them together, pos2 always up by 1.
+
+
+
+
+
+                    // And we will have a write_bit_index too????
+
+                    //  Or just keep track what the offsets are from....
+                    //    And handle jumps at the ends of the rows.
+
+                    // This does look like it could wind up being a very fast algorithm.
+
+
+
+
+
+                    
+
+                    // then do the line jumps of both at the ends of the lines....
+
+
+
+
+
+
+                    // Should not need to be byte aligned??? 64 bit aligned?
+
+
+                    if (dest_line_wrap_num_skip_bytes % 8 === 0) {
+
+                        // We can use this.
+                        const dest_line_wrap_num_skip_64s = dest_line_wrap_num_skip_bytes >>> 3;
+                        //   seems easy enough then, that's the number that get skipped at the end of each line....
+
+
+                        let wpos_64_1 = (dest_pos[1] * pb_dest.size[0] + dest_pos[0]) >>> 6;
+                        let wpos_64_2 = wpos_64_1 + 1;
+
+
+                        const px_offset_to_right_within_pos1 = BigInt((dest_pos[1] * pb_dest.size[0] + dest_pos[0]) % 64);
+
+                        const px_offset_to_right_within_pos2 = BigInt(64n - px_offset_to_right_within_pos1);
+                        // Though here there is a kind of 'remapping' going on.
+                        //   Iterating a cursor through may be easiest...
+                        //     Though some multiplications can be really fast.
+
+
+                        // So having a dest start pointer would make sense....
+
+                        for (let source_y = 0; source_y < h_source; source_y++) {
+                            // Then iterate through the items in that row....
+
+
+                            for (let source_x = 0; source_x < w_source; source_x++) {
+                                // Then iterate through the items in that row....
+
+                                if (bit_index === 0) {
+                                    const read_64_bit_value = sta64[rpos_64++];
+                                    //console.log('read_64_bit_value', read_64_bit_value);
+
+
+                                    // And make 2 values out of it...???
+                                    //   But need to apply mask differently....
+                                    //     Get left side of it as 1 64 bit int, the right side as the other.
+
+                                    // so shift the left of it to the right?????
+                                    //    get rid of the part on the right to start with???
+
+
+                                    //const offset_from_right????
+
+
+                                    // But we want the left side from the source in the right side of the dest???
+                                    //   No, in left side of dest, but on the right of it.
+
+
+                                    // Need to keep the first part of what has been read.
+                                    const left_side_64 = read_64_bit_value >> px_offset_to_right_within_pos1;
+
+
+
+                                    const right_side_64 = read_64_bit_value << px_offset_to_right_within_pos2;
+
+
+                                    //const left_side_64 = ((read_64_bit_value >> px_offset_to_right_within_pos1) << px_offset_to_right_within_pos1) >> px_offset_to_right_within_pos2 ;
+                                    ///const right_side_64 = ((read_64_bit_value << px_offset_to_right_within_pos1) >> px_offset_to_right_within_pos1) << px_offset_to_right_within_pos1;
+
+                                    //const right_side_64 = ((read_64_bit_value << px_offset_to_right_within_pos1) >> px_offset_to_right_within_pos1) << px_offset_to_right_within_pos2 ;
+
+                                    // or write it as an 'and'???
+
+                                    // do need to apply it as an 'and' I think.
+                                    ///   or really 'replace'?
+                                    // write it as an 'or'?
+
+
+                                    // So need to write the left side of it in place....
+                                    //   But it's on the right.
+                                    //    OR it with what's already there - except we need to remove the parts of 'already there'.
+
+
+                                    const already_there_on_left = (dta64[wpos_64_1] >> px_offset_to_right_within_pos1) << px_offset_to_right_within_pos1;
+
+                                    const already_there_on_right = (dta64[wpos_64_2] << px_offset_to_right_within_pos2) >> px_offset_to_right_within_pos2;
+
+
+                                    // Then an 'and' operation I think.
+
+                                    //   Shouldn't be too tricky to write it!!!!
+
+
+
+                                    //  then apply an 'or' to what's on the left.
+
+
+
+                                    const l_64 = already_there_on_left | left_side_64;
+                                    const r_64 = already_there_on_right | right_side_64;
+
+
+                                    dta64[wpos_64_1] = l_64;
+                                    dta64[wpos_64_2] = r_64;
+
+                                    
+                                    
+
+                                    // px_offset_to_right_within_pos2
+
+
+                                    // write it....
+
+                                    // What is the byte offset (to the right) within the first write pos?
+
+
+                                    wpos_64_1++;
+                                    wpos_64_2++;
+
+
+
+
+
+                                    // Then, at this point, we write it appropriately.
+
+                                }
+                                
+
+                                //const read_64_bit_value = sta64[rpos_64++];
+                                //  then see about how to put that value into the dest, and how much of it, how to shift it.
+
+                                //   likely seems that it will need to go into 2 different destination 64 bit blocks as well.
+                                //      Needs to leave pixels outside its draw area unchanged.
+
+
+                                bit_index++;
+                                if (bit_index === 64) bit_index = 0;
+                                //  But then when it gets set back to 0???
+
+
+                                
+
+
+
+                                
+            
+            
+                            }
+
+                            wpos_64_1 += dest_line_wrap_num_skip_64s;
+                            wpos_64_2 += dest_line_wrap_num_skip_64s;
+
+
+
+                        }
+
+
+
+
+
+
+
+                    } else {
+                        console.trace();
+                        throw 'Alignment issue'
+                    }
+
+
+
+
+
+
+
+                    
+
+
+                }
+
+            }
+
+            */
+
+
+            //first_attempt_shifting_writes();
+
+
+            // Read 2 at once, split....
+            //   But definitely looks better to set the source.
+
+
+
+
+
+            // Work out the bit alignments and realignments???
+
+
+            // For now, go through the source.
+
+            // source width / 64
+            //   and the remainder too....
+
+            
+
+            // May be easiest here to use the full sized typed array that covers the whole of the dest image.
+            //   Prob will make calculations easier / more standard.
+
+            
+
+            
+
+
+
+
+
+            
+
+
+        }
+
+
+        // a byte-realigned copy...
+        //   So where it can be done if a typed array is made that starts on a different byte.
+
+
+
+
+
+        // Do want to make and test the 64 bit aligned writing.
+
+        // fully aligned 64 bit????
+        //   same size, same shape, a very direct set of operations.
+
+        // To a dest_pos that is divisible by 8
+
+        // Maybe make a pixel_index number.
+
+        const test_can_do_aligned_64_bit = () => (this.bits_per_row % 64 === 0 && this.bits_per_row >= 64) && 
+            (dest_pos[1] * pb_1bipp_mask.size[0] + dest_pos[0]) % 64 === 0 &&
+            pb_1bipp_mask.bits_per_row % 64 === 0 && pb_1bipp_mask.bits_per_row >= 64;
+
+
+        const test_can_do_bit_realigned_64_bit = () => (this.bits_per_row % 64 === 0 && this.bits_per_row >= 64) && 
+        
+        pb_1bipp_mask.bits_per_row % 64 === 0 && pb_1bipp_mask.bits_per_row >= 64;
+
+
+        // But a realigned 64 bit copy...
+        //   Depending on how much realignment would need to be done....
+
+        // Finding how things are out of line when it comes to doing the 64 bit operations.
+
+
+
+
+
+        
+
+
+
 
         // approach_selecting
 

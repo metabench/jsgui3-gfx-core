@@ -350,7 +350,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     'draw_horizontal_line_8bipp'(xspan, y, color) {
         const [x1, x2] = xspan;
         const {ta} = this;
-        const [width, height] = this.size;
+        const [width] = this.size;
         const start_pixel_idx = width * y + x1;
         //const [r, g, b] = color;
         let w = start_pixel_idx;
@@ -361,7 +361,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     'draw_horizontal_line_24bipp'(xspan, y, color) {
         const [x1, x2] = xspan;
         const {ta} = this;
-        const [width, height] = this.size;
+        const [width] = this.size;
         const start_pixel_idx = width * y + x1;
         const [r, g, b] = color;
         let w = start_pixel_idx * 3;
@@ -374,7 +374,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     'draw_horizontal_line_32bipp'(xspan, y, color) {
         const [x1, x2] = xspan;
         const {ta} = this;
-        const [width, height] = this.size;
+        const [width] = this.size;
         const start_pixel_idx = width * y + x1;
         const [r, g, b, a] = color;
         let w = start_pixel_idx * 4;
@@ -402,6 +402,140 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
         } else {
             console.trace();
             throw 'NYI';
+        }
+    }
+
+    'draw_horizontal_line_y_x1_x2'(y, x1, x2, color, pre_populated_array, populate_array) {
+        const {bipp} = this;
+        if (bipp === 1) {
+            if (color === 1) {
+                return this.draw_horizontal_line_on_1bipp_inclusive_y_x1_x2(y, x1, x2);
+            } else {
+                return this.draw_horizontal_line_off_1bipp_inclusive_y_x1_x2(y, x1, x2);
+            }
+        } else if (bipp === 8) {
+            return this.draw_horizontal_line_8bipp_y_x1_x2(y, x1, x2, color);
+        } else if (bipp === 24) {
+            return this.draw_horizontal_line_24bipp_y_x1_x2(y, x1, x2, color, pre_populated_array, populate_array);
+        } else if (bipp === 32) {
+            return this.draw_horizontal_line_32bipp_y_x1_x2(y, x1, x2, color);
+        } else {
+            console.trace();
+            throw 'NYI';
+        }
+    }
+
+    'draw_horizontal_line_8bipp_y_x1_x2'(y, x1, x2, color) {
+        //const [x1, x2] = xspan;
+        const {ta} = this;
+        const [width] = this.size;
+        const start_pixel_idx = width * y + x1;
+        //const [r, g, b] = color;
+        let w = start_pixel_idx;
+        for (let x = x1; x <= x2; x++) {
+            ta[w++] = color;
+        }
+    }
+
+    '_draw_horizontal_line_24bipp_y_x1_x2'(y, x1, x2, color) {
+        //const [x1, x2] = xspan;
+        const {ta} = this;
+        const [width] = this.size;
+        const start_pixel_idx = width * y + x1;
+        const [r, g, b] = color;
+        let w = start_pixel_idx * 3;
+        for (let x = x1; x <= x2; x++) {
+            ta[w++] = r;
+            ta[w++] = g;
+            ta[w++] = b;
+        }
+    }
+
+    'draw_horizontal_line_24bipp_y_x1_x2'(y, x1, x2, color, pre_populated_array = null, populate_array = true) {
+        const { ta } = this;
+        const [width, height] = this.size;
+
+        // Validate bounds
+        if (y < 0 || y >= height || x1 < 0 || x2 >= width || x1 > x2) {
+            throw new Error("Coordinates out of bounds");
+        }
+
+        const start_pixel_idx = width * y + x1;
+        const [r, g, b] = color;
+        const pixel_count = x2 - x1 + 1;
+
+        if (pixel_count < 8) {
+            // For small spans, use the original per-pixel method
+            let w = start_pixel_idx * 3;
+            for (let x = x1; x <= x2; x++) {
+                ta[w++] = r;
+                ta[w++] = g;
+                ta[w++] = b;
+            }
+            return;
+        }
+
+        // Create and optionally populate the pre-populated array if needed
+        if (!pre_populated_array) {
+            pre_populated_array = new Uint8Array(96 * 3); // Default size of 96 pixels, 288 bytes
+        }
+
+        if (populate_array) {
+            for (let i = 0; i < pre_populated_array.length; i += 3) {
+                pre_populated_array[i] = r;
+                pre_populated_array[i + 1] = g;
+                pre_populated_array[i + 2] = b;
+            }
+        }
+
+        let w = start_pixel_idx * 3;
+        const ppal = pre_populated_array.length;
+        const chunk_size = ppal / 3; // Use the provided pre-populated array's actual size
+        let remaining_pixels = pixel_count;
+
+        while (remaining_pixels >= chunk_size) {
+            //const byte_count = chunk_size * 3;
+            ta.set(pre_populated_array, w);
+            w += ppal;
+            remaining_pixels -= chunk_size;
+        }
+
+
+        /*
+        // Use .set for remaining pixels if 16 or more remain
+        if (remaining_pixels >= 32) {
+            const byte_count = remaining_pixels * 3;
+            ta.set(pre_populated_array.subarray(0, byte_count), w);
+        } else if (remaining_pixels > 0) {
+            // Handle remaining pixels directly for fewer than 16
+            for (let i = 0; i < remaining_pixels * 3; i += 3) {
+                ta[w++] = r;
+                ta[w++] = g;
+                ta[w++] = b;
+            }
+        }
+
+        */
+
+        for (let i = 0; i < remaining_pixels; i ++) {
+            ta[w++] = r;
+            ta[w++] = g;
+            ta[w++] = b;
+        }
+    }
+
+    'draw_horizontal_line_32bipp_y_x1_x2'(y, x1, x2, color) {
+        //const [x1, x2] = xspan;
+        const {ta} = this;
+        const [width] = this.size;
+        const start_pixel_idx = width * y + x1;
+        const [r, g, b, a] = color;
+        let w = start_pixel_idx * 4;
+        for (let x = x1; x <= x2; x++) {
+            ta[w++] = r;
+            ta[w++] = g;
+            ta[w++] = b;
+            ta[w++] = a;
         }
     }
     

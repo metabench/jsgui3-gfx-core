@@ -95,7 +95,6 @@ const draw_polygon_outline_to_ta_1bipp = (ta, img_width, polygon) => {
         // Draw the line between them....
 
         x = next_x; y = next_y;
-
     }
 
     next_x = polygon[0]; next_y = polygon[1];

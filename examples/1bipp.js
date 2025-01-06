@@ -471,243 +471,6 @@ if (require.main === module) {
                 //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
                 pb.draw_polygon([[28, 28], [6, 6], [31, 28], [50, 6], [31, 31], [31, 34], [31, 50], [28, 50]], 1, false);
 
-                /*
-                const compose_time = process.hrtime(pre_compose_time);
-
-                // Then see about getting these as the x spans....
-                let c_all = 0;
-
-                const pre_task_time = process.hrtime();
-
-                const do_task = () => {
-                        // That counting function is not so fast - would there be a way to do it without making all the tas?
-                    //   Though that should be relatively fast? Faster just to keep local variables?
-
-                    // create rshifted buffer within 2ndary buffer...???
-
-                    // calculate_arr_rows_arr_x_off_spans_1bipp
-
-
-
-                    //const c_all = pb.count_1bipp_wrapping_x_span_color_toggles();
-
-                    // Get a ta of all of them, don't iterate.
-
-
-
-                    // get_ta_1bipp_wrapping_x_span_color_toggle_indexes
-
-                    //let c_all = 0;
-
-
-                    // So possibly use a faster algorithm for identifying these x off spans.
-
-                    // And could replace the xored values on each x = 0 with the original one.
-                    //   Could use separate routine for that - a non-wrapping version. Assumes each row starts at 0.
-
-
-
-                    // get_ta_bits_that_differ_from_previous_as_1s
-
-                    const ta_x_span_toggle_bits = get_ta_bits_that_differ_from_previous_as_1s(pb.ta);
-
-                    const c_all = count_1s(ta_x_span_toggle_bits);
-
-                    const [w, h] = pb.size;
-
-                    // Iterate those toggle bits....
-
-                    let prev_x = 0, prev_y = 0;
-
-                    const arr_rows_arr_x_off_spans_1bipp = [];
-
-                    let current_row = [];
-
-                    //let prev_i;
-
-                    // All spans?
-
-                    // Maybe better by far to operate on the rows explicitly.
-
-                    let current_color = 0;
-
-                    // See about upgrading the flood fill function / find x off spans.
-
-
-
-                    each_1_index(ta_x_span_toggle_bits, i => {
-
-                        // And when it's the first in a row?
-
-
-
-
-                        const y = Math.floor(i / w);
-                        const x = i % w;
-
-                        // detect the row starting color being 1????
-                        //   so an absence of it means there is an x span.
-
-                        // a callback with the points even?
-
-                        if (y > prev_y) {
-
-                            // End the row we were on.
-            
-            
-            
-                            // it's another row.
-                            //   write the prev row.
-            
-                            // and the previous index...???
-                            //   what is the distance????
-            
-                            // finish the current_row row....
-            
-                            //const span_length = x - prev_x;
-                            //const span_color = current_color;
-            
-            
-                            
-            
-                            if (current_color === 0) {
-                                //const span_pair = [[prev_x, prev_y], [w, prev_y]];
-                                //console.log('span_pair', span_pair);
-                                current_row.push([[prev_x, prev_y], [w, prev_y]]);
-                            }
-                            // span until the end of the row.
-            
-            
-            
-                            //console.log('current_row', current_row);
-            
-            
-            
-                            // May differ by more than one.
-                            arr_rows_arr_x_off_spans_1bipp.push(current_row);
-                            current_row = [];
-                            prev_y++;
-                            prev_x = 0;
-                        }
-                        while (y > prev_y) {
-                            // it's another row.
-                            //   write the prev row.
-            
-                            // May differ by more than one.
-            
-                            // it's an off x span.
-                            current_row.push([[0, y], [w, y]]);
-            
-                            arr_rows_arr_x_off_spans_1bipp.push(current_row);
-                            current_row = [];
-                            prev_y++;
-                            prev_x = 0;
-                        }
-            
-                        // Start a span.
-            
-                        if (x === 0) {  
-                            current_color = 1;
-                        } else {
-                            
-                            // and how many since the prev x
-            
-                            //const span_length = x - prev_x;
-                            //const span_color = current_color;
-            
-            
-                            
-            
-                            if (current_color === 0) {
-                                //const span_pair = [[prev_x, y], [x, y]];
-                                //console.log('span_pair', span_pair);
-                                current_row.push([[prev_x, y], [x, y]]);
-                            }
-            
-                            current_color ^= 1;
-                            
-                            //current_color = current_color === 0 ? 1 : 0;
-            
-                        }
-            
-                        //console.log('[x, y]', [x, y]);
-                        //console.log('w', w);
-                        //console.log('i / w', i / w);
-            
-                        prev_y = y;
-                        //prev_i = i;
-                        prev_x = x;
-                    });
-                }
-                */
-
-
-                
-
-
-
-                // count_1s
-
-                // Then iterate the 1 bits in it - 
-
-
-                // Then should be easy enough to iterate through the rows in that ta.
-
-
-
-
-                //const c_all = pb.calculate_arr_rows_arr_x_off_spans_1bipp().flat().length;
-
-                //const arr_row_x_off_spans = pb.calculate_arr_rows_arr_x_off_spans_1bipp();
-                
-                /*
-                
-
-
-                // count_1bipp_wrapping_x_span_color_toggles
-
-                pb.iterate_1bipp_wrapping_x_span_color_toggles((i) => {
-                    // Maybe at the beginning of each row????
-
-                    //console.log('i', i);
-
-                    //const dist = i - prev;
-
-                    //console.log('(i - prev):', i - prev);
-
-                    c_all++;
-                    //prev = i;
-                });
-                */
-
-                                        
-
-                
-
-                // Does seem to be a reasonably fast function here, likely could be sped up a lot further.
-
-
-                // But the non-wrapping x span color toggles?
-                //   Assumingh
-
-
-                // And then put their positions all in an array?
-                //   Or the distances between them????
-
-                
-                
-                /*
-                pb.iterate_all_ui32_locations_values_prev_values_prev_shifted_values_toggle_locations_1bipp(ui32a_px_range => {
-                    //console.log('ui32a_px_range', ui32a_px_range);
-
-                    c_all++;
-                })
-                    */
-                //const task_time = process.hrtime(pre_task_time);
-
-                // And the task... see about iterating through the positions and finding the 
-
-
                 
                 return pb;
                 return {
@@ -1087,20 +850,6 @@ if (require.main === module) {
                     bits_per_pixel: 1,
                     size: [2048, 2048]
                 });
-                //let start = process.hrtime();
-
-                //const create_time = process.hrtime(start_time);
-
-                //const pre_compose_time = process.hrtime();
-
-                //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
-
-
-                // Drawing filled polygons should be sped up greatly....
-
-                // Se about getting the x off spans....
-
-
 
                 //pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1100, 800], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
                 pb.draw_polygon([[900, 900,], [200, 200], [1000, 900], [1600, 200], [1000, 1000], [1000, 1100], [1000, 1600], [900, 1600]], 1, true);
@@ -1235,6 +984,79 @@ if (require.main === module) {
                 //return pb;
             },
             () => {
+                //return false;
+
+                const pb = new Pixel_Buffer({
+                    bits_per_pixel: 1,
+                    size: [3200, 3200]
+                });
+                // // Draw rectangles all over it....???
+                // Such as drawing 40 rectangles
+                // and a 'color' property to begin with....
+                // a 'color' property in the spec could help.
+    
+    
+                // Will want some kind of realignment of it.
+    
+                // When they are not fully aligned, make sure the original parts of what was there get left / put back.
+    
+                // Basically will be a lot better to write 64 pixels at once with few operations.
+    
+                // Determine how to realign it while copying....
+                //   How much it would be out by, and where.
+    
+                // Should be possible to build it back up properly.
+                //   Knowing the details of what operations to do first.
+    
+                // The shifted-read copy seems like one of the best ways???
+                //   Or shifted-write, as going through the source is a simpler process.
+    
+                const tile_full_w = (128 * 2) + 16, tile_full_h = (64 * 2) + 16;
+                const tile_margin_w = 16, tile_margin_h = 16;
+    
+                // See about doing realigning writes....
+    
+                const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
+                const pb_rect_tile = new Pixel_Buffer({
+                    bits_per_pixel: 1,
+                    size: [tile_inner_w, tile_inner_h]
+                });
+                pb_rect_tile.ta.fill(255);
+                // 
+                //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
+                //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
+    
+                pb_rect_tile.draw_rect([1, (tile_inner_h >>> 1) - 4], [tile_inner_w - 2, (tile_inner_h >>> 1) + 4], 0);
+                pb_rect_tile.draw_rect([(tile_inner_w >>> 1) - 4, 1], [(tile_inner_w >>> 1) + 4, tile_inner_h - 2], 0);
+    
+                // Then past that rectangular tile in a variety of positions....
+                const num_tile_columns = 10;
+                const num_tile_rows = 18;
+                // tile x spacing
+                //const tile_x_spacing = 124;
+                //const tile_y_spacing = 94;
+                let px_x = tile_margin_w, px_y = tile_margin_h;
+                // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
+
+                
+                for (let row = 0; row < num_tile_rows; row++) {
+    
+                    // moving from right to left....
+    
+                    px_x = tile_margin_w + tile_full_w * (num_tile_columns - 1);
+    
+    
+                    for (let column = 0; column < num_tile_columns; column++) {
+                        // then some kind of paint pixel buffer to pixel buffer.
+                        // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
+                        pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
+                        px_x -= tile_full_w;
+                    }
+                    px_y += tile_full_h;
+                }
+                return pb;
+            },
+            () => {
                 return false;
 
                 const w_scale_factor = 2;
@@ -1339,79 +1161,7 @@ if (require.main === module) {
                     }
                 };
             },
-            () => {
-                return false;
-
-                const pb = new Pixel_Buffer({
-                    bits_per_pixel: 1,
-                    size: [3200, 3200]
-                });
-                // // Draw rectangles all over it....???
-                // Such as drawing 40 rectangles
-                // and a 'color' property to begin with....
-                // a 'color' property in the spec could help.
-    
-    
-                // Will want some kind of realignment of it.
-    
-                // When they are not fully aligned, make sure the original parts of what was there get left / put back.
-    
-                // Basically will be a lot better to write 64 pixels at once with few operations.
-    
-                // Determine how to realign it while copying....
-                //   How much it would be out by, and where.
-    
-                // Should be possible to build it back up properly.
-                //   Knowing the details of what operations to do first.
-    
-                // The shifted-read copy seems like one of the best ways???
-                //   Or shifted-write, as going through the source is a simpler process.
-    
-                const tile_full_w = (128 * 2) + 16, tile_full_h = (64 * 2) + 16;
-                const tile_margin_w = 16, tile_margin_h = 16;
-    
-                // See about doing realigning writes....
-    
-                const tile_inner_w = tile_full_w - tile_margin_w, tile_inner_h = tile_full_h - tile_margin_h;
-                const pb_rect_tile = new Pixel_Buffer({
-                    bits_per_pixel: 1,
-                    size: [tile_inner_w, tile_inner_h]
-                });
-                pb_rect_tile.ta.fill(255);
-                // 
-                //pb_rect_tile.draw_rect([1, (tile_inner_h >> 1) - 4], [tile_inner_w - 1, (tile_inner_h >> 1) + 4], 0);
-                //pb_rect_tile.draw_rect([(tile_inner_w >> 1) - 4, 1], [(tile_inner_w >> 1) + 4, tile_inner_h - 1], 0);
-    
-                pb_rect_tile.draw_rect([1, (tile_inner_h >>> 1) - 4], [tile_inner_w - 2, (tile_inner_h >>> 1) + 4], 0);
-                pb_rect_tile.draw_rect([(tile_inner_w >>> 1) - 4, 1], [(tile_inner_w >>> 1) + 4, tile_inner_h - 2], 0);
-    
-                // Then past that rectangular tile in a variety of positions....
-                const num_tile_columns = 10;
-                const num_tile_rows = 18;
-                // tile x spacing
-                //const tile_x_spacing = 124;
-                //const tile_y_spacing = 94;
-                let px_x = tile_margin_w, px_y = tile_margin_h;
-                // Optimising the draw_1bipp_pixel_buffer_mask will speed this up the most.
-
-                
-                for (let row = 0; row < num_tile_rows; row++) {
-    
-                    // moving from right to left....
-    
-                    px_x = tile_margin_w + tile_full_w * (num_tile_columns - 1);
-    
-    
-                    for (let column = 0; column < num_tile_columns; column++) {
-                        // then some kind of paint pixel buffer to pixel buffer.
-                        // 'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color)
-                        pb.draw_1bipp_pixel_buffer_mask(pb_rect_tile, [px_x, px_y], 1);
-                        px_x -= tile_full_w;
-                    }
-                    px_y += tile_full_h;
-                }
-                return pb;
-            },
+            
             () => {
                 return false;
 
@@ -1979,18 +1729,18 @@ if (require.main === module) {
 
         // And could take an average too.
 
-        //await run_examples(256, 256);
+        await run_examples(256, 350);
 
-        await run_examples(512, 512);
+        //await run_examples(512, 512);
 
         //await run_examples(1024, 512);
         //await run_examples(0);
 
         //await run_examples(9);
 
-        //await run_examples(32, 4);
+        //await run_examples(35, 32);
 
-        //await run_examples(66);
+        //await run_examples(100, 100);
 
         //await run_examples(4000);
     })();

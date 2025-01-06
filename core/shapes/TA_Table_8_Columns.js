@@ -11,27 +11,11 @@ class TA_Table_8_Columns {
     }
 
     get(row, col) {
-        //const index = (row << 3) + col; // row * 8 + col
-        //if (index < 0 || index >= this.ta.length) {
-        //    throw new Error(`Index out of bounds: row=${row}, col=${col}`);
-        //}
-        //return this.ta[index];
-
         return this.ta[(row << 3) + col];
     }
 
     set(row, col, value) {
-        //const index = (row << 3) + col; // row * 8 + col
-        //if (index < 0 || index >= this.ta.length) {
-        //    throw new Error(`Index out of bounds: row=${row}, col=${col}`);
-        //}
-        //this.ta[index] = value;
-
-
         this.ta[(row << 3) + col] = value;
-        
-
-
     }
 
     sort_indices(comparator) {

@@ -11,10 +11,9 @@ class Polygon_Edges extends TA_Table_8_Columns {
         // Loop to determine the number of edges
         for (let i = 0; i < num_points; i++) {
             const y1 = ptap[(i << 1) + 1]; // i * 2 + 1 becomes (i << 1) + 1, efficient bitwise multiply
-            //const next_index = (i + 1) % num_points; // Correct modulo to ensure no bug with wrap-around
             const y2 = ptap[(((i + 1) % num_points) << 1) + 1]; // Proper multiplication by 2 for the lookup
 
-            if (y1 !== y2) {
+            if (y1 !== y2 || y1 === y2) { // Count horizontal edges as well
                 num_edges++;
             }
         }
@@ -43,12 +42,14 @@ class Polygon_Edges extends TA_Table_8_Columns {
             const x2 = ptap[indx2];
             const y2 = ptap[indx2 + 1];
 
-            if (y1 !== y2) {
+            if (y1 !== y2 || y1 === y2) { // Include horizontal edges
+                const is_horizontal = (y1 === y2) ? 1 : 0;
                 this.set(row, 0, y1 < y2 ? x1 : x2); // x1
                 this.set(row, 1, Math.min(y1, y2)); // y1
                 this.set(row, 2, y1 < y2 ? x2 : x1); // x2
                 this.set(row, 3, Math.max(y1, y2)); // y2
-                this.set(row, 4, (x2 - x1) / (y2 - y1)); // Slope
+                this.set(row, 4, (y1 !== y2) ? (x2 - x1) / (y2 - y1) : 0); // Slope (0 for horizontal)
+                this.set(row, 5, is_horizontal); // is_horizontal (1 for horizontal, 0 otherwise)
                 sorted_indices[row] = row;
                 row++;
             }
@@ -61,6 +62,7 @@ class Polygon_Edges extends TA_Table_8_Columns {
                 x2: this.get(i, 2),
                 y2: this.get(i, 3),
                 slope: this.get(i, 4),
+                is_horizontal: this.get(i, 5),
             })));
         }
     }
@@ -84,6 +86,7 @@ class Polygon_Edges extends TA_Table_8_Columns {
                     x2: this.get(index, 2),
                     y2: this.get(index, 3),
                     slope: this.get(index, 4),
+                    is_horizontal: this.get(index, 5),
                 }))
             );
         }
