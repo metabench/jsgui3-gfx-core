@@ -577,7 +577,7 @@ if (require.main === module) {
                     //const pb8 = pb.to_8bipp();
                     //console.log('pb8.ta.length', pb8.ta.length);
 
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg0.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg0.png', pb, {format: 'png'});
 
 
                     // const draw_zoomed_fractal = (width, height, zoomLevel, zoomCenterX, zoomCenterY, zoomWindowWidth, zoomWindowHeight) => {
@@ -621,7 +621,7 @@ if (require.main === module) {
                     //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
 
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg1.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg1.png', pb, {format: 'png'});
 
 
                     zoomCenterX = 0.4;
@@ -645,7 +645,7 @@ if (require.main === module) {
                     //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
 
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg2.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg2.png', pb, {format: 'png'});
 
 
 
@@ -671,7 +671,7 @@ if (require.main === module) {
                     //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
 
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg3.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg3.png', pb, {format: 'png'});
 
 
 
@@ -687,7 +687,7 @@ if (require.main === module) {
                     timeInNanos = end[0] * 1e9 + end[1];
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
 
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg4.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg4.png', pb, {format: 'png'});
 
 
 
@@ -701,7 +701,7 @@ if (require.main === module) {
                     end = process.hrtime(start);
                     timeInNanos = end[0] * 1e9 + end[1];
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg5.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg5.png', pb, {format: 'png'});
 
 
                     // May be nice to put this into a function...
@@ -731,7 +731,7 @@ if (require.main === module) {
                     end = process.hrtime(start);
                     timeInNanos = end[0] * 1e9 + end[1];
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg6.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg6.png', pb, {format: 'png'});
 
 
                     // Under 1s perf - not great in terms of aiming for full screen 60fps animation - still OK for image generation purposes.
@@ -754,7 +754,7 @@ if (require.main === module) {
                     end = process.hrtime(start);
                     timeInNanos = end[0] * 1e9 + end[1];
                     console.log('zoomed fractal ms:', timeInNanos / 1000000);
-                    await save_pixel_buffer('./fractal_pb24greyscale_eg7.png', pb, {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb24greyscale_eg7.png', pb, {format: 'png'});
 
                     // Turn it to 8bipp?
 
@@ -784,7 +784,7 @@ if (require.main === module) {
                   //console.log('pb.draw_polygon timeInNanos:', timeInNanos);
                   //console.log('fractal ms:', timeInNanos / 1000000);
 
-                  await save_pixel_buffer('./fractal_pb24greyscale_eg8.png', pb, {format: 'png'});
+                  await save_pixel_buffer('./output/fractal_pb24greyscale_eg8.png', pb, {format: 'png'});
 
 
 
@@ -809,7 +809,7 @@ if (require.main === module) {
                     console.log('gs8bipp fractal ms:', timeInNanos / 1000000);
 
 
-                    await save_pixel_buffer('./fractal_pb8greyscale_eg0.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb8greyscale_eg0.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
 
 
                     pb_gs8bipp = new Pixel_Buffer({
@@ -831,18 +831,18 @@ if (require.main === module) {
                     console.log('8bipp large zoomed fractal ms:', timeInNanos / 1000000);
 
 
-                    await save_pixel_buffer('./fractal_pb8greyscale_eg1.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_pb8greyscale_eg1.png', pb_gs8bipp.to_24bipp(), {format: 'png'});
 
 
                     // Then can we threshold it to 1bipp?
 
                     let pb_1bipp = pb.extract_channel(0).get_1bipp_threshold_8bipp(128);
 
-                    await save_pixel_buffer('./fractal_thresh_eg0.png', pb_1bipp.to_24bipp(), {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_thresh_eg0.png', pb_1bipp.to_24bipp(), {format: 'png'});
 
                     pb_1bipp = pb.extract_channel(0).get_1bipp_threshold_8bipp(180);
 
-                    await save_pixel_buffer('./fractal_thresh_eg1.png', pb_1bipp.to_24bipp(), {format: 'png'});
+                    await save_pixel_buffer('./output/fractal_thresh_eg1.png', pb_1bipp.to_24bipp(), {format: 'png'});
 
 
                     // Color fractals could be of use too....

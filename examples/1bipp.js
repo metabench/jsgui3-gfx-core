@@ -153,7 +153,6 @@ if (require.main === module) {
                     throw 'stop';
                 }
 
-
                 sharp(pb.ta, {
                     raw: {
                         width: meta.size[0],
@@ -179,14 +178,7 @@ if (require.main === module) {
 
                 //console.trace();
                 //throw 'stop';
-
-
             });
-            
-            
-
-
-
         }
 
         const save_pixel_buffer = async(path, pb, options = {}) => {
@@ -199,16 +191,10 @@ if (require.main === module) {
 
                 throw 'NYI';
             }
-
         }
-
-
         let eg_idx = 0;
-
         const save_path = './output/';
-
         const filename_prefix = 'pb1_pb8_eg'
-
         const filename_suffix = '.png';
 
         // Then create the filenames, save them in the run_example function.
@@ -261,13 +247,6 @@ if (require.main === module) {
                 eg_res = fn_example();
 
             }
-            
-
-
-            
-
-            
-
 
             const end_time = process.hrtime(start_time);
 
@@ -347,10 +326,6 @@ if (require.main === module) {
                 }
 
             }
-
-            
-
-            
 
         }
 
@@ -1729,11 +1704,11 @@ if (require.main === module) {
 
         // And could take an average too.
 
-        await run_examples(256, 350);
+        //await run_examples(256, 350);
 
         //await run_examples(512, 512);
 
-        //await run_examples(1024, 512);
+        await run_examples(1024, 512);
         //await run_examples(0);
 
         //await run_examples(9);
