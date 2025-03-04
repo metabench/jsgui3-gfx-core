@@ -1,6 +1,6 @@
 {
     "name": "jsgui3-gfx-core",
-    "main": "gfx-core.js",
+    "main": "core/gfx-core.js",
     "license": "MIT",
     "dependencies": {
         "fnl": "^0.0.36",
@@ -11,5 +11,5 @@
         "fnlfs": "^0.0.32",
         "sharp": "^0.33.5"
     },
-    "version": "0.0.18"
+    "version": "0.0.19"
 }
