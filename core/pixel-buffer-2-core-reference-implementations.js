@@ -716,7 +716,7 @@ return a.every((val, i) => val === b[i]);
         return res;
     }
     'add_alpha_channel'() {
-        console.log('add_alpha_channel this.bytes_per_pixel', this.bytes_per_pixel);
+        //console.log('add_alpha_channel this.bytes_per_pixel', this.bytes_per_pixel);
         if (this.bytes_per_pixel === 3) {
             var res = new this.constructor({
                 'size': this.size,
@@ -744,77 +744,6 @@ return a.every((val, i) => val === b[i]);
         if (this.bytes_per_pixel === 4) {
             return this;
         }
-    }
-    'to_8bit_greyscale'() {
-        if (this.bytes_per_pixel === 1) {
-            return this;
-        } else if (this.bytes_per_pixel === 3) {
-            const res = new this.constructor({
-                'size': this.size,
-                'bits_per_pixel': 8
-            });
-            if (this.pos) res.pos = this.pos;
-            const bres = res.buffer;
-            let i = 0;
-            this.each_pixel((pos, color) => {
-                bres[i++] = Math.round((color[0] + color[1] + color[2]) / 3);
-            });
-            return res;
-        } else if (this.bytes_per_pixel === 4) {
-            const res = new this.constructor({
-                'size': this.size,
-                'bits_per_pixel': 8
-            });
-            if (this.pos) res.pos = this.pos;
-            const bres = res.buffer;
-            let i = 0;
-            this.each_pixel((pos, color) => {
-                bres[i++] = Math.round((color[0] + color[1] + color[2]) / 3);
-            });
-            return res;
-        }
-    }
-    'to_32bit_rgba'() {
-        var res = new this.constructor({
-            'size': this.size,
-            'bits_per_pixel': 32
-        });
-        if (this.pos) res.pos = this.pos;
-        const bres = res.buffer;
-        if (this.bytes_per_pixel === 1) {
-            let i = 0, new_v;
-            this.each_pixel((pos, v) => {
-                bres[i++] = v;
-                bres[i++] = v;
-                bres[i++] = v;
-                bres[i++] = 255;
-            });
-        } else {
-            console.trace();
-            throw 'NYI';
-        }
-        return res;
-    }
-    '__invert_greyscale_self'() {
-        const bres = this.buffer;
-        let i = 0;
-        this.each_pixel((x, y, v) => {
-            bres[i++] = 255 - v;
-        });
-        return this;
-    }
-    '__invert_greyscale'() {
-        let res = new this.constructor({
-            'size': this.size,
-            'bits_per_pixel': 8
-        });
-        if (this.pos) res.pos = this.pos;
-        const bres = res.buffer;
-        let i = 0;
-        this.each_pixel((x, y, v) => {
-            bres[i++] = 255 - v;
-        });
-        return res;
     }
     
     draw_rect(pos_corner, pos_other_corner, color) {

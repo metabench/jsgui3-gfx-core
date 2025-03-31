@@ -132,6 +132,8 @@ dist
 examples/output/
 /examples/output/*
 examples/output/.DS_Store
-
+.vscode/
+.vscode/settings.json
 
 *.png
+package-lock.json

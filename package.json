@@ -8,8 +8,8 @@
         "obext": "^0.0.31"
     },
     "devDependencies": {
-        "fnlfs": "^0.0.32",
+        "fnlfs": "^0.0.33",
         "sharp": "^0.33.5"
     },
-    "version": "0.0.19"
+    "version": "0.0.20"
 }
