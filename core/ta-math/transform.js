@@ -104,7 +104,7 @@ const each_source_dest_pixels_resized_inline = (source_colorspace, dest_size, ca
         }
     }
 }
-each_source_dest_pixels_resized = each_source_dest_pixels_resized_inline;
+const each_source_dest_pixels_resized = each_source_dest_pixels_resized_inline;
 const __each_source_dest_pixels_resized_limited_further_info = (source_colorspace, dest_size, callback) => {
     const dest_to_source_ratio = new Float32Array([source_colorspace[0] / dest_size[0], source_colorspace[1] / dest_size[1]]);
     const source_edge_distances = new Float32Array(4);
