@@ -263,22 +263,23 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
             // This is equivalent to:
             // get: function() { return bValue; },
             // set: function(newValue) { bValue = newValue; },
-            get() { 
-
-                // const [width, height, bypp, bypr, bipp, bipr] = ta_colorspace;
-
-                ta_colorspace[0] = size[0];
-                ta_colorspace[1] = size[1];
-
-
-                // 
-                ta_colorspace[2] = ta_bpp[0] % 8 === 0 ? ta_bpp[0] / 8 : 0;
+            get() {
+                // Defensive: handle undefined ta_bpp, fallback to bits_per_pixel or bytes_per_pixel
+                ta_colorspace[0] = this.size[0];
+                ta_colorspace[1] = this.size[1];
+                let bpp = 0;
+                if (this.ta_bpp && typeof this.ta_bpp[0] === 'number') {
+                    bpp = this.ta_bpp[0];
+                } else if (typeof this.bits_per_pixel === 'number') {
+                    bpp = this.bits_per_pixel;
+                } else if (typeof this.bytes_per_pixel === 'number') {
+                    bpp = this.bytes_per_pixel * 8;
+                }
+                ta_colorspace[2] = bpp % 8 === 0 ? bpp / 8 : 0;
                 ta_colorspace[3] = ta_colorspace[2] * ta_colorspace[0];
-                ta_colorspace[4] = ta_bpp[0];
+                ta_colorspace[4] = bpp;
                 ta_colorspace[5] = ta_colorspace[4] * ta_colorspace[0];
-
-
-                return ta_colorspace; 
+                return ta_colorspace;
             },
             enumerable: true,
             configurable: false
