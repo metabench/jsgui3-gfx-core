@@ -3,15 +3,15 @@
     "main": "core/gfx-core.js",
     "license": "MIT",
     "dependencies": {
-        "fnl": "^0.0.36",
-        "lang-mini": "^0.0.40",
+        "fnl": "^0.0.37",
+        "lang-mini": "^0.0.43",
         "obext": "^0.0.31"
     },
     "devDependencies": {
-        "fnlfs": "^0.0.33",
-        "sharp": "^0.34.3"
+        "fnlfs": "^0.0.34",
+        "sharp": "^0.34.5"
     },
-    "version": "0.0.23",
+    "version": "0.0.24",
     "scripts": {
         "test": "node ./tests/run-tests.js"
     }

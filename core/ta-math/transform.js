@@ -241,7 +241,7 @@ const each_source_dest_pixels_resized_limited_further_info$inline = (source_colo
         }
     }
 }
-each_source_dest_pixels_resized_limited_further_info = each_source_dest_pixels_resized_limited_further_info$inline;
+const each_source_dest_pixels_resized_limited_further_info = each_source_dest_pixels_resized_limited_further_info$inline;
 const copy_px_24bipp = (ta_source, byi_read, ta_dest, byi_write) => {
     ta_dest[byi_write] = ta_source[byi_read++];
     ta_dest[byi_write + 1] = ta_source[byi_read++];

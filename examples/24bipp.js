@@ -78,6 +78,13 @@ if (require.main === module) {
             const end_time = process.hrtime(start_time);
             const pb = eg_res instanceof Pixel_Buffer ? eg_res : eg_res && eg_res.pb;
             const misc = eg_res && eg_res.misc;
+            // Support overriding the measured time (eg: only measure a specific operation like resize)
+            let primary_measurement_label;
+            let ms_taken_overridden;
+            if (eg_res && eg_res.measurement && eg_res.measurement.primary && misc && misc.time && misc.time[eg_res.measurement.primary]) {
+                primary_measurement_label = eg_res.measurement.primary;
+                ms_taken_overridden = hr2ms(misc.time[primary_measurement_label]);
+            }
             const eg_file_path = save_path + filename_prefix + (my_eg_index) + filename_suffix;
             if (pb) {
                 const outputDir = path.dirname(eg_file_path);
@@ -86,16 +93,19 @@ if (require.main === module) {
                 }
                 const o_save = await save_pixel_buffer_png(eg_file_path, pb);
                 if (o_save && o_save.success) {
-                    const ms_taken = (end_time[1] / 1000000 + end_time[0] * 1000) / mean_of;
+                    const ms_taken_total = (end_time[1] / 1000000 + end_time[0] * 1000) / mean_of;
+                    const ms_taken = ms_taken_overridden !== undefined ? ms_taken_overridden : ms_taken_total;
                     const frame_rate = 60;
                     const ops_per_second = 1000 / ms_taken;
                     const ops_per_frame = ops_per_second / frame_rate;
-                    const res_msg = my_eg_index.toString().padEnd(4, ' ') + (ms_taken.toFixed(2) + 'ms').padEnd(9, ' ') + (ops_per_frame.toFixed(2) + ' per frame').padEnd(19, ' ') + eg_file_path;
+                    const label_prefix = primary_measurement_label ? (primary_measurement_label + ':') : '';
+                    const res_msg = my_eg_index.toString().padEnd(4, ' ') + (label_prefix + ms_taken.toFixed(2) + 'ms').padEnd(14, ' ') + (ops_per_frame.toFixed(2) + ' per frame').padEnd(19, ' ') + eg_file_path;
                     const run_res = {
                         idx: my_eg_index,
                         save_message: o_save.message,
                         ms_taken,
-                        res_msg
+                        res_msg,
+                        primary_measurement_label
                     }
                     console.log(res_msg);
                     if (misc) {
@@ -106,6 +116,10 @@ if (require.main === module) {
                                 console.log('ms_task', ms_task);
                                 const tasks_per_frame = (1000 / 60) / ms_task;
                                 console.log('tasks_per_frame', tasks_per_frame);
+                            }
+                            if (primary_measurement_label && misc.time[primary_measurement_label]) {
+                                const ms_primary = hr2ms(misc.time[primary_measurement_label]);
+                                console.log(primary_measurement_label + '_ms', ms_primary);
                             }
                         }
                     }
@@ -372,7 +386,8 @@ if (require.main === module) {
                 if (pb.ta.length === data.length) {
                     pb.ta.set(data);
                 } else {
-                    for (let i = 0; i < Math.min(pb.ta.length, data.length); i++) {
+                    const l = Math.min(pb.ta.length, data.length);
+                    for (let i = 0; i < l; i++) {
                         pb.ta[i] = data[i];
                     }
                 }
@@ -380,8 +395,14 @@ if (require.main === module) {
                 const target_width = 300;
                 const target_height = Math.round(info.height * (target_width / info.width));
                 if (typeof pb.new_resized === 'function') {
+                    const resize_start = process.hrtime();
                     const pb_resized = pb.new_resized([target_width, target_height]);
-                    return pb_resized;
+                    const resize_time = process.hrtime(resize_start);
+                    return {
+                        pb: pb_resized,
+                        misc: { time: { resize: resize_time } },
+                        measurement: { primary: 'resize' }
+                    };
                 } else {
                     throw new Error('Pixel_Buffer does not have a new_resized method.');
                 }
