@@ -4,14 +4,14 @@
     "license": "MIT",
     "dependencies": {
         "fnl": "^0.0.37",
-        "lang-mini": "^0.0.43",
-        "obext": "^0.0.31"
+        "lang-mini": "^0.0.46",
+        "obext": "^0.0.33"
     },
     "devDependencies": {
         "fnlfs": "^0.0.34",
         "sharp": "^0.34.5"
     },
-    "version": "0.0.24",
+    "version": "0.0.25",
     "scripts": {
         "test": "node ./tests/run-tests.js"
     }
