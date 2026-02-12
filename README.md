@@ -1,218 +1,129 @@
 # jsgui3-gfx-core
 
-The core jsgui3 graphical data structures and algorithms
+**Pure-JavaScript pixel buffer library.** Data structures and algorithms for creating, manipulating, and processing raster images as typed arrays. No Canvas, no DOM — runs identically in Node.js and browsers.
 
-## Overview
+## Install
 
-This repository contains various files and modules related to graphical data structures and algorithms. It provides a set of classes and functions for pixel manipulation, convolution operations, resizing, thresholding, color conversion, cloning, alpha channel addition, cropping, iterating over pixels, drawing shapes, masking, splitting RGB channels, and equality checks.
-
-## Installation
-
-To install the repository and its dependencies, follow these steps:
-
-1. Clone the repository:
-   ```sh
-   git clone https://github.com/metabench/jsgui3-gfx-core.git
-   ```
-
-2. Navigate to the repository directory:
-   ```sh
-   cd jsgui3-gfx-core
-   ```
-
-3. Install the dependencies:
-   ```sh
-   npm install
-   ```
-
-## Usage
-
-Here are some usage examples demonstrating how to utilize key modules and functions within the repository:
-
-### Example 1: Pixel Manipulation
-
-```js
-const Pixel_Buffer_Core = require('./core/pixel-buffer-3-core');
-
-const pb = new Pixel_Buffer_Core({
-    bits_per_pixel: 8,
-    size: [8, 8]
-});
-
-const ta_pos = new Int16Array(2);
-ta_pos[0] = 3;
-ta_pos[1] = 3;
-pb.set_pixel(ta_pos, 255);
-
-console.log(pb.get_pixel(ta_pos)); // Output: 255
+```bash
+npm install jsgui3-gfx-core
 ```
 
-### Example 2: Convolution Operation
+## Quick Start
 
 ```js
-const Float32Convolution = require('./core/convolution');
+const { Pixel_Buffer, Pixel_Buffer_Painter, convolution_kernels } = require('jsgui3-gfx-core');
 
-const convolution = new Float32Convolution({
-    size: [3, 3],
-    value: [0, -1, 0, -1, 5, -1, 0, -1, 0]
-});
+// Create a 256×256 RGB pixel buffer
+const pb = new Pixel_Buffer({ bits_per_pixel: 24, size: [256, 256] });
 
-const pb = new Pixel_Buffer_Core({
-    bits_per_pixel: 24,
-    size: [8, 8]
-});
+// Fill with a base color
+pb.color_whole([20, 30, 80]);
 
-const convolved_pb = pb.new_convolved(convolution);
+// Draw rectangles with the Painter (fluent API)
+const painter = new Pixel_Buffer_Painter({ pb });
+painter
+    .rect([30, 30], [80, 40], [255, 60, 60])
+    .rect([60, 50], [80, 40], [60, 200, 60])
+    .rect([90, 70], [80, 40], [60, 60, 255]);
 
-console.log(convolved_pb);
+// Apply edge detection
+const grey = pb.to_8bipp();
+const edges = grey.apply_square_convolution(
+    new Float32Array(convolution_kernels.edge)
+);
 ```
 
-## Key Modules and Functionalities
+## Features
 
-### `core/convolution.js`
+| Feature | Description |
+|---------|-------------|
+| **Pixel Buffers** | 1bipp, 8bipp, 24bipp, 32bipp — all backed by `Uint8Array` |
+| **Drawing** | Lines (Bresenham), filled polygons (scanline), rectangles |
+| **Convolution** | Edge detection, Gaussian blur, Sobel, custom kernels |
+| **Format Conversion** | Greyscale ↔ RGB ↔ RGBA, threshold to binary |
+| **Resize** | Area-weighted sampling for quality downscaling |
+| **Masking** | 1bipp masks for compositing and region operations |
+| **Typed Array Math** | Low-level bitwise, copy, fill, and transform operations |
+| **Shapes** | Rectangle and Polygon geometry classes |
 
-This module defines the `Convolution` and `Float32Convolution` classes, which handle convolution operations. The `Float32Convolution` class extends `Convolution` and provides methods to apply convolution kernels to pixel buffers.
+## Exports
 
-### `core/pixel-buffer-3-core.js`
+```js
+const {
+    Pixel_Buffer,          // Full-featured pixel buffer (10-layer class hierarchy)
+    Pixel_Buffer_Painter,  // Fluent rectangle drawing API
+    Pixel_Pos_List,        // Sparse pixel coordinate storage
+    convolution_kernels,   // Predefined convolution kernels
+    ta_math,               // TypedArray math operations
+    Rectangle, Rect        // Rectangle geometry
+} = require('jsgui3-gfx-core');
+```
 
-This module defines the `Pixel_Buffer_Core` class, which provides methods for pixel manipulation, convolution operations, resizing, thresholding, color conversion, cloning, alpha channel addition, cropping, iterating over pixels, drawing shapes, masking, splitting RGB channels, and equality checks.
+## Supported Bit Depths
 
-## Main Classes
+| Format | `bits_per_pixel` | Use Case |
+|--------|-----------------|----------|
+| 1bipp  | 1  | Binary masks, thresholds |
+| 8bipp  | 8  | Greyscale images |
+| 24bipp | 24 | RGB color images |
+| 32bipp | 32 | RGBA with transparency |
 
-### `Pixel_Buffer_Core`
+## Convolution Kernels
 
-The `Pixel_Buffer_Core` class in the `core/pixel-buffer-3-core.js` file has several main features:
+```js
+convolution_kernels.edge            // 3×3 edge detection
+convolution_kernels.sobel_x         // 3×3 horizontal Sobel
+convolution_kernels.sobel_y         // 3×3 vertical Sobel
+convolution_kernels.lap_gauss_5     // 5×5 Laplacian of Gaussian
+convolution_kernels.gauss_blur_5_2  // 5×5 Gaussian blur (σ=2)
 
-* **Pixel manipulation**: The class provides methods to get and set pixel values for different bits per pixel (bipp) formats, including 1bipp, 8bipp, 24bipp, and 32bipp.
-* **Convolution operations**: The class supports convolution operations, allowing the creation of new pixel buffers by applying convolution kernels.
-* **Resizing**: The class includes a method to create a new resized pixel buffer.
-* **Thresholding**: The class can generate a 1bipp thresholded version of an 8bipp pixel buffer.
-* **Color conversion**: The class provides methods to convert pixel buffers between different color formats, such as 1bipp to 8bipp, 8bipp to 24bipp, and 24bipp to 32bipp.
-* **Cloning and blank copy**: The class includes methods to create a clone or a blank copy of the pixel buffer.
-* **Alpha channel addition**: The class can add an alpha channel to a pixel buffer.
-* **Cropping and uncropping**: The class provides methods to crop and uncrop pixel buffers.
-* **Iterating over pixels**: The class includes methods to iterate over pixels and perform operations on them.
-* **Drawing shapes**: The class supports drawing shapes, such as rectangles and polygons, on the pixel buffer.
-* **Masking**: The class can apply a 1bipp mask to the pixel buffer.
-* **Splitting RGB channels**: The class can split the RGB channels of a pixel buffer into separate 8bipp pixel buffers.
-* **Equality check**: The class includes a method to check if two pixel buffers are equal.
+// Generate custom Gaussian kernel
+convolution_kernels.get_gaussian_kernel(7, 3)  // 7×7, σ=3
+```
 
-### `Pixel_Buffer_Core_Reference_Implementations`
+## Integration
 
-The `Pixel_Buffer_Core_Reference_Implementations` class extends the `Pixel_Buffer_Core` class in several ways:
+Works with **Sharp** (Node.js) and **Canvas** (browser):
 
-* **Additional methods**: The `Pixel_Buffer_Core_Reference_Implementations` class includes additional methods for pixel manipulation, color conversion, and other operations. These methods provide more functionality and flexibility for working with pixel buffers.
-* **Enhanced pixel manipulation**: The class provides more advanced methods for manipulating pixels, such as `each_pixel`, `each_pixel_byte_index`, and `each_pixel_pos`. These methods allow for more efficient and flexible pixel manipulation.
-* **Convolution operations**: The class includes a `new_convolved` method that creates a new pixel buffer by applying a convolution kernel to the original pixel buffer. This method uses a window-based approach to iterate over the pixels and apply the convolution kernel.
-* **Resizing**: The class includes a `new_resized` method that creates a new resized pixel buffer. This method uses the `resize_ta_colorspace` function from `core/ta-math.js` to resize the pixel buffer.
-* **Thresholding**: The class provides a `get_1bipp_threshold_8bipp` method that generates a 1bipp thresholded version of an 8bipp pixel buffer.
-* **Color conversion**: The class includes methods to convert pixel buffers between different color formats, such as `to_8bipp`, `to_24bipp`, and `to_32bit_rgba`.
-* **Cloning and blank copy**: The class includes methods to create a clone or a blank copy of the pixel buffer, such as `clone` and `blank_copy`.
-* **Alpha channel addition**: The class provides an `add_alpha_channel` method to add an alpha channel to a pixel buffer.
-* **Cropping and uncropping**: The class includes methods to crop and uncrop pixel buffers, such as `crop` and `uncrop`.
-* **Iterating over pixels**: The class provides methods to iterate over pixels and perform operations on them, such as `each_pixel`, `each_pixel_byte_index`, and `each_pixel_pos`.
-* **Drawing shapes**: The class includes methods for drawing shapes, such as `draw_rect` and `paint_solid_border`.
-* **Masking**: The class provides a `draw_1bipp_pixel_buffer_mask` method to apply a 1bipp mask to the pixel buffer.
-* **Splitting RGB channels**: The class includes a `split_rgb_channels` method to split the RGB channels of a pixel buffer into separate 8bipp pixel buffers.
-* **Equality check**: The class provides an `equals` method to check if two pixel buffers are equal.
+```js
+// Sharp → Pixel_Buffer
+const { data, info } = await sharp('input.png').raw().toBuffer({ resolveWithObject: true });
+const pb = new Pixel_Buffer({ bits_per_pixel: info.channels * 8, size: [info.width, info.height], ta: new Uint8Array(data.buffer) });
 
-### `Pixel_Buffer_Advanced_TypedArray_Properties`
+// Canvas → Pixel_Buffer
+const imageData = ctx.getImageData(0, 0, w, h);
+const pb = new Pixel_Buffer({ bits_per_pixel: 32, size: [w, h], ta: new Uint8Array(imageData.data.buffer) });
+```
 
-This class, found in `core/pixel-buffer-4-advanced-typedarray-properties.js`, extends `Pixel_Buffer_Core` and adds advanced typed array properties for efficient pixel manipulation.
+## Documentation
 
-### `Pixel_Buffer_Idiomatic_Enh`
+Full documentation with SVG illustrations available in [`docs/`](./docs/):
 
-Located in `core/pixel-buffer-5-idiomatic-enh.js`, this class extends `Pixel_Buffer_Advanced_TypedArray_Properties` and provides idiomatic enhancements for pixel manipulation.
+1. [Introduction & Overview](./docs/01-introduction.md)
+2. [Installation & Getting Started](./docs/02-installation.md)
+3. [Architecture & Class Hierarchy](./docs/03-architecture.md)
+4. [Pixel Buffer API Reference](./docs/04-pixel-buffer-api.md)
+5. [Drawing — Lines, Polygons, Rectangles](./docs/05-drawing.md)
+6. [Convolution & Image Processing](./docs/06-convolution.md)
+7. [TypedArray Math Subsystem](./docs/07-ta-math.md)
+8. [Shapes, Pixel_Pos_List & Utilities](./docs/08-utilities.md)
+9. [Ecosystem & Integration](./docs/09-ecosystem.md)
+10. [Dense Agent Reference](./docs/10-agent-reference.md)
 
-### `Pixel_Buffer_Painter`
+## Dependencies
 
-The `Pixel_Buffer_Painter` class in the `core/pixel-buffer-painter.js` file provides methods for drawing shapes on a pixel buffer. Here are the main features and functionalities of the `Pixel_Buffer_Painter` class:
+| Package | Purpose |
+|---------|---------|
+| [`lang-mini`](https://www.npmjs.com/package/lang-mini) | Type checking, iteration, comparison |
+| [`obext`](https://www.npmjs.com/package/obext) | Read-only and managed property definitions |
+| [`fnl`](https://www.npmjs.com/package/fnl) | Functional utilities |
 
-* **Initialization**: The class is initialized with a `Pixel_Buffer` object, which is used as the target for drawing operations.
-* **Drawing rectangles**: The `rect` method allows drawing rectangles on the pixel buffer. It takes the position, size, and color of the rectangle as parameters and uses the `fill_solid_rect_by_bounds` function from `ta_math` to fill the specified area with the given color.
-* **Chaining**: The `rect` method returns the `Pixel_Buffer_Painter` instance, allowing for method chaining. This enables multiple drawing operations to be performed in a single statement, such as `paint.rect(...).rect(...)`.
+## Testing
 
-The `Pixel_Buffer_Painter` class simplifies the process of drawing shapes on a pixel buffer by providing a convenient interface and leveraging lower-level functions for efficient pixel manipulation. The class can be extended to support additional shapes and drawing operations as needed.
+```bash
+npm test
+```
 
-### `Pixel_Pos_List`
+## License
 
-Located in `core/pixel-pos-list.js`, this class manages a list of pixel positions and provides methods for adding, iterating, and sorting pixels.
-
-### `Rectangle`
-
-This class, found in `core/shapes/Rectangle.js`, represents a rectangle shape and provides methods for manipulating its dimensions and position.
-
-### `Polygon`
-
-Located in `core/shapes/Polygon.js`, this class represents a polygon shape and provides methods for manipulating its points and calculating derived data.
-
-### `Polygon_Edges`
-
-This class, found in `core/shapes/Polygon_Edges.js`, represents the edges of a polygon and provides methods for populating and sorting edges.
-
-### `Polygon_Scanline_Edges`
-
-Located in `core/shapes/Polygon_Scanline_Edges.js`, this class extends `Polygon_Edges` and provides methods for managing active edges during scanline processing.
-
-### `TA_Table_8_Columns`
-
-This class, found in `core/shapes/TA_Table_8_Columns.js`, represents a table with 8 columns and provides methods for getting and setting values in the table.
-
-## Contributing
-
-We welcome contributions to the project! If you would like to contribute, please follow these guidelines:
-
-1. Fork the repository.
-2. Create a new branch for your feature or bugfix.
-3. Make your changes and commit them with clear and concise messages.
-4. Push your changes to your forked repository.
-5. Create a pull request with a detailed description of your changes.
-
-## Documentation and Resources
-
-For more information on the repository and its usage, please refer to the following resources:
-
-* [API Documentation](./docs/api.md)
-* [Examples](./examples)
-* [Issues](https://github.com/metabench/jsgui3-gfx-core/issues)
-
-If you have any questions or need further assistance, feel free to open an issue or contact the maintainers.
-
-## Convolution Operations in `Pixel_Buffer_Core`
-
-Convolution operations in the `Pixel_Buffer_Core` class work as follows:
-
-* **Convolution class**: The `core/convolution.js` file defines a `Convolution` class and a `Float32Convolution` class that handle convolution operations. The `Float32Convolution` class extends `Convolution` and provides methods to apply convolution kernels to pixel buffers.
-* **Convolution kernels**: The `core/convolution-kernels/kernels.js` file contains predefined convolution kernels, such as edge detection, Gaussian blur, Laplacian of Gaussian, and Sobel filters. These kernels are used to perform various convolution operations on pixel buffers.
-* **Applying convolution**: The `Pixel_Buffer_Core` class in `core/pixel-buffer-3-core.js` provides a `new_convolved` method that creates a new pixel buffer by applying a convolution kernel to the original pixel buffer. This method uses a window-based approach to iterate over the pixels and apply the convolution kernel.
-* **Window-based approach**: The `new_convolved` method creates a window of the same size as the convolution kernel and iterates over the pixel buffer within the bounds of this window. For each position within the window, the method calculates the convolution result by applying the kernel to the corresponding pixels in the original pixel buffer.
-* **Convolution result**: The convolution result is stored in a new pixel buffer, which is returned by the `new_convolved` method. This new pixel buffer contains the convolved image, which can be used for further processing or display.
-
-## `Pixel_Buffer_Painter` Class
-
-The `Pixel_Buffer_Painter` class in the `core/pixel-buffer-painter.js` file provides methods for drawing shapes on a pixel buffer. Here are the main features and functionalities of the `Pixel_Buffer_Painter` class:
-
-* **Initialization**: The class is initialized with a `Pixel_Buffer` object, which is used as the target for drawing operations.
-* **Drawing rectangles**: The `rect` method allows drawing rectangles on the pixel buffer. It takes the position, size, and color of the rectangle as parameters and uses the `fill_solid_rect_by_bounds` function from `ta_math` to fill the specified area with the given color.
-* **Chaining**: The `rect` method returns the `Pixel_Buffer_Painter` instance, allowing for method chaining. This enables multiple drawing operations to be performed in a single statement, such as `paint.rect(...).rect(...)`.
-
-The `Pixel_Buffer_Painter` class simplifies the process of drawing shapes on a pixel buffer by providing a convenient interface and leveraging lower-level functions for efficient pixel manipulation. The class can be extended to support additional shapes and drawing operations as needed.
-
-## Extending `Pixel_Buffer_Core` with `Pixel_Buffer_Core_Reference_Implementations`
-
-The `Pixel_Buffer_Core_Reference_Implementations` class extends the `Pixel_Buffer_Core` class in several ways:
-
-* **Additional methods**: The `Pixel_Buffer_Core_Reference_Implementations` class includes additional methods for pixel manipulation, color conversion, and other operations. These methods provide more functionality and flexibility for working with pixel buffers.
-* **Enhanced pixel manipulation**: The class provides more advanced methods for manipulating pixels, such as `each_pixel`, `each_pixel_byte_index`, and `each_pixel_pos`. These methods allow for more efficient and flexible pixel manipulation.
-* **Convolution operations**: The class includes a `new_convolved` method that creates a new pixel buffer by applying a convolution kernel to the original pixel buffer. This method uses a window-based approach to iterate over the pixels and apply the convolution kernel.
-* **Resizing**: The class includes a `new_resized` method that creates a new resized pixel buffer. This method uses the `resize_ta_colorspace` function from `core/ta-math.js` to resize the pixel buffer.
-* **Thresholding**: The class provides a `get_1bipp_threshold_8bipp` method that generates a 1bipp thresholded version of an 8bipp pixel buffer.
-* **Color conversion**: The class includes methods to convert pixel buffers between different color formats, such as `to_8bipp`, `to_24bipp`, and `to_32bit_rgba`.
-* **Cloning and blank copy**: The class includes methods to create a clone or a blank copy of the pixel buffer, such as `clone` and `blank_copy`.
-* **Alpha channel addition**: The class provides an `add_alpha_channel` method to add an alpha channel to a pixel buffer.
-* **Cropping and uncropping**: The class includes methods to crop and uncrop pixel buffers, such as `crop` and `uncrop`.
-* **Iterating over pixels**: The class provides methods to iterate over pixels and perform operations on them, such as `each_pixel`, `each_pixel_byte_index`, and `each_pixel_pos`.
-* **Drawing shapes**: The class includes methods for drawing shapes, such as `draw_rect` and `paint_solid_border`.
-* **Masking**: The class provides a `draw_1bipp_pixel_buffer_mask` method to apply a 1bipp mask to the pixel buffer.
-* **Splitting RGB channels**: The class includes a `split_rgb_channels` method to split the RGB channels of a pixel buffer into separate 8bipp pixel buffers.
-* **Equality check**: The class provides an `equals` method to check if two pixel buffers are equal.
+MIT

@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 780" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="l0" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="l1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1"/><stop offset="100%" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="l2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="l3" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="l4" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#14b8a6"/><stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="l5" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="l6" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#eab308"/><stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+    <linearGradient id="l7" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#f97316"/><stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+    <linearGradient id="l8" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#dc2626"/>
+    </linearGradient>
+    <linearGradient id="exportGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#e94560"/><stop offset="100%" stop-color="#c23152"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-opacity="0.4"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#484f58"/>
+    </marker>
+  </defs>
+
+  <rect width="940" height="780" fill="url(#bg)"/>
+  <text x="470" y="32" text-anchor="middle" fill="#e6edf3" font-size="20" font-weight="700">Pixel Buffer Class Hierarchy</text>
+  <text x="470" y="50" text-anchor="middle" fill="#8b949e" font-size="11">Each level extends the one above — pixel-buffer-0 through pixel-buffer-8</text>
+
+  <!-- Level 0 -->
+  <g transform="translate(220, 65)">
+    <rect width="500" height="50" rx="8" fill="url(#l0)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 0</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Inner_Structures</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">constructor, size, ta, bipp, bypp, bypr, toString</text>
+  </g>
+  <line x1="470" y1="115" x2="470" y2="128" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 1 -->
+  <g transform="translate(220, 130)">
+    <rect width="500" height="50" rx="8" fill="url(#l1)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 1</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Get_Set_Pixels</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">get_pixel, set_pixel (1/8/24/32 bipp)</text>
+  </g>
+  <line x1="470" y1="180" x2="470" y2="193" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 1.1 -->
+  <g transform="translate(220, 195)">
+    <rect width="500" height="50" rx="8" fill="url(#l1)" filter="url(#shadow)" opacity="0.85"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 1.1</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Draw_Lines</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">draw_line_1bipp, draw_x_span_on_1bipp</text>
+  </g>
+  <line x1="470" y1="245" x2="470" y2="258" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 1.2 -->
+  <g transform="translate(220, 260)">
+    <rect width="500" height="50" rx="8" fill="url(#l2)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 1.2</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Draw_Polygons</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">draw_polygon_1bipp, scanline filling</text>
+  </g>
+  <line x1="470" y1="310" x2="470" y2="323" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 1.5 -->
+  <g transform="translate(220, 325)">
+    <rect width="500" height="50" rx="8" fill="url(#l2)" filter="url(#shadow)" opacity="0.85"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 1.5</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Masks</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">apply_mask, mask_each_pixel, 64-bit ops</text>
+  </g>
+  <line x1="470" y1="375" x2="470" y2="388" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 2 -->
+  <g transform="translate(220, 390)">
+    <rect width="500" height="50" rx="8" fill="url(#l3)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 2</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core_Reference_Implementations</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">each_pixel, clone, crop, uncrop, to_Xbipp</text>
+  </g>
+  <line x1="470" y1="440" x2="470" y2="453" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 3 -->
+  <g transform="translate(220, 455)">
+    <rect width="500" height="50" rx="8" fill="url(#l4)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 3</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Core</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">new_convolved, new_resized, color_whole</text>
+  </g>
+  <line x1="470" y1="505" x2="470" y2="518" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 4 -->
+  <g transform="translate(220, 520)">
+    <rect width="500" height="50" rx="8" fill="url(#l5)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 4</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Advanced_TypedArray_Properties</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">ta_scratch, ta_pos_scratch, ta_bounds</text>
+  </g>
+  <line x1="470" y1="570" x2="470" y2="583" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 5 -->
+  <g transform="translate(220, 585)">
+    <rect width="500" height="50" rx="8" fill="url(#l6)" filter="url(#shadow)"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 5</text>
+    <text x="16" y="36" fill="#fff" font-size="12" font-weight="700">Pixel_Buffer_Idiomatic_Enh</text>
+    <text x="490" y="36" text-anchor="end" fill="#e2e8f0" font-size="9">blur, count_colors, each_pixel_pos</text>
+  </g>
+  <line x1="470" y1="635" x2="470" y2="648" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 6 -->
+  <g transform="translate(220, 650)">
+    <rect width="500" height="44" rx="8" fill="url(#l7)" filter="url(#shadow)"/>
+    <text x="16" y="17" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 6</text>
+    <text x="16" y="32" fill="#fff" font-size="11" font-weight="700">Pixel_Buffer_Perf_Focus_Enh</text>
+    <text x="490" y="32" text-anchor="end" fill="#e2e8f0" font-size="9">flood_fill, 32/64-bit iteration, convolution</text>
+  </g>
+  <line x1="470" y1="694" x2="470" y2="704" stroke="#484f58" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- Level 7 → 8 (exported) -->
+  <g transform="translate(220, 706)">
+    <rect width="500" height="55" rx="8" fill="url(#l8)" filter="url(#shadow)"/>
+    <rect x="2" y="2" width="496" height="51" rx="7" fill="none" stroke="#fff" stroke-width="1.5" stroke-dasharray="6,3" opacity="0.4"/>
+    <text x="16" y="20" fill="#fff" font-size="9" font-weight="700" opacity="0.6">LEVEL 7 → 8 (EXPORTED)</text>
+    <text x="16" y="38" fill="#fff" font-size="13" font-weight="700">Pixel_Buffer</text>
+    <text x="490" y="32" text-anchor="end" fill="#e2e8f0" font-size="9">copy_from_source, threshold_gs, new_window,</text>
+    <text x="490" y="44" text-anchor="end" fill="#e2e8f0" font-size="9">fill_solid_rect_by_bounds, flood_fill</text>
+  </g>
+
+  <!-- "Exported" badge -->
+  <g transform="translate(740, 716)">
+    <rect width="90" height="24" rx="12" fill="url(#exportGrad)"/>
+    <text x="45" y="16" text-anchor="middle" fill="#fff" font-size="10" font-weight="700">EXPORTED</text>
+  </g>
+
+  <!-- Side annotations -->
+  <g transform="translate(15, 75)">
+    <text x="0" y="0" fill="#8b949e" font-size="9" font-weight="600" transform="rotate(90)">FOUNDATION</text>
+  </g>
+  <g transform="translate(15, 450)">
+    <text x="0" y="0" fill="#8b949e" font-size="9" font-weight="600" transform="rotate(90)">ALGORITHMS</text>
+  </g>
+  <g transform="translate(15, 650)">
+    <text x="0" y="0" fill="#8b949e" font-size="9" font-weight="600" transform="rotate(90)">PERF</text>
+  </g>
+
+  <!-- File name annotations (right side) -->
+  <text x="865" y="98" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-0-core-inner-structures.js</text>
+  <text x="865" y="163" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-1-core-get-set-pixel.js</text>
+  <text x="865" y="228" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-1.1-core-draw-line.js</text>
+  <text x="865" y="293" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-1.2-core-draw-polygon.js</text>
+  <text x="865" y="358" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-1.5-core-mask.js</text>
+  <text x="865" y="423" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-2-core-reference-impls.js</text>
+  <text x="865" y="488" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-3-core.js</text>
+  <text x="865" y="553" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-4-advanced-ta-props.js</text>
+  <text x="865" y="618" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-5-idiomatic-enh.js</text>
+  <text x="865" y="680" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-6-perf-focus-enh.js</text>
+  <text x="865" y="738" text-anchor="end" fill="#484f58" font-size="8" font-family="monospace">pixel-buffer-7-specialised-enh.js</text>
+</svg>

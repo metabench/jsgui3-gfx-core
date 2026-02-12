@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 600" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <linearGradient id="mbg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d1117"/><stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="coreBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e94560"/><stop offset="100%" stop-color="#c23152"/>
+    </linearGradient>
+    <linearGradient id="pbBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="taBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#15803d"/>
+    </linearGradient>
+    <linearGradient id="shBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#eab308"/><stop offset="100%" stop-color="#a16207"/>
+    </linearGradient>
+    <linearGradient id="cvBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="utBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#14b8a6"/><stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+    <linearGradient id="depBox" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#374151"/><stop offset="100%" stop-color="#1f2937"/>
+    </linearGradient>
+    <filter id="ms">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+    </filter>
+    <marker id="ma" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#484f58"/>
+    </marker>
+  </defs>
+
+  <rect width="940" height="600" fill="url(#mbg)"/>
+  <text x="470" y="32" text-anchor="middle" fill="#e6edf3" font-size="18" font-weight="700">Module Map — gfx-core.js</text>
+
+  <!-- Main export box -->
+  <g transform="translate(350, 50)">
+    <rect width="240" height="50" rx="10" fill="url(#coreBox)" filter="url(#ms)"/>
+    <text x="120" y="22" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">gfx-core.js</text>
+    <text x="120" y="38" text-anchor="middle" fill="#fecdd3" font-size="9">Main Entry Point (module.exports)</text>
+  </g>
+
+  <!-- === Pixel Buffer chain (left-center) === -->
+  <line x1="400" y1="100" x2="200" y2="140" stroke="#484f58" stroke-width="1.5" marker-end="url(#ma)"/>
+  <g transform="translate(80, 140)">
+    <rect width="240" height="44" rx="8" fill="url(#pbBox)" filter="url(#ms)"/>
+    <text x="120" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Pixel_Buffer</text>
+    <text x="120" y="34" text-anchor="middle" fill="#bfdbfe" font-size="8">pixel-buffer.js → pixel-buffer-8-enh.js</text>
+  </g>
+  <line x1="200" y1="184" x2="200" y2="202" stroke="#484f58" stroke-width="1" marker-end="url(#ma)"/>
+  <g transform="translate(105, 205)">
+    <rect width="190" height="195" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="95" y="18" text-anchor="middle" fill="#8b949e" font-size="9" font-weight="600">Inheritance chain (10 files)</text>
+    <text x="12" y="36" fill="#7dd3fc" font-size="8" font-family="monospace">L0 Inner_Structures</text>
+    <text x="12" y="52" fill="#7dd3fc" font-size="8" font-family="monospace">L1 Get_Set_Pixels</text>
+    <text x="12" y="68" fill="#7dd3fc" font-size="8" font-family="monospace">L1.1 Draw_Lines</text>
+    <text x="12" y="84" fill="#7dd3fc" font-size="8" font-family="monospace">L1.2 Draw_Polygons</text>
+    <text x="12" y="100" fill="#7dd3fc" font-size="8" font-family="monospace">L1.5 Masks</text>
+    <text x="12" y="116" fill="#7dd3fc" font-size="8" font-family="monospace">L2 Reference_Impls</text>
+    <text x="12" y="132" fill="#7dd3fc" font-size="8" font-family="monospace">L3 Core</text>
+    <text x="12" y="148" fill="#7dd3fc" font-size="8" font-family="monospace">L4 Advanced_TA_Props</text>
+    <text x="12" y="164" fill="#7dd3fc" font-size="8" font-family="monospace">L5 Idiomatic_Enh</text>
+    <text x="12" y="180" fill="#7dd3fc" font-size="8" font-family="monospace">L6 Perf_Focus_Enh</text>
+  </g>
+
+  <!-- === Pixel_Buffer_Painter === -->
+  <line x1="440" y1="100" x2="370" y2="140" stroke="#484f58" stroke-width="1.5" marker-end="url(#ma)"/>
+  <g transform="translate(300, 140)">
+    <rect width="200" height="44" rx="8" fill="url(#utBox)" filter="url(#ms)"/>
+    <text x="100" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Pixel_Buffer_Painter</text>
+    <text x="100" y="34" text-anchor="middle" fill="#ccfbf1" font-size="8">pixel-buffer-painter.js</text>
+  </g>
+
+  <!-- === ta_math === -->
+  <line x1="530" y1="100" x2="620" y2="140" stroke="#484f58" stroke-width="1.5" marker-end="url(#ma)"/>
+  <g transform="translate(530, 140)">
+    <rect width="190" height="44" rx="8" fill="url(#taBox)" filter="url(#ms)"/>
+    <text x="95" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">ta_math</text>
+    <text x="95" y="34" text-anchor="middle" fill="#bbf7d0" font-size="8">ta-math.js (aggregator)</text>
+  </g>
+  <line x1="625" y1="184" x2="625" y2="202" stroke="#484f58" stroke-width="1" marker-end="url(#ma)"/>
+  <g transform="translate(530, 205)">
+    <rect width="190" height="140" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="95" y="18" text-anchor="middle" fill="#8b949e" font-size="9" font-weight="600">Sub-modules</text>
+    <text x="12" y="38" fill="#86efac" font-size="9" font-family="monospace">bitwise.js</text><text x="105" y="38" fill="#8b949e" font-size="8">XOR, shift, count</text>
+    <text x="12" y="54" fill="#86efac" font-size="9" font-family="monospace">copy.js</text><text x="105" y="54" fill="#8b949e" font-size="8">rect copy ops</text>
+    <text x="12" y="70" fill="#86efac" font-size="9" font-family="monospace">draw.js</text><text x="105" y="70" fill="#8b949e" font-size="8">polygon stroke</text>
+    <text x="12" y="86" fill="#86efac" font-size="9" font-family="monospace">info.js</text><text x="105" y="86" fill="#8b949e" font-size="8">bounds overlap</text>
+    <text x="12" y="102" fill="#86efac" font-size="9" font-family="monospace">read.js</text><text x="105" y="102" fill="#8b949e" font-size="8">pixel neighbors</text>
+    <text x="12" y="118" fill="#86efac" font-size="9" font-family="monospace">transform.js</text><text x="105" y="118" fill="#8b949e" font-size="8">resize (92KB)</text>
+    <text x="12" y="134" fill="#86efac" font-size="9" font-family="monospace">write.js</text><text x="105" y="134" fill="#8b949e" font-size="8">fill rects</text>
+  </g>
+
+  <!-- === convolution_kernels === -->
+  <line x1="560" y1="100" x2="770" y2="140" stroke="#484f58" stroke-width="1.5" marker-end="url(#ma)"/>
+  <g transform="translate(740, 140)">
+    <rect width="180" height="44" rx="8" fill="url(#cvBox)" filter="url(#ms)"/>
+    <text x="90" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">convolution_kernels</text>
+    <text x="90" y="34" text-anchor="middle" fill="#e9d5ff" font-size="8">convolution-kernels/kernels.js</text>
+  </g>
+  <g transform="translate(740, 195)">
+    <rect width="180" height="75" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="12" y="16" fill="#c4b5fd" font-size="8" font-family="monospace">edge</text><text x="70" y="16" fill="#8b949e" font-size="8">3×3 Float32</text>
+    <text x="12" y="31" fill="#c4b5fd" font-size="8" font-family="monospace">sobel_x/y</text><text x="70" y="31" fill="#8b949e" font-size="8">3×3 Int8</text>
+    <text x="12" y="46" fill="#c4b5fd" font-size="8" font-family="monospace">lap_gauss_5</text><text x="70" y="46" fill="#8b949e" font-size="8">5×5 Int8</text>
+    <text x="12" y="61" fill="#c4b5fd" font-size="8" font-family="monospace">get_gauss(d,σ)</text><text x="85" y="61" fill="#8b949e" font-size="8">NxN</text>
+  </g>
+
+  <!-- === Pixel_Pos_List & Rectangle === -->
+  <line x1="470" y1="100" x2="470" y2="140" stroke="#484f58" stroke-width="1.5" marker-end="url(#ma)"/>
+  <g transform="translate(340, 420)">
+    <rect width="180" height="44" rx="8" fill="url(#utBox)" filter="url(#ms)"/>
+    <text x="90" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Pixel_Pos_List</text>
+    <text x="90" y="34" text-anchor="middle" fill="#ccfbf1" font-size="8">pixel-pos-list.js</text>
+  </g>
+  <line x1="430" y1="100" x2="430" y2="420" stroke="#484f58" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#ma)"/>
+
+  <g transform="translate(560, 420)">
+    <rect width="180" height="44" rx="8" fill="url(#shBox)" filter="url(#ms)"/>
+    <text x="90" y="18" text-anchor="middle" fill="#fff" font-size="11" font-weight="700">Rectangle / Rect</text>
+    <text x="90" y="34" text-anchor="middle" fill="#fef3c7" font-size="8">shapes/Rectangle.js</text>
+  </g>
+  <line x1="560" y1="100" x2="650" y2="420" stroke="#484f58" stroke-width="1" stroke-dasharray="4,4" marker-end="url(#ma)"/>
+
+  <!-- Shapes subsystem -->
+  <g transform="translate(560, 475)">
+    <rect width="180" height="100" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="90" y="18" text-anchor="middle" fill="#8b949e" font-size="9" font-weight="600">shapes/ (internal)</text>
+    <text x="12" y="36" fill="#fcd34d" font-size="8" font-family="monospace">Polygon.js</text>
+    <text x="12" y="51" fill="#fcd34d" font-size="8" font-family="monospace">Polygon_Edges.js</text>
+    <text x="12" y="66" fill="#fcd34d" font-size="8" font-family="monospace">Polygon_Scanline_Edges.js</text>
+    <text x="12" y="81" fill="#fcd34d" font-size="8" font-family="monospace">ScanlineProcessor.js</text>
+    <text x="12" y="96" fill="#fcd34d" font-size="8" font-family="monospace">TA_Table_8_Columns.js</text>
+  </g>
+
+  <!-- Dependencies -->
+  <g transform="translate(80, 480)">
+    <rect width="400" height="100" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+    <text x="200" y="20" text-anchor="middle" fill="#8b949e" font-size="11" font-weight="600">Runtime Dependencies (npm)</text>
+    <g transform="translate(15, 35)">
+      <rect width="110" height="50" rx="6" fill="url(#depBox)" stroke="#4b5563" stroke-width="1"/>
+      <text x="55" y="20" text-anchor="middle" fill="#d1d5db" font-size="10" font-weight="600">lang-mini</text>
+      <text x="55" y="36" text-anchor="middle" fill="#6b7280" font-size="7">type checks, iteration</text>
+    </g>
+    <g transform="translate(145, 35)">
+      <rect width="110" height="50" rx="6" fill="url(#depBox)" stroke="#4b5563" stroke-width="1"/>
+      <text x="55" y="20" text-anchor="middle" fill="#d1d5db" font-size="10" font-weight="600">obext</text>
+      <text x="55" y="36" text-anchor="middle" fill="#6b7280" font-size="7">ro() / prop()</text>
+    </g>
+    <g transform="translate(275, 35)">
+      <rect width="110" height="50" rx="6" fill="url(#depBox)" stroke="#4b5563" stroke-width="1"/>
+      <text x="55" y="20" text-anchor="middle" fill="#d1d5db" font-size="10" font-weight="600">fnl</text>
+      <text x="55" y="36" text-anchor="middle" fill="#6b7280" font-size="7">functional utils</text>
+    </g>
+  </g>
+</svg>
