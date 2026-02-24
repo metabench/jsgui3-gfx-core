@@ -5,9 +5,18 @@ const copy_px_to_ta_dest_byi = (ta_source, source_colorspace, source_xy, ta_dest
         ta_dest[byi_dest] = ta_source[byi_read++];
         ta_dest[byi_dest + 1] = ta_source[byi_read++];
         ta_dest[byi_dest + 2] = ta_source[byi_read++];
+    } else if (bipp === 8) {
+        let byi_read = source_xy[0] + source_xy[1] * source_colorspace[3];
+        ta_dest[byi_dest] = ta_source[byi_read];
+    } else if (bipp === 32) {
+        let byi_read = source_xy[0] * bypp + source_xy[1] * bypr;
+        ta_dest[byi_dest] = ta_source[byi_read++];
+        ta_dest[byi_dest + 1] = ta_source[byi_read++];
+        ta_dest[byi_dest + 2] = ta_source[byi_read++];
+        ta_dest[byi_dest + 3] = ta_source[byi_read++];
     } else {
         console.trace();
-        throw 'NYI';
+        throw 'Unsupported bipp for copy_px_to_ta_dest_byi: ' + bipp;
     }
 }
 const each_pixel_in_colorspace = (colorspace, callback) => {
@@ -277,8 +286,8 @@ const read_2x2_weight_write_24bipp = (ta_source, bypr, byi_read, ta_dest, byi_wr
     ta_dest[byi_write + 1] = corner_weights_ltrb[0] * ta_source[byi_read++] + corner_weights_ltrb[1] * ta_source[byi_read_right++] + corner_weights_ltrb[2] * ta_source[byi_read_below++] + corner_weights_ltrb[3] * ta_source[byi_read_below_right++];
     ta_dest[byi_write + 2] = corner_weights_ltrb[0] * ta_source[byi_read++] + corner_weights_ltrb[1] * ta_source[byi_read_right++] + corner_weights_ltrb[2] * ta_source[byi_read_below++] + corner_weights_ltrb[3] * ta_source[byi_read_below_right++];
 }
-const read_2x2_weight_write_24bipp$locals = (ta_source, source_bypr, byi_read, 
-    corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,                    
+const read_2x2_weight_write_24bipp$locals = (ta_source, source_bypr, byi_read,
+    corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
     ta_dest, byi_write) => {
     let byi_read_right = byi_read + 3;
     let byi_read_below = byi_read + source_bypr;
@@ -309,93 +318,93 @@ const read_3x2_weight_write_24bipp = (ta_source, bypr, byi_read, edge_distances_
     let byi_tl = byi_read;
     let byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
     let byi_bl = byi_tm + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
 }
-const read_3x2_weight_write_24bipp$locals = (ta_source, bypr, byi_read, 
-    edge_p_l, edge_p_t, edge_p_r, edge_p_b, 
+const read_3x2_weight_write_24bipp$locals = (ta_source, bypr, byi_read,
+    edge_p_l, edge_p_t, edge_p_r, edge_p_b,
     corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
     ta_dest, dest_byi) => {
     const bypp = 3;
     let byi_tl = byi_read;
     let byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
     let byi_bl = byi_tm + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
 }
 const read_2x3_weight_write_24bipp = (ta_source, bypr, byi_read, edge_distances_proportions_of_total, corner_weights_ltrb, ta_dest, dest_byi) => {
     const bypp = 3;
     let byi_tl = byi_read, byi_tr = byi_tl + bypp;
     let byi_ml = byi_tl + bypr, byi_mr = byi_ml + bypp;
     let byi_bl = byi_ml + bypr, byi_br = byi_bl + bypp;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
+        ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
+        ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
+        ta_source[byi_ml++] * edge_distances_proportions_of_total[0] + ta_source[byi_mr++] * edge_distances_proportions_of_total[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_br++] * corner_weights_ltrb[3]
 }
-const read_2x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read, 
-    edge_p_l, edge_p_t, edge_p_r, edge_p_b, 
+const read_2x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read,
+    edge_p_l, edge_p_t, edge_p_r, edge_p_b,
     corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
     ta_dest, dest_byi) => {
     let byi_tl = byi_read, byi_tr = byi_tl + 3;
     let byi_ml = byi_tl + bypr, byi_mr = byi_ml + 3;
     let byi_bl = byi_ml + bypr, byi_br = byi_bl + 3;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
 }
 const read_3x3_weight_write_24bipp = (ta_source, bypr, byi_read, edge_weights, corner_weights_ltrb, fpx_area_recip, ta_dest, dest_byi) => {
     const bypp = 3;
     let byi_tl = byi_read, byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
     let byi_ml = byi_tl + bypr, byi_mm = byi_ml + bypp, byi_mr = byi_mm + bypp;
     let byi_bl = byi_ml + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_weights[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_weights[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
+        ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_weights[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
+        ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_weights[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
-                            ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
-                            ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
+        ta_source[byi_ml++] * edge_weights[0] + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_weights[2] +
+        ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_weights[3] + ta_source[byi_br++] * corner_weights_ltrb[3]
 }
-const read_3x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read, 
-    edge_p_l, edge_p_t, edge_p_r, edge_p_b, 
+const read_3x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read,
+    edge_p_l, edge_p_t, edge_p_r, edge_p_b,
     corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
-    fpx_area_recip, 
+    fpx_area_recip,
     ta_dest, dest_byi) => {
     const bypp = 3;
     let byi_tl = byi_read, byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
     let byi_ml = byi_tl + bypr, byi_mm = byi_ml + bypp, byi_mr = byi_mm + bypp;
     let byi_bl = byi_ml + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
-    ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+    ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
     ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+        ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+        ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
 }
 const read_gt3x3_weight_write_24bipp = (ta_source, bypr, byi_read, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_weights_ltrb, fpx_area_recip, ta_dest, dest_byi) => {
     const byi_tl = byi_read;
@@ -443,11 +452,11 @@ const read_gt3x3_weight_write_24bipp = (ta_source, bypr, byi_read, source_i_any_
     ta_dest[dest_byi + 1] = Math.round(g);
     ta_dest[dest_byi + 2] = Math.round(b);
 }
-const read_gt3x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read, 
+const read_gt3x3_weight_write_24bipp$locals = (ta_source, bypr, byi_read,
     any_coverage_w, any_coverage_h,
     edge_p_l, edge_p_t, edge_p_r, edge_p_b,
     corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
-    fpx_area_recip, 
+    fpx_area_recip,
     ta_dest, dest_byi) => {
     const byi_tl = byi_read;
     let r = 0, g = 0, b = 0;
@@ -609,7 +618,7 @@ const resize_ta_colorspace_24bipp$subpixel$inline = (ta_source, source_colorspac
             ta_top_proportions[i_dest_y] = (i_source_tb_crossover - f_source_y) / f_px_h;
         }
         edge_t = ta_top_proportions[i_dest_y];
-        
+
         if (edge_t === 1) {
 
             for (i_dest_x = 0; i_dest_x < dest_size[0]; i_dest_x++) {
@@ -927,7 +936,7 @@ const __resize_ta_colorspace_24bipp$superpixel$inline = (ta_source, source_color
             source_ibounds[2] = Math.ceil(source_fbounds[2]);
             source_i_any_coverage_size[0] = source_ibounds[2] - source_ibounds[0];
             byi_read = source_ibounds[0] * source_bypp + source_ibounds[1] * source_bypr;
-            source_total_coverage_ibounds[0] = Math.ceil(source_fbounds[0]); 
+            source_total_coverage_ibounds[0] = Math.ceil(source_fbounds[0]);
             source_total_coverage_ibounds[2] = Math.floor(source_fbounds[2]);
             source_edge_distances[0] = source_total_coverage_ibounds[0] - source_fbounds[0];
             source_edge_distances[2] = source_fbounds[2] - source_total_coverage_ibounds[2];
@@ -937,7 +946,7 @@ const __resize_ta_colorspace_24bipp$superpixel$inline = (ta_source, source_color
             corner_areas_proportions_of_total[1] = source_edge_distances[2] * source_edge_distances[1] / fpx_area;
             corner_areas_proportions_of_total[2] = source_edge_distances[0] * source_edge_distances[3] / fpx_area;
             corner_areas_proportions_of_total[3] = source_edge_distances[2] * source_edge_distances[3] / fpx_area;
-            if (source_i_any_coverage_size[0] > 3 ||  source_i_any_coverage_size[1] > 3) {
+            if (source_i_any_coverage_size[0] > 3 || source_i_any_coverage_size[1] > 3) {
                 edge_distances_proportions_of_total[0] = source_edge_distances[0] / fpx_area;
                 edge_distances_proportions_of_total[2] = source_edge_distances[2] / fpx_area;
                 read_gt3x3_weight_write_24bipp(ta_source, source_bypr, byi_read, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_areas_proportions_of_total, fpx_area_recip, opt_ta_dest, dest_byi);
@@ -1016,7 +1025,7 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals = (ta_source, source_
             corner_p_tr = edge_r * edge_p_t;
             corner_p_bl = edge_l * edge_p_b;
             corner_p_br = edge_r * edge_p_b;
-            if (any_coverage_w > 3 ||  any_coverage_h > 3) {
+            if (any_coverage_w > 3 || any_coverage_h > 3) {
                 edge_p_l = edge_l / fpx_area;
                 edge_p_r = edge_r / fpx_area;
                 read_gt3x3_weight_write_24bipp$locals(ta_source, source_bypr, byi_read,
@@ -1025,10 +1034,10 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals = (ta_source, source_
                     corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
                     fpx_area_recip,
                     opt_ta_dest, dest_byi
-                    )
+                )
             } else {
                 if (any_coverage_w === 2 && any_coverage_h === 2) {
-                    read_2x2_weight_write_24bipp$locals(ta_source, source_bypr, byi_read, 
+                    read_2x2_weight_write_24bipp$locals(ta_source, source_bypr, byi_read,
                         corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br,
                         opt_ta_dest, dest_byi);
                 } else {
@@ -1121,7 +1130,7 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
             corner_p_tr = edge_r * edge_p_t;
             corner_p_bl = edge_l * edge_p_b;
             corner_p_br = edge_r * edge_p_b;
-            if (any_coverage_w > 3 ||  any_coverage_h > 3) {
+            if (any_coverage_w > 3 || any_coverage_h > 3) {
                 edge_p_l = edge_l / fpx_area;
                 edge_p_r = edge_r / fpx_area;
                 byi_tl = byi_read;
@@ -1182,38 +1191,38 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
                         byi_tl = byi_read; byi_tr = byi_tl + 3;
                         byi_ml = byi_tl + source_bypr; byi_mr = byi_ml + 3;
                         byi_bl = byi_ml + source_bypr; byi_br = byi_bl + 3;
-                        ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+                        ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
                         ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
                         ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_br++] * corner_p_br
                     } else if (any_coverage_w === 3 && any_coverage_h === 2) {
                         byi_tl = byi_read;
                         byi_tm = byi_tl + 3; byi_tr = byi_tm + 3;
                         byi_bl = byi_tm + source_bypr; byi_bm = byi_bl + 3; byi_br = byi_bm + 3;
-                        ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+                        ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
                         ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
                         ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
                     } else if (any_coverage_w === 3 && any_coverage_h === 3) {
                         byi_tl = byi_read; byi_tm = byi_tl + source_bypp; byi_tr = byi_tm + source_bypp;
                         byi_ml = byi_tl + source_bypr; byi_mm = byi_ml + source_bypp; byi_mr = byi_mm + source_bypp;
                         byi_bl = byi_ml + source_bypr; byi_bm = byi_bl + source_bypp; byi_br = byi_bm + source_bypp;
-                        ta_dest[dest_byi] =     ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+                        ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
                         ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
                         ta_dest[dest_byi + 2] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
-                                                ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
-                                                ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
+                            ta_source[byi_ml++] * edge_p_l + ta_source[byi_mm++] * fpx_area_recip + ta_source[byi_mr++] * edge_p_r +
+                            ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br
                     } else {
                         console.trace();
                         throw 'stop';

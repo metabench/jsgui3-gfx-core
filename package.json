@@ -11,7 +11,7 @@
         "fnlfs": "^0.0.34",
         "sharp": "^0.34.5"
     },
-    "version": "0.0.26",
+    "version": "0.0.27",
     "scripts": {
         "test": "node ./tests/run-tests.js"
     }

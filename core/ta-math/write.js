@@ -63,6 +63,26 @@ const get_instance = () => {
         }
     }
 
+    const fill_solid_rect_by_bounds_32bipp = (ta_dest, bypr_dest, ta_bounds, ta_rgba) => {
+        const row_width = ta_bounds[2] - ta_bounds[0];
+        const bytes_per_row = row_width * 4;
+        const ta_write_row = (new Uint8ClampedArray(bytes_per_row));
+
+        let cc = 0, c = 0;
+        while (c < bytes_per_row) {
+            ta_write_row[c++] = ta_rgba[cc++];
+            if (cc === 4) cc = 0;
+        }
+
+        const byi_dest_start = (ta_bounds[0] * 4) + (ta_bounds[1] * bypr_dest);
+        let byi_write = byi_dest_start;
+
+        for (let y = ta_bounds[1]; y < ta_bounds[3]; y++) {
+            ta_dest.set(ta_write_row, byi_write);
+            byi_write += bypr_dest;
+        }
+    }
+
 
     // A ta-math directory may be better.
     //  directories:
@@ -82,7 +102,7 @@ const get_instance = () => {
 
     const fill_solid_rect_by_bounds = (ta_dest, bypr_dest, ta_bounds, bipp, color) => {
         // Polymorphism with color being a number or a typed array?
-        
+
 
         // Call a different specific function depending on curcumstances?
 
@@ -91,11 +111,10 @@ const get_instance = () => {
         } else if (bipp === 24) {
             return fill_solid_rect_by_bounds_24bipp(ta_dest, bypr_dest, ta_bounds, color);
         } else if (bipp === 32) {
-            console.trace();
-            throw 'NYI';
+            return fill_solid_rect_by_bounds_32bipp(ta_dest, bypr_dest, ta_bounds, color);
         } else {
             console.trace();
-            
+
             throw 'Unsupported bipp: ' + bipp;
         }
     }
@@ -107,6 +126,7 @@ const get_instance = () => {
         fill_solid_rect_by_bounds: fill_solid_rect_by_bounds,
         fill_solid_rect_by_bounds_24bipp: fill_solid_rect_by_bounds_24bipp,
         fill_solid_rect_by_bounds_8bipp: fill_solid_rect_by_bounds_8bipp,
+        fill_solid_rect_by_bounds_32bipp: fill_solid_rect_by_bounds_32bipp,
 
         get_instance: get_instance
     }

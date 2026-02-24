@@ -120,11 +120,11 @@ const {
 const maxui64 = ~0n;
 const Pixel_Pos_List = require('./pixel-pos-list');
 const oext = require('obext');
-const {ro, prop} = oext;
+const { ro, prop } = oext;
 const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write');
 const Pixel_Buffer_Painter = require('./pixel-buffer-painter');
 let ta_math = require('./ta-math')
-let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
+let { resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp } = ta_math;
 
 const Pixel_Buffer_Core_Reference_Implementations = require('./pixel-buffer-2-core-reference-implementations');
 
@@ -133,7 +133,7 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         super(spec);
         const pos = new Int16Array(2);
         const size = new Int16Array(2);
-        
+
         const ta_bpp = new Uint8Array(2);
         ta_bpp[1] = 8; // byte to bit multiplier. will stay as 8.
         const _24bipp_to_8bipp = () => {
@@ -158,7 +158,7 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
                 throw 'NYI';
             }
         }
-        
+
         if (spec instanceof Pixel_Pos_List) {
             throw 'NYI - change to 1bipp';
             const ppl = spec;
@@ -178,9 +178,9 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
                 buf[(bpr * (pixel_pos[1] - bounds[1])) + (pixel_pos[0] - bounds[0])] = 0;
             });
         } else {
-            
+
         }
-        
+
     }
     new_convolved(convolution) {
         const res = this.blank_copy();
@@ -296,11 +296,47 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         } else if (bipp === 8) {
             return this.clone();
         } else if (bipp === 24) {
-            console.trace();
-            throw 'NYI';
+            const res = new this.constructor({
+                size: this.size,
+                bits_per_pixel: 8
+            });
+            const ta = this.ta;
+            const rta = res.ta;
+            const w = this.size[0], h = this.size[1];
+            const src_bypr = this.bytes_per_row;
+            const dst_bypr = res.bytes_per_row;
+            for (let y = 0; y < h; y++) {
+                let i_read = y * src_bypr;
+                let i_write = y * dst_bypr;
+                for (let x = 0; x < w; x++) {
+                    const r = ta[i_read], g = ta[i_read + 1], b = ta[i_read + 2];
+                    rta[i_write] = Math.round((r + g + b) / 3);
+                    i_read += 3;
+                    i_write += 1;
+                }
+            }
+            return res;
         } else if (bipp === 32) {
-            console.trace();
-            throw 'NYI';
+            const res = new this.constructor({
+                size: this.size,
+                bits_per_pixel: 8
+            });
+            const ta = this.ta;
+            const rta = res.ta;
+            const w = this.size[0], h = this.size[1];
+            const src_bypr = this.bytes_per_row;
+            const dst_bypr = res.bytes_per_row;
+            for (let y = 0; y < h; y++) {
+                let i_read = y * src_bypr;
+                let i_write = y * dst_bypr;
+                for (let x = 0; x < w; x++) {
+                    const r = ta[i_read], g = ta[i_read + 1], b = ta[i_read + 2];
+                    rta[i_write] = Math.round((r + g + b) / 3);
+                    i_read += 4;
+                    i_write += 1;
+                }
+            }
+            return res;
         }
     }
     to_24bipp() {
@@ -343,12 +379,21 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             const res = new this.constructor({
                 size: this.size,
                 bits_per_pixel: 24
-            })
-            console.trace();
-            throw 'NYI';
-            while (i_px < num_px) {
-                const col_32 = this.get_pixel_by_idx_32bipp(i_px)
-                i_px += bypp;
+            });
+            const ta = this.ta;
+            const rta = res.ta;
+            const w = this.size[0], h = this.size[1];
+            const src_bypr = this.bytes_per_row;
+            const dst_bypr = res.bytes_per_row;
+            for (let y = 0; y < h; y++) {
+                let i_read = y * src_bypr;
+                let i_write = y * dst_bypr;
+                for (let x = 0; x < w; x++) {
+                    rta[i_write++] = ta[i_read++]; // R
+                    rta[i_write++] = ta[i_read++]; // G
+                    rta[i_write++] = ta[i_read++]; // B
+                    i_read++; // skip Alpha
+                }
             }
             return res;
         }
@@ -441,11 +486,12 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         return res;
     }
     color_rect(bounds, color) {
-        console.trace();
-        throw 'NYI';
+        for (let y = bounds[1]; y < bounds[3]; y++) {
+            this.draw_horizontal_line([bounds[0], bounds[2] - 1], y, color);
+        }
     }
     each_pixel_byte_index(cb) {
-        const {bipp} = this;
+        const { bipp } = this;
         let ctu = true;
         const stop = () => ctu = false;
         if (bipp === 8) {
@@ -567,13 +613,13 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         const idx = pos[1] * this.size[0] + pos[0];
         const byte = idx >> 3;
         const bit = (idx & 0b111);
-        return {byte, bit};
+        return { byte, bit };
     }
     'get_pixel_byte_bit_BE_1bipp'(pos) {
         const idx = pos[1] * this.size[0] + pos[0];
         const byte = idx >> 3;
         const bit = (idx & 0b111);
-        return {byte, bit};
+        return { byte, bit };
     }
     set_pixel_on_1bipp_by_pixel_index(pixel_index) {
         this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
@@ -649,15 +695,15 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             return this.set_pixel_by_idx_1bipp(a[0], a[1]);
         } else if (bipp === 8) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_8bipp(a[0], a[1]));
+                return (this.set_pixel_by_idx_8bipp(a[0], a[1]));
             }
         } else if (bipp === 24) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_24bipp(a[0], a[1]));
+                return (this.set_pixel_by_idx_24bipp(a[0], a[1]));
             }
         } else if (bipp === 32) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_32bipp(a[0], a[1]));
+                return (this.set_pixel_by_idx_32bipp(a[0], a[1]));
             }
         }
     }
@@ -666,18 +712,18 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         const l = a.length;
         const bipp = this.bipp;
         if (bipp === 1) {
-            return(this.set_pixel_1bipp(a[0], a[1]));
+            return (this.set_pixel_1bipp(a[0], a[1]));
         } else if (bipp === 8) {
             if (l === 2) {
-                return(this.set_pixel_8bipp(a[0], a[1]));
+                return (this.set_pixel_8bipp(a[0], a[1]));
             }
         } else if (bipp === 24) {
             if (l === 2) {
-                return(this.set_pixel_24bipp(a[0], a[1]));
+                return (this.set_pixel_24bipp(a[0], a[1]));
             }
         } else if (bipp === 32) {
             if (l === 2) {
-                return(this.set_pixel_32bipp(a[0], a[1]));
+                return (this.set_pixel_32bipp(a[0], a[1]));
             }
         } else {
             console.trace();
@@ -786,9 +832,12 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
                 i_byte += bypp;
             }
             return res;
+        } else if (bipp === 8) {
+            const res = [this.clone(), this.clone(), this.clone()];
+            return res;
         } else {
             console.trace();
-            throw 'NYI';
+            throw 'Unsupported bipp for split_rgb_channels: ' + bipp;
         }
     }
     process(fn) {
@@ -807,7 +856,7 @@ return a.every((val, i) => val === b[i]);
         const other_colorspace = other_pixel_buffer.ta_colorspace;
         const my_colorspace = other_pixel_buffer.ta_colorspace;
         if (my_colorspace.length === other_colorspace.length) {
-            if(my_colorspace.every((val, i) => val === other_colorspace[i])) {
+            if (my_colorspace.every((val, i) => val === other_colorspace[i])) {
                 if (buf1.length === buf2.length) {
                     return buf1.every((val, i) => val === buf2[i]);
                 } else {
@@ -846,7 +895,7 @@ return a.every((val, i) => val === b[i]);
     // get_pre_operation_alignment_info ....
 
 
-    
+
     // And could define such a class which has got requirements / invarients to do with 
 
 
@@ -867,53 +916,53 @@ return a.every((val, i) => val === b[i]);
             // Compute bytes per row using bitwise math
             const target_bytes_per_row = (target_width + 7) >> 3;
             const source_bytes_per_row = (source_width + 7) >> 3;
-        
+
             // Iterate over each row of the source bitmap
             for (let row = 0; row < source_height; row++) {
                 // Source row offset in bytes
                 const source_row_start = row * source_bytes_per_row;
-        
+
                 // Target row offset in bytes
                 const target_row_start = (target_y + row) * target_bytes_per_row;
-        
+
                 // Bit offset within the target byte
                 const bit_offset = target_x & 7; // Faster alternative to target_x % 8
-        
+
                 // Start byte in the target where source will be drawn
                 let target_byte_index = target_row_start + (target_x >> 3); // Divide target_x by 8 using bitwise shift
-        
+
                 // Iterate over source bytes for this row
                 for (let col = 0; col < source_bytes_per_row; col++) {
                     const source_byte = source[source_row_start + col];
-        
+
                     if (bit_offset === 0) {
                         // Direct copy if aligned with byte boundary
                         target[target_byte_index] |= source_byte;
                     } else {
                         // Handle unaligned case
                         const next_byte_index = target_byte_index + 1;
-        
+
                         // Shift source byte into position
                         const shifted_byte = source_byte << bit_offset;
                         const carry_over = source_byte >> (8 - bit_offset);
-        
+
                         // Merge with target
                         target[target_byte_index] |= shifted_byte;
                         if (next_byte_index < target.length) {
                             target[next_byte_index] |= carry_over;
                         }
                     }
-        
+
                     target_byte_index++;
                 }
             }
         }
-        
+
 
         const chatgpto1_draw_bitmap_implementation = () => {
             draw_bitmap(this.ta, this.size[0], pb_1bipp_mask.ta, pb_1bipp_mask.size[0], pb_1bipp_mask.size[1], dest_pos[0], dest_pos[1]);
         }
-        
+
 
         const arr_on_xspans_implementation = () => {
 
@@ -939,7 +988,7 @@ return a.every((val, i) => val === b[i]);
                 //this.draw_horizontal_line_on_1bipp_inclusive(xonspan, y + dest_y);
             }
                 */
-            
+
             // Not sure the spans are inclusive...
 
             if (color === 1) {
@@ -958,7 +1007,7 @@ return a.every((val, i) => val === b[i]);
                 }
             } else {
                 //let y = 0;
-                
+
                 for (let y = 0; y < height; y++) {
                     //const arr_row_xspans_on = arr_rows_arr_on_xspans[y];
                     const target_y = y + dest_y;
@@ -973,10 +1022,10 @@ return a.every((val, i) => val === b[i]);
             }
 
             // Get it as an other representation of a 1 bipp image
-            
+
         }
 
-        
+
 
         // approach_selecting
 
@@ -1010,7 +1059,7 @@ return a.every((val, i) => val === b[i]);
 
             //if (can_do_aligned_64_bit) {
 
-                //console.log('doing aligned 64 bit assignement');
+            //console.log('doing aligned 64 bit assignement');
             //    return aligned_64_bit_implementation();
 
             //} else 
@@ -1040,7 +1089,7 @@ return a.every((val, i) => val === b[i]);
                 } else {
                     return arr_on_xspans_implementation();
                 }
-                
+
             }
 
             // 
@@ -1056,7 +1105,7 @@ return a.every((val, i) => val === b[i]);
 
     'draw_1bipp_pixel_buffer_mask'(pb_1bipp_mask, dest_pos, color) {
 
-        const {bipp} = this;
+        const { bipp } = this;
 
         if (bipp === 1) {
             return this.draw_1bipp_pixel_buffer_mask_1bipp(pb_1bipp_mask, dest_pos, color);
@@ -1065,11 +1114,11 @@ return a.every((val, i) => val === b[i]);
 
                 // Getting it as an arr_rows_arr_x_on_spans representation using a class could help.
                 //   Or the 'other representaion' type class.
-    
-    
+
+
                 const arr_rows_arr_on_xspans = pb_1bipp_mask.calculate_arr_rows_arr_x_on_spans_1bipp();
                 const [width, height] = pb_1bipp_mask.size;
-    
+
                 let y = 0;
                 let [dest_x, dest_y] = dest_pos;
                 for (y = 0; y < height; y++) {
@@ -1082,13 +1131,13 @@ return a.every((val, i) => val === b[i]);
                         }
                     }
                 }
-    
-                
-                
+
+
+
             }
             return arr_on_xspans_implementation();
         }
-        
+
     }
     'blank_copy'() {
         var res = new this.constructor({
@@ -1182,9 +1231,23 @@ return a.every((val, i) => val === b[i]);
                 bres[i++] = v;
                 bres[i++] = 255;
             });
-        } else {
-            console.trace();
-            throw 'NYI';
+        } else if (this.bytes_per_pixel === 3) {
+            const buf = this.buffer;
+            const w = this.size[0], h = this.size[1];
+            const src_bypr = this.bytes_per_row;
+            const dst_bypr = res.bytes_per_row;
+            for (let y = 0; y < h; y++) {
+                let i = y * src_bypr;
+                let ir = y * dst_bypr;
+                for (let x = 0; x < w; x++) {
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = 255;
+                }
+            }
+        } else if (this.bytes_per_pixel === 4) {
+            return this.clone();
         }
         return res;
     }
@@ -1209,7 +1272,7 @@ return a.every((val, i) => val === b[i]);
         });
         return res;
     }
-    
+
     draw_rect(pos_corner, pos_other_corner, color) {
         /*
         const paint_bounds = new Int16Array([20, 300, 180, 320]);
@@ -1235,11 +1298,11 @@ return a.every((val, i) => val === b[i]);
 module.exports = Pixel_Buffer_Core;
 if (require.main === module) {
     const lg = console.log;
-    (async() => {
-        const run_examples = async() => {
+    (async () => {
+        const run_examples = async () => {
             lg('Begin run examples');
             const examples = [
-                async() => {
+                async () => {
                     lg('Begin example 0');
                     const pb = new Pixel_Buffer_Core({
                         bits_per_pixel: 1,

@@ -120,11 +120,11 @@ const {
 const maxui64 = ~0n;
 const Pixel_Pos_List = require('./pixel-pos-list');
 const oext = require('obext');
-const {ro, prop} = oext;
+const { ro, prop } = oext;
 const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write');
 const Pixel_Buffer_Painter = require('./pixel-buffer-painter');
 let ta_math = require('./ta-math')
-let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
+let { resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp } = ta_math;
 
 const Pixel_Buffer_Core_Masks = require('./pixel-buffer-1.5-core-mask');
 
@@ -148,8 +148,8 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
 
         super(spec);
 
-        
-        
+
+
         this.move = ta_2d_vector => {
             pos[0] += ta_2d_vector[0];
             pos[1] += ta_2d_vector[1];
@@ -159,8 +159,8 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
         }
         this.each_pos_within_bounds = (callback) => {
             const has_source = !!this.source;
-            for (pos[1] = pos_bounds[1]; pos[1] < pos_bounds[3]; pos[1] ++) {
-                for (pos[0] = pos_bounds[0]; pos[0] < pos_bounds[2]; pos[0] ++) {
+            for (pos[1] = pos_bounds[1]; pos[1] < pos_bounds[3]; pos[1]++) {
+                for (pos[0] = pos_bounds[0]; pos[0] < pos_bounds[2]; pos[0]++) {
                     if (has_source) this.copy_from_source();
                     callback();
                 }
@@ -194,7 +194,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
 
     each_pixel(callback) {
         // Want optimised but still idiomatic
-        const {ta_pos_scratch, bipp, bypp, size, ta} = this;
+        const { ta_pos_scratch, bipp, bypp, size, ta } = this;
 
         // And a ta_color_scratch perhaps?
         //   ta_24bipp_color_scratch maybe...
@@ -229,7 +229,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
 
                     const got_px_color = this.get_pixel_1bipp(ta_cb_pos);
 
-                    
+
                     callback(ta_cb_pos, got_px_color);
 
                     //i_bit++;
@@ -244,7 +244,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             }
 
 
-            
+
 
 
 
@@ -267,7 +267,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             //  Could be better for idiomatic writing.
             //  Though setting values would maybe / likely be quicker and mean less allocations.
 
-            const {ta_24bit_color} = this;
+            const { ta_24bit_color } = this;
             let byte_idx = 0;
             this.each_pixel_pos((pos, stop) => {
                 ta_24bit_color[0] = ta[byte_idx++];
@@ -277,7 +277,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             });
 
         } else if (bipp === 32) {
-            const {ta_32bit_color} = this;
+            const { ta_32bit_color } = this;
             let byte_idx = 0;
             this.each_pixel_pos((pos, stop) => {
                 ta_32bit_color[0] = ta[byte_idx++];
@@ -337,9 +337,23 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
                 bres[i++] = v;
                 bres[i++] = 255;
             });
-        } else {
-            console.trace();
-            throw 'NYI';
+        } else if (this.bytes_per_pixel === 3) {
+            const buf = this.buffer;
+            const w = this.size[0], h = this.size[1];
+            const src_bypr = this.bytes_per_row;
+            const dst_bypr = res.bytes_per_row;
+            for (let y = 0; y < h; y++) {
+                let i = y * src_bypr;
+                let ir = y * dst_bypr;
+                for (let x = 0; x < w; x++) {
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = buf[i++];
+                    bres[ir++] = 255;
+                }
+            }
+        } else if (this.bytes_per_pixel === 4) {
+            return this.clone();
         }
         return res;
     }
@@ -483,7 +497,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
         } else {
         }
     }
-    
+
     toString() {
         /*
         size: Uint32Array [ 1024, 576 ],
@@ -547,7 +561,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
         throw 'NYI';
     }
     each_pixel_byte_index(cb) {
-        const {bipp} = this;
+        const { bipp } = this;
         let ctu = true;
         const stop = () => ctu = false;
 
@@ -592,7 +606,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             this.set_pixel_ta(pos, color);
         });
     }
-    
+
 
     // Maybe a class level that has get and set pixel logic for the different bipps at this level.
 
@@ -650,7 +664,7 @@ return a.every((val, i) => val === b[i]);
         const other_colorspace = other_pixel_buffer.ta_colorspace;
         const my_colorspace = other_pixel_buffer.ta_colorspace;
         if (my_colorspace.length === other_colorspace.length) {
-            if(my_colorspace.every((val, i) => val === other_colorspace[i])) {
+            if (my_colorspace.every((val, i) => val === other_colorspace[i])) {
                 if (buf1.length === buf2.length) {
                     return buf1.every((val, i) => val === buf2[i]);
                 } else {
@@ -689,14 +703,14 @@ return a.every((val, i) => val === b[i]);
     // get_pre_operation_alignment_info ....
 
 
-    
+
     // And could define such a class which has got requirements / invarients to do with 
 
 
 
     // This is used when drawing filled polygons.
 
-    
+
     'blank_copy'() {
         var res = new this.constructor({
             'size': this.size,
@@ -745,7 +759,7 @@ return a.every((val, i) => val === b[i]);
             return this;
         }
     }
-    
+
     draw_rect(pos_corner, pos_other_corner, color) {
         /*
         const paint_bounds = new Int16Array([20, 300, 180, 320]);
@@ -771,11 +785,11 @@ return a.every((val, i) => val === b[i]);
 module.exports = Pixel_Buffer_Core_Reference_Implementations;
 if (require.main === module) {
     const lg = console.log;
-    (async() => {
-        const run_examples = async() => {
+    (async () => {
+        const run_examples = async () => {
             lg('Begin run examples');
             const examples = [
-                async() => {
+                async () => {
                     lg('Begin example 0');
                     const pb = new Pixel_Buffer_Core_Reference_Implementations({
                         bits_per_pixel: 1,
