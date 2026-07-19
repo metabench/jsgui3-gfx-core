@@ -7,6 +7,12 @@ class ScanlineProcessor {
         this.height = height;
         this.bitmap = bitmap;
         this.dataView = new DataView(bitmap.buffer, bitmap.byteOffset, bitmap.byteLength);
+        this.rowStrideBytes = options.rowStrideBytes === undefined
+            ? Math.ceil(width / 8)
+            : options.rowStrideBytes;
+        this.rowDataBytes = Math.ceil(width / 8);
+        const tailBits = width & 7;
+        this.tailMask = tailBits === 0 ? 0xFF : (0xFF << (8 - tailBits)) & 0xFF;
         this.draw_edges = options.draw_edges || false; // Option to draw edges
     }
 
@@ -16,6 +22,7 @@ class ScanlineProcessor {
         }
 
         const h = this.height, edges = this.edges;
+        if (typeof edges.reset === 'function') edges.reset();
 
         for (let y = 0; y < h; y++) {
             edges.update_active_edges(y);
@@ -30,100 +37,83 @@ class ScanlineProcessor {
             } else {
                 this.fill_scanline_no_edges_1bipp(y);
             }
-            this._update_x_intercepts();
+            if (this.tailMask !== 0xFF) {
+                const tailByte = y * this.rowStrideBytes + this.rowDataBytes - 1;
+                this.bitmap[tailByte] &= this.tailMask;
+            }
         }
+        return this.bitmap;
     }
 
-    _set_pixels_span_1bipp(bitmap, row_offset, x_start, x_end) {
+    process() {
+        return this.process_1bipp();
+    }
+
+    _set_pixels_span_1bipp(bitmap, row_byte_offset, x_start, x_end) {
+        if (x_start < 0) x_start = 0;
+        if (x_end >= this.width) x_end = this.width - 1;
+        if (x_start > x_end) return;
+
         const total_pixels = x_end - x_start + 1;
-        const start_index = row_offset + x_start;
-        
-        const end_index = row_offset + x_end;
-        let pixel_index = start_index;
+        let x = x_start;
 
         if (total_pixels < 12) {
-            // Default behavior for fewer than 16 pixels
-            
-            for (; pixel_index <= end_index; pixel_index++) {
-                const byte_offset = pixel_index >> 3;
-                bitmap[byte_offset] |= (128 >> (pixel_index & 7));
+            for (; x <= x_end; x++) {
+                const byte_offset = row_byte_offset + (x >> 3);
+                bitmap[byte_offset] |= 128 >> (x & 7);
             }
-
-            
         } else {
-            const start_byte = start_index >> 3;
-            const start_bit_offset = pixel_index & 7;
+            const start_byte = row_byte_offset + (x >> 3);
+            const start_bit_offset = x & 7;
             let num_pixels_remaining = total_pixels;
             if (total_pixels < 90) {
-                //let pixel_index = row_offset + x_start;
-                //const start_byte = pixel_index >> 3;
-                
-                
-
-                // Handle first byte if not aligned
                 if (start_bit_offset !== 0) {
                     const bits_to_set = Math.min(8 - start_bit_offset, num_pixels_remaining);
                     bitmap[start_byte] |= ((0xFF >> (8 - bits_to_set)) << (8 - start_bit_offset - bits_to_set));
-                    pixel_index += bits_to_set;
+                    x += bits_to_set;
                     num_pixels_remaining -= bits_to_set;
                 }
 
-                // Handle remaining whole bytes
                 while (num_pixels_remaining >= 8) {
-                    const byte_offset = pixel_index >> 3;
+                    const byte_offset = row_byte_offset + (x >> 3);
                     bitmap[byte_offset] |= 0xFF;
-                    pixel_index += 8;
+                    x += 8;
                     num_pixels_remaining -= 8;
                 }
 
-                // Handle remaining bits
                 if (num_pixels_remaining > 0) {
-                    const byte_offset = pixel_index >> 3;
+                    const byte_offset = row_byte_offset + (x >> 3);
                     bitmap[byte_offset] |= (0xFF << (8 - num_pixels_remaining));
                 }
             } else {
                 const dataView = this.dataView;
-                //let pixel_index = row_offset + x_start;
-                //const start_byte = pixel_index >> 3;
-                //const start_bit_offset = pixel_index & 7;
-                //let num_pixels_remaining = total_pixels;
-
-                // Handle first byte if not aligned
                 if (start_bit_offset !== 0) {
                     const bits_to_set = Math.min(8 - start_bit_offset, num_pixels_remaining);
                     bitmap[start_byte] |= ((0xFF >> (8 - bits_to_set)) << (8 - start_bit_offset - bits_to_set));
-                    pixel_index += bits_to_set;
+                    x += bits_to_set;
                     num_pixels_remaining -= bits_to_set;
                 }
 
-                // Handle 64-bit chunks
                 while (num_pixels_remaining >= 64) {
-                    const byte_offset = pixel_index >> 3;
+                    const byte_offset = row_byte_offset + (x >> 3);
                     dataView.setBigUint64(byte_offset, 0xFFFFFFFFFFFFFFFFn, false);
-                    pixel_index += 64;
+                    x += 64;
                     num_pixels_remaining -= 64;
                 }
 
-                // Handle remaining whole bytes
                 while (num_pixels_remaining >= 8) {
-                    const byte_offset = pixel_index >> 3;
+                    const byte_offset = row_byte_offset + (x >> 3);
                     bitmap[byte_offset] |= 0xFF;
-                    pixel_index += 8;
+                    x += 8;
                     num_pixels_remaining -= 8;
                 }
 
-                // Handle remaining bits
                 if (num_pixels_remaining > 0) {
-                    const byte_offset = pixel_index >> 3;
+                    const byte_offset = row_byte_offset + (x >> 3);
                     bitmap[byte_offset] |= (0xFF << (8 - num_pixels_remaining));
                 }
             }
-        } 
-        
-        
-        
-
-       
+        }
     }
 
     
@@ -138,12 +128,12 @@ class ScanlineProcessor {
         }
 
         const bitmap = this.bitmap;
-        const row_offset = scanline_y * this.width;
+        const row_offset = scanline_y * this.rowStrideBytes;
         const naem1 = num_active_edges - 1;
 
         for (let i = 0; i < naem1; i += 2) {
-            const x_start = Math.round(edges.get(active_edges[i], 0));
-            const x_end = Math.round(edges.get(active_edges[i + 1], 0));
+            const x_start = Math.round(edges.get_x_intercept(active_edges[i]));
+            const x_end = Math.round(edges.get_x_intercept(active_edges[i + 1]));
 
             this._set_pixels_span_1bipp(bitmap, row_offset, x_start, x_end);
 
@@ -186,12 +176,12 @@ class ScanlineProcessor {
         }
 
         const bitmap = this.bitmap;
-        const row_offset = scanline_y * this.width;
+        const row_offset = scanline_y * this.rowStrideBytes;
         const naem1 = num_active_edges - 1;
 
         for (let i = 0; i < naem1; i += 2) {
-            const x_start = Math.ceil(edges.get(active_edges[i], 0));
-            const x_end = Math.floor(edges.get(active_edges[i + 1], 0));
+            const x_start = Math.ceil(edges.get_x_intercept(active_edges[i]));
+            const x_end = Math.floor(edges.get_x_intercept(active_edges[i + 1]));
 
             // Fill the span between edges
             this._set_pixels_span_1bipp(bitmap, row_offset, x_start, x_end);
@@ -204,6 +194,7 @@ class ScanlineProcessor {
 
     *iterate_process() {
         const h = this.height, edges = this.edges;
+        if (typeof edges.reset === 'function') edges.reset();
 
         for (let y = 0; y < h; y++) {
             edges.update_active_edges(y);
@@ -214,7 +205,6 @@ class ScanlineProcessor {
             }
 
             yield* this.iterate_scanline(y);
-            this._update_x_intercepts();
         }
     }
 
@@ -228,8 +218,10 @@ class ScanlineProcessor {
         }
 
         for (let i = 0; i < num_active_edges - 1; i += 2) {
-            const x_start = Math.ceil(edges.get(active_edges[i], 0));
-            const x_end = Math.floor(edges.get(active_edges[i + 1], 0));
+            const left = edges.get_x_intercept(active_edges[i]);
+            const right = edges.get_x_intercept(active_edges[i + 1]);
+            const x_start = Math.max(0, this.draw_edges ? Math.round(left) : Math.ceil(left));
+            const x_end = Math.min(this.width - 1, this.draw_edges ? Math.round(right) : Math.floor(right));
 
             if (x_start <= x_end) {
                 yield [scanline_y, x_start, x_end];
@@ -238,17 +230,8 @@ class ScanlineProcessor {
     }
 
     _update_x_intercepts() {
-        const edges = this.edges;
-        const { active_edges, num_active_edges } = edges;
-
-        for (let i = 0; i < num_active_edges; i++) {
-            const edge_index = active_edges[i];
-            edges.set(edge_index, 0, edges.get(edge_index, 0) + edges.get(edge_index, 4));
-
-            if (DEBUG) {
-                console.log(`Edge ${edge_index}: Updated x=${edges.get(edge_index, 0)} using slope=${edges.get(edge_index, 4)}`);
-            }
-        }
+        // Retained as a no-op for callers of the old internal hook. Intercepts
+        // are now derived directly for each row in update_active_edges().
     }
 }
 

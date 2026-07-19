@@ -1,4 +1,5 @@
 const Pixel_Buffer_Idiomatic_Enh = require('./pixel-buffer-5-idiomatic-enh');
+const {unsafeGetPixel} = require('./pixel-buffer-pixel-access');
 
 const Pixel_Pos_List = require('./pixel-pos-list');
 const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
@@ -7,7 +8,7 @@ const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
     const padding = (dimension_size - 1) / 2;
     const movement_vectors = new Int8Array(c_length * 2);
     let x, y, pos = 0;
-    const idx_movement_vectors = new Int16Array(c_length);
+    const idx_movement_vectors = new Int32Array(c_length);
     for (y = -1 * padding; y <= padding; y++) {
         for (x = -1 * padding; x <= padding; x++) {
             movement_vectors[pos++] = x;
@@ -44,10 +45,10 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         super(spec);
     }
     get ta_is_64bit_divisible() {
-        return (this.ta.length & 63) === 0;
+        return this.ta.byteLength % 8 === 0;
     }
     get ta_is_32bit_divisible() {
-        return (this.ta.length & 31) === 0;
+        return this.ta.byteLength % 4 === 0;
     }
     get ta64() {
         if (this._ta64) {
@@ -58,36 +59,33 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             if (this.ta.byteOffset % 8 === 0) {
                 this._ta64 = new BigUint64Array(this.ta.buffer, this.ta.byteOffset, this.ta.byteLength / 8);
                 return this._ta64;
-            } else {
-                console.error("The byte offset is not aligned to 8 bytes.");
             }
-        } else  {
-            return false;
         }
+        return false;
     }
     get is_32bit_divisible_image() {
-        return (this.ta.length & 31) === 0;
+        return this.ta.byteLength % 4 === 0;
     }
     get is_32_divisible_bits_per_row() {
-        return (this.bits_per_row & 31) === 0;
+        return this.bits_per_row % 32 === 0;
     }
     get number_of_32bit_segments_per_32bit_divisible_row() {
-        return this.bits_per_row >> 5;
+        return this.bits_per_row / 32;
     }
     get is_64bit_divisible_image() {
-        return (this.ta.length & 63) === 0;
+        return this.ta.byteLength % 8 === 0;
     }
     get is_64_divisible_bits_per_row() {
-        return (this.bits_per_row & 63) === 0;
+        return this.bits_per_row % 64 === 0;
     }
     get number_of_64bit_segments_per_64bit_divisible_row() {
-        return this.bits_per_row >> 6;
+        return this.bits_per_row / 64;
     }
     get bits_per_image_1bipp() {
         return this.size[0] * this.size[1];
     }
     get number_of_64bit_segments_per_64bit_divisible_image() {
-        return this.bits_per_image_1bipp >> 6;
+        return this.bits_per_image_1bipp / 64;
     }
     iterate_all_ui32_locations_1bipp(cb) {
         const ui32a_px_range = new Uint32Array(4);
@@ -316,60 +314,114 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
     }
     iterate_1bipp_wrapping_x_span_color_toggles(cb) {
         const {ta} = this;
-        const r1shifted_ta = right_shift_32bit_with_carry(ta);
-        const xored_against_orig = xor_typed_arrays(ta, r1shifted_ta);
-        each_1_index(xored_against_orig, cb);
+        const width = this.size[0], height = this.size[1];
+        const rowStrideBytes = this.bytes_per_row;
+        if (rowStrideBytes * 8 === width) {
+            const r1shifted_ta = right_shift_32bit_with_carry(ta);
+            const xored_against_orig = xor_typed_arrays(ta, r1shifted_ta);
+            each_1_index(xored_against_orig, cb);
+        } else {
+            let previous = 0;
+            let logicalIndex = 0;
+            for (let y = 0; y < height; y++) {
+                const rowStart = y * rowStrideBytes;
+                for (let x = 0; x < width; x++, logicalIndex++) {
+                    const current = (ta[rowStart + (x >> 3)] & (128 >> (x & 7))) !== 0 ? 1 : 0;
+                    if (current !== previous) cb(logicalIndex);
+                    previous = current;
+                }
+            }
+        }
     }
     count_1bipp_wrapping_x_span_color_toggles() {
         const {ta} = this;
-        const r1shifted_ta = right_shift_32bit_with_carry(ta);
-        const xored_against_orig = xor_typed_arrays(ta, r1shifted_ta);
-        return count_1s(xored_against_orig);
+        const width = this.size[0], height = this.size[1];
+        const rowStrideBytes = this.bytes_per_row;
+        if (rowStrideBytes * 8 === width) {
+            const r1shifted_ta = right_shift_32bit_with_carry(ta);
+            const xored_against_orig = xor_typed_arrays(ta, r1shifted_ta);
+            return count_1s(xored_against_orig);
+        }
+        let previous = 0;
+        let count = 0;
+        for (let y = 0; y < height; y++) {
+            const rowStart = y * rowStrideBytes;
+            for (let x = 0; x < width; x++) {
+                const current = (ta[rowStart + (x >> 3)] & (128 >> (x & 7))) !== 0 ? 1 : 0;
+                if (current !== previous) count++;
+                previous = current;
+            }
+        }
+        return count;
     }
     'place_image_from_pixel_buffer'(pixel_buffer, dest_pos, options = {}) {
-        const {bipp} = this;
-        const dest_buffer = this.buffer;
-        const source_buffer = pixel_buffer.buffer;
-        if (bipp === 32 && pixel_buffer.bits_per_pixel === 32) {
-            const dest_w = this.size[0];
-            const dest_h = this.size[1];
-            const dest_buffer_line_length = dest_w * 4;
-            const source_w = pixel_buffer.size[0];
-            const source_h = pixel_buffer.size[1];
-            const source_buffer_line_length = source_w * 4;
-            let source_buffer_line_start_pos, source_buffer_line_end_pos, dest_buffer_subline_start_pos, dest_buffer_start_offset;
-            dest_buffer_start_offset = dest_pos[0] * 4;
-            for (var y = 0; y < source_h; y++) {
-                source_buffer_line_start_pos = y * source_buffer_line_length;
-                source_buffer_line_end_pos = source_buffer_line_start_pos + source_buffer_line_length;
-                dest_buffer_subline_start_pos = (y + dest_pos[1]) * dest_buffer_line_length;
-                source_buffer.copy(dest_buffer, dest_buffer_subline_start_pos + dest_buffer_start_offset, source_buffer_line_start_pos, source_buffer_line_end_pos);
+        if (!pixel_buffer || pixel_buffer.bipp !== this.bipp) {
+            throw new TypeError('Source and destination Pixel Buffers must use the same pixel format');
+        }
+        if (!dest_pos || !Number.isInteger(dest_pos[0]) || !Number.isInteger(dest_pos[1])) {
+            throw new TypeError('Destination position must contain two integers');
+        }
+
+        const destX = dest_pos[0], destY = dest_pos[1];
+        const sourceWidth = pixel_buffer.size[0], sourceHeight = pixel_buffer.size[1];
+        // Snapshot only self-placement; row-at-a-time writes could otherwise
+        // overwrite a later source row in an overlapping move.
+        const sourceTa = pixel_buffer === this ? pixel_buffer.ta.slice() : pixel_buffer.ta;
+        if (this.bipp !== 1 && destX >= 0 && destY >= 0 &&
+            destX + sourceWidth <= this.size[0] && destY + sourceHeight <= this.size[1]) {
+            const bytesPerPixel = this.bytes_per_pixel;
+            const sourceRowDataBytes = sourceWidth * bytesPerPixel;
+            const targetXByte = destX * bytesPerPixel;
+            const targetTa = this.ta;
+            const sourceStride = pixel_buffer.bytes_per_row;
+            const targetStride = this.bytes_per_row;
+            for (let y = 0; y < sourceHeight; y++) {
+                const sourceStart = y * sourceStride;
+                const targetStart = (destY + y) * targetStride + targetXByte;
+                targetTa.set(
+                    sourceTa.subarray(sourceStart, sourceStart + sourceRowDataBytes),
+                    targetStart
+                );
             }
-        } else if (bipp === 1) {
-            if (pixel_buffer.bipp === 1) {
-                if (options.or === true) {
-                    return this.draw_1bipp_pixel_buffer_mask_1bipp(pixel_buffer, dest_pos);
-                } else {
-                    const pb_source = pixel_buffer;
-                    const ta_pos = new Int16Array(2);
-                    const ta_px_value = new Uint8ClampedArray(3);
-                    const ta_info = new Uint32Array(4);
-                    const px_dest_pos = new Uint16Array(2);
-                    pb_source.each_ta_1bipp(ta_pos, ta_px_value, ta_info, (color, pos) => {
-                        px_dest_pos[0] = pos[0] + dest_pos[0];
-                        px_dest_pos[1] = pos[1] + dest_pos[1];
-                        this.set_pixel(px_dest_pos, color);
-                    })
+            return this;
+        }
+
+        const sourceX = Math.max(0, -destX);
+        const sourceY = Math.max(0, -destY);
+        const targetX = Math.max(0, destX);
+        const targetY = Math.max(0, destY);
+        const copyWidth = Math.min(sourceWidth - sourceX, this.size[0] - targetX);
+        const copyHeight = Math.min(sourceHeight - sourceY, this.size[1] - targetY);
+        if (copyWidth <= 0 || copyHeight <= 0) return this;
+
+        if (this.bipp === 1) {
+            const useOr = options.or === true;
+            for (let y = 0; y < copyHeight; y++) {
+                const sourceRow = (sourceY + y) * pixel_buffer.bytes_per_row;
+                const targetRow = (targetY + y) * this.bytes_per_row;
+                for (let x = 0; x < copyWidth; x++) {
+                    const sx = sourceX + x;
+                    const tx = targetX + x;
+                    const sourceOn = (sourceTa[sourceRow + (sx >> 3)] & (0x80 >> (sx & 7))) !== 0;
+                    const targetByte = targetRow + (tx >> 3);
+                    const targetMask = 0x80 >> (tx & 7);
+                    if (sourceOn) {
+                        this.ta[targetByte] |= targetMask;
+                    } else if (!useOr) {
+                        this.ta[targetByte] &= ~targetMask & 255;
+                    }
                 }
-            } else {
-                console.trace();
-                throw 'must have matching bipp values (expected: 1)';
             }
         } else {
-            console.trace();
-            console.log('[pixel_buffer, dest_pos, options]', [pixel_buffer, dest_pos, options]);
-            throw 'not currently supported';
+            const bytesPerPixel = this.bytes_per_pixel;
+            const copyBytes = copyWidth * bytesPerPixel;
+            for (let y = 0; y < copyHeight; y++) {
+                const sourceStart = (sourceY + y) * pixel_buffer.bytes_per_row + sourceX * bytesPerPixel;
+                const targetStart = (targetY + y) * this.bytes_per_row + targetX * bytesPerPixel;
+                this.ta.set(sourceTa.subarray(sourceStart, sourceStart + copyBytes), targetStart);
+            }
         }
+        return this;
     }
     draw_filled_polygon_to_1bipp_pixel_buffer_mask(arr_points) {
         if (arr_points.length >= 2) {
@@ -407,9 +459,10 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                 return pb_polygon;
             }
         } else if (arr_points.length === 1) {
+            const offset = [arr_points[0][0], arr_points[0][1]];
             const pb_polygon = new this.constructor({
                 'bits_per_pixel': 1,
-                'size': polygon_size
+                'size': [1, 1]
             });
             pb_polygon.ta[0] = 128;
             pb_polygon.__offset = offset;
@@ -423,6 +476,10 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         return this._ta2;
     }
     apply_square_convolution(f32a_convolution) {
+        const dimensionSize = Math.sqrt(f32a_convolution.length);
+        if (!Number.isInteger(dimensionSize) || (dimensionSize & 1) === 0) {
+            throw new RangeError('Convolution kernel must have an odd square length');
+        }
         return this.process((orig, res) => {
             const c_length = f32a_convolution.length;
             const dimension_size = Math.sqrt(c_length);
@@ -435,7 +492,17 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             let cr, cg, cb, ca;
             const buf = this.buffer;
             const buf_res = res.buffer;
-            if (bpp === 3) {
+            if (bpp === 1) {
+                this.padded_each_pixel_index(padding, (px_idx) => {
+                    let value = 0;
+                    for (ii = 0; ii < c_length; ii++) {
+                        value += f32a_convolution[ii] * buf[px_idx + idx_movement_vectors[ii]];
+                    }
+                    if (value < 0) value = 0;
+                    if (value > 255) value = 255;
+                    buf_res[px_idx] = Math.round(value);
+                });
+            } else if (bpp === 3) {
                 this.padded_each_pixel_index(padding, (px_idx) => {
                     cr = 0;
                     cg = 0;
@@ -467,7 +534,9 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                         cg += f32a_convolution[ii] * buf[i++];
                         cb += f32a_convolution[ii] * buf[i++];
                     }
-                    ca = 255;
+                    // Convolve color channels while preserving the source alpha.
+                    // A center-identity kernel must be an identity for RGBA too.
+                    ca = buf[px_idx + 3];
                     if (cr < 0) cr = 0;
                     if (cg < 0) cg = 0;
                     if (cb < 0) cb = 0;
@@ -488,23 +557,41 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
     extract_channel(i_channel) {
         const bypp = this.bytes_per_pixel;
         const ta = this.ta;
-        let i_byte = i_channel;
-        let i_px = 0;
-        const l = ta.length;
-        if (bypp === 3 || bypp === 4) {
+        if (bypp === 1) {
+            if (i_channel !== 0) {
+                throw new RangeError('An 8bipp Pixel Buffer only has channel 0');
+            }
+            return this.clone();
+        } else if (bypp === 3 || bypp === 4) {
+            if (!Number.isInteger(i_channel) || i_channel < 0 || i_channel >= bypp) {
+                throw new RangeError('Channel index is outside the pixel format');
+            }
             const res_channel_ta = new this.constructor({
                 size: this.size,
                 bits_per_pixel: 8
-            })
-            while (i_byte < l) {
-                res_channel_ta.set_pixel_by_idx(i_px, ta[i_byte]);
-                i_byte += bypp;
-                i_px++;
+            });
+            const target = res_channel_ta.ta;
+            const width = this.size[0], height = this.size[1];
+            const sourceStrideBytes = this.bytes_per_row;
+            if (sourceStrideBytes === width * bypp) {
+                let i_byte = i_channel;
+                for (let i_px = 0, numPixels = width * height; i_px < numPixels; i_px++) {
+                    target[i_px] = ta[i_byte];
+                    i_byte += bypp;
+                }
+            } else {
+                let i_px = 0;
+                for (let y = 0; y < height; y++) {
+                    let i_byte = y * sourceStrideBytes + i_channel;
+                    for (let x = 0; x < width; x++) {
+                        target[i_px++] = ta[i_byte];
+                        i_byte += bypp;
+                    }
+                }
             }
             return res_channel_ta;
         } else {
-            console.trace();
-            throw 'NYI';
+            throw new Error('extract_channel does not support packed 1bipp buffers');
         }
     }
     _custom_convolve(dimension_size, cb) {
@@ -550,44 +637,103 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         }
     }
     get_first_pixel_matching_color(r, g, b, a) {
-        let px = 0,
-            py = 0;
-        let [w, h] = this.size;
-        let found = false;
-        let buf = this.buffer;
-        let pos_buf = 0;
-        for (py = 0; !found && py < h; py++) {
-            for (px = 0; !found && px < w; px++) {
-                if (buf[pos_buf] === r && buf[pos_buf + 1] === g && buf[pos_buf + 2] === b && buf[pos_buf + 3] === a) {
-                    found = true;
+        const [width, height] = this.size;
+        const buf = this.buffer;
+        const rowStrideBytes = this.bytes_per_row;
+
+        // Keep the common tightly-packed scan linear. Coordinate arithmetic is
+        // only paid once, when a matching pixel is actually found.
+        if (rowStrideBytes === width * 4) {
+            const pixelCount = width * height;
+            for (let pixel = 0, byte = 0; pixel < pixelCount; pixel++, byte += 4) {
+                if (buf[byte] === r && buf[byte + 1] === g &&
+                    buf[byte + 2] === b && buf[byte + 3] === a) {
+                    return [pixel % width, Math.floor(pixel / width)];
                 }
-                pos_buf += 4;
             }
-        }
-        if (found) {
-            return [px, py];
+        } else {
+            for (let y = 0; y < height; y++) {
+                let byte = y * rowStrideBytes;
+                for (let x = 0; x < width; x++, byte += 4) {
+                    if (buf[byte] === r && buf[byte + 1] === g &&
+                        buf[byte + 2] === b && buf[byte + 3] === a) {
+                        return [x, y];
+                    }
+                }
+            }
         }
     }
     'flood_fill_small_color_blocks'(max_size, r, g, b, a) {
-        this.each_pixel((x, y, pr, pg, pb, pa) => {
-            if ((r !== pr || g !== pg || b !== pb || a !== pa)) {
-                let s = this.measure_color_region_size(x, y, max_size);
-                if (s < max_size) {
+        if (!Number.isInteger(max_size) || max_size <= 0) {
+            throw new RangeError('max_size must be a positive integer');
+        }
+        if (this.bipp !== 8 && this.bipp !== 32) {
+            throw new Error('flood_fill_small_color_blocks supports 8bipp and 32bipp buffers');
+        }
+
+        const width = this.size[0], height = this.size[1];
+        const bypp = this.bytes_per_pixel;
+        const stride = this.bytes_per_row;
+        const ta = this.ta;
+        for (let y = 0; y < height; y++) {
+            let byte = y * stride;
+            for (let x = 0; x < width; x++, byte += bypp) {
+                const alreadyReplacement = ta[byte] === r &&
+                    (bypp === 1 || (ta[byte + 1] === g && ta[byte + 2] === b &&
+                        (bypp === 3 || ta[byte + 3] === a)));
+                if (!alreadyReplacement && this.measure_color_region_size(x, y, max_size) < max_size) {
                     this.flood_fill(x, y, r, g, b, a);
                 }
             }
-        })
+        }
+        return this;
     }
     self_replace_color(target_color, replacement_color) {
         const bpp = this.bytes_per_pixel;
         const buf = this.buffer;
         const l = buf.length;
-        if (bpp === 1) {
-            for (let c = 0; c < l; c++) {
-                if (buf[c] === target_color) buf[c] = replacement_color;
+        if (this.bipp === 1) {
+            if (target_color !== replacement_color) {
+                this.color_whole(replacement_color);
             }
-        } else {
-            throw 'NYI';
+        } else if (bpp === 1) {
+            const width = this.size[0], height = this.size[1];
+            if (this.bytes_per_row === width) {
+                for (let c = 0; c < l; c++) {
+                    if (buf[c] === target_color) buf[c] = replacement_color;
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * this.bytes_per_row;
+                    const rowEnd = rowStart + width;
+                    for (let c = rowStart; c < rowEnd; c++) {
+                        if (buf[c] === target_color) buf[c] = replacement_color;
+                    }
+                    buf.fill(0, rowEnd, rowStart + this.bytes_per_row);
+                }
+            }
+        } else if (bpp === 3 || bpp === 4) {
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = width * bpp;
+            for (let y = 0; y < height; y++) {
+                const rowStart = y * this.bytes_per_row;
+                const rowEnd = rowStart + rowDataBytes;
+                for (let byte = rowStart; byte < rowEnd; byte += bpp) {
+                    const matches = buf[byte] === target_color[0] &&
+                        buf[byte + 1] === target_color[1] &&
+                        buf[byte + 2] === target_color[2] &&
+                        (bpp === 3 || buf[byte + 3] === target_color[3]);
+                    if (matches) {
+                        buf[byte] = replacement_color[0];
+                        buf[byte + 1] = replacement_color[1];
+                        buf[byte + 2] = replacement_color[2];
+                        if (bpp === 4) buf[byte + 3] = replacement_color[3];
+                    }
+                }
+                if (this.bytes_per_row !== rowDataBytes) {
+                    buf.fill(0, rowEnd, rowStart + this.bytes_per_row);
+                }
+            }
         }
         return this;
     }
@@ -602,18 +748,31 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         ta_u8[5] = tg;
         ta_u8[6] = tb;
         ta_u8[7] = ta;
-        const ta_16_scratch = new Uint32Array(8);
-        ta_16_scratch[0] = 0; 
-        ta_16_scratch[2] = buf_read.length;
-        while (ta_16_scratch[0] < ta_16_scratch[2]) {
-            if (buf_read[ta_16_scratch[0]] === ta_u8[0] && buf_read[ta_16_scratch[0] + 1] === ta_u8[1] && buf_read[ta_16_scratch[0] + 2] === ta_u8[2] && buf_read[ta_16_scratch[0] + 3] === ta_u8[3]) {
-                buf_read[ta_16_scratch[0]] = ta_u8[4];
-                buf_read[ta_16_scratch[0] + 1] = ta_u8[5];
-                buf_read[ta_16_scratch[0] + 2] = ta_u8[6];
-                buf_read[ta_16_scratch[0] + 3] = ta_u8[7];
-            } else {
+        const width = this.size[0], height = this.size[1];
+        const rowStrideBytes = this.bytes_per_row;
+        if (rowStrideBytes === width * 4) {
+            for (let byte = 0, end = buf_read.length; byte < end; byte += 4) {
+                if (buf_read[byte] === ta_u8[0] && buf_read[byte + 1] === ta_u8[1] &&
+                    buf_read[byte + 2] === ta_u8[2] && buf_read[byte + 3] === ta_u8[3]) {
+                    buf_read[byte] = ta_u8[4];
+                    buf_read[byte + 1] = ta_u8[5];
+                    buf_read[byte + 2] = ta_u8[6];
+                    buf_read[byte + 3] = ta_u8[7];
+                }
             }
-            ta_16_scratch[0] += 4;
+        } else {
+            for (let y = 0; y < height; y++) {
+                const rowEnd = y * rowStrideBytes + width * 4;
+                for (let byte = y * rowStrideBytes; byte < rowEnd; byte += 4) {
+                    if (buf_read[byte] === ta_u8[0] && buf_read[byte + 1] === ta_u8[1] &&
+                        buf_read[byte + 2] === ta_u8[2] && buf_read[byte + 3] === ta_u8[3]) {
+                        buf_read[byte] = ta_u8[4];
+                        buf_read[byte + 1] = ta_u8[5];
+                        buf_read[byte + 2] = ta_u8[6];
+                        buf_read[byte + 3] = ta_u8[7];
+                    }
+                }
+            }
         }
     }
     '__get_single_color_mask_32'(r, g, b, a) {
@@ -624,53 +783,77 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         res.buffer.fill(0);
         const buf_read = this.buffer;
         const buf_write = res.buffer;
-        const ta_16_scratch = new Uint32Array(8);
-        ta_16_scratch[0] = 0; 
-        ta_16_scratch[1] = 0; 
-        ta_16_scratch[2] = buf_read.length;
-        ta_16_scratch[3] = buf_write.length;
         let ta_u8 = new Uint8Array(4);
         ta_u8[0] = r;
         ta_u8[1] = g;
         ta_u8[2] = b;
         ta_u8[3] = a;
-        while (ta_16_scratch[0] < ta_16_scratch[2]) {
-            if (buf_read[ta_16_scratch[0]] === ta_u8[0] && buf_read[ta_16_scratch[0] + 1] === ta_u8[1] && buf_read[ta_16_scratch[0] + 2] === ta_u8[2] && buf_read[ta_16_scratch[0] + 3] === ta_u8[3]) {
-                buf_write[ta_16_scratch[1]++] = 0;
-                buf_write[ta_16_scratch[1]++] = 0;
-                buf_write[ta_16_scratch[1]++] = 0;
-                buf_write[ta_16_scratch[1]++] = 255;
-            } else {
-                buf_write[ta_16_scratch[1]++] = 255;
-                buf_write[ta_16_scratch[1]++] = 255;
-                buf_write[ta_16_scratch[1]++] = 255;
-                buf_write[ta_16_scratch[1]++] = 255;
+        const width = this.size[0], height = this.size[1];
+        const sourceStride = this.bytes_per_row;
+        const targetStride = res.bytes_per_row;
+        if (sourceStride === width * 4 && targetStride === width * 4) {
+            for (let sourceByte = 0, targetByte = 0, end = buf_read.length;
+                sourceByte < end;
+                sourceByte += 4, targetByte += 4) {
+                const matches = buf_read[sourceByte] === ta_u8[0] &&
+                    buf_read[sourceByte + 1] === ta_u8[1] &&
+                    buf_read[sourceByte + 2] === ta_u8[2] &&
+                    buf_read[sourceByte + 3] === ta_u8[3];
+                const value = matches ? 0 : 255;
+                buf_write[targetByte] = value;
+                buf_write[targetByte + 1] = value;
+                buf_write[targetByte + 2] = value;
+                buf_write[targetByte + 3] = 255;
             }
-            ta_16_scratch[0] += 4;
+        } else {
+            for (let y = 0; y < height; y++) {
+                let sourceByte = y * sourceStride;
+                let targetByte = y * targetStride;
+                for (let x = 0; x < width; x++, sourceByte += 4, targetByte += 4) {
+                    const matches = buf_read[sourceByte] === ta_u8[0] &&
+                        buf_read[sourceByte + 1] === ta_u8[1] &&
+                        buf_read[sourceByte + 2] === ta_u8[2] &&
+                        buf_read[sourceByte + 3] === ta_u8[3];
+                    const value = matches ? 0 : 255;
+                    buf_write[targetByte] = value;
+                    buf_write[targetByte + 1] = value;
+                    buf_write[targetByte + 2] = value;
+                    buf_write[targetByte + 3] = 255;
+                }
+            }
         }
         return res;
     }
     count_pixels_with_color(...args) {
         const {bipp} = this;
         if (bipp === 32) {
-            const [r, g, b, a] = args;
+            const color = args.length === 1 && args[0] != null && typeof args[0] !== 'number'
+                ? args[0]
+                : args;
+            const r = color[0], g = color[1], b = color[2], a = color[3];
             const buf_read = this.buffer;
-            const scratch_32 = new Uint32Array(5);
-            scratch_32[0] = 0; 
-            scratch_32[2] = buf_read.length;
-            scratch_32[4] = 0;
-            const ta_16_scratch = new Uint16Array(8);
-            let ta_u8 = new Uint8Array(4);
-            ta_u8[0] = r;
-            ta_u8[1] = g;
-            ta_u8[2] = b;
-            ta_u8[3] = a;
-            while (scratch_32[0] < scratch_32[2]) {
-                if (buf_read[scratch_32[0]++] === ta_u8[0] && buf_read[scratch_32[0]++] === ta_u8[1] && buf_read[scratch_32[0]++] === ta_u8[2] && buf_read[scratch_32[0]++] === ta_u8[3]) {
-                    scratch_32[4]++;
+            let count = 0;
+            const width = this.size[0], height = this.size[1];
+            if (this.bytes_per_row === width * 4) {
+                for (let byte = 0, end = buf_read.length; byte < end; byte += 4) {
+                    if (buf_read[byte] === r && buf_read[byte + 1] === g &&
+                        buf_read[byte + 2] === b && buf_read[byte + 3] === a) {
+                        count++;
+                    }
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    let byte = y * this.bytes_per_row;
+                    for (let x = 0; x < width; x++) {
+                        if (buf_read[byte] === r && buf_read[byte + 1] === g &&
+                            buf_read[byte + 2] === b && buf_read[byte + 3] === a) {
+                            count++;
+                        }
+                        byte += 4;
+                    }
                 }
             }
-            return scratch_32[4];
+            return count;
         } else {
             return super.count_pixels_with_color(...args);
         }
@@ -683,21 +866,38 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         res.buffer.fill(0);
         const buf_read = this.buffer;
         const buf_write = res.buffer;
-        const ta_16_scratch = new Uint16Array(8);
-        ta_16_scratch[0] = 0; 
-        ta_16_scratch[1] = 0; 
-        ta_16_scratch[2] = buf_read.length;
-        ta_16_scratch[3] = buf_write.length;
         let ta_u8 = new Uint8Array(4);
         ta_u8[0] = r;
         ta_u8[1] = g;
         ta_u8[2] = b;
         ta_u8[3] = a;
-        while (ta_16_scratch[0] < ta_16_scratch[2]) {
-            if (buf_read[ta_16_scratch[0]++] === ta_u8[0] && buf_read[ta_16_scratch[0]++] === ta_u8[1] && buf_read[ta_16_scratch[0]++] === ta_u8[2] && buf_read[ta_16_scratch[0]++] === ta_u8[3]) {
-                buf_write[ta_16_scratch[1]] = 255;
+        const width = this.size[0], height = this.size[1];
+        const sourceStride = this.bytes_per_row;
+        const targetStride = res.bytes_per_row;
+        if (sourceStride === width * 4 && targetStride === width) {
+            for (let sourceByte = 0, targetByte = 0, end = buf_read.length;
+                sourceByte < end;
+                sourceByte += 4, targetByte++) {
+                if (buf_read[sourceByte] === ta_u8[0] &&
+                    buf_read[sourceByte + 1] === ta_u8[1] &&
+                    buf_read[sourceByte + 2] === ta_u8[2] &&
+                    buf_read[sourceByte + 3] === ta_u8[3]) {
+                    buf_write[targetByte] = 255;
+                }
             }
-            ta_16_scratch[1]++;
+        } else {
+            for (let y = 0; y < height; y++) {
+                let sourceByte = y * sourceStride;
+                let targetByte = y * targetStride;
+                for (let x = 0; x < width; x++, sourceByte += 4, targetByte++) {
+                    if (buf_read[sourceByte] === ta_u8[0] &&
+                        buf_read[sourceByte + 1] === ta_u8[1] &&
+                        buf_read[sourceByte + 2] === ta_u8[2] &&
+                        buf_read[sourceByte + 3] === ta_u8[3]) {
+                        buf_write[targetByte] = 255;
+                    }
+                }
+            }
         }
         return res;
     }
@@ -717,19 +917,20 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
             scratch_32[10] = 0 
             const ta16_pixels = new Uint8Array(4);
             const ta_pixels_visited = new Uint8Array(scratch_32[2]);
-            const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
-            scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
+            const ta_visiting_pixels = new Int32Array(scratch_32[2] * 2);
+            scratch_32[8] = y * this.bytes_per_row + x * scratch_32[3];
             ta8_pixels[0] = buffer[scratch_32[8]++];
             ta8_pixels[1] = buffer[scratch_32[8]++];
             ta8_pixels[2] = buffer[scratch_32[8]++];
             ta8_pixels[3] = buffer[scratch_32[8]++];
             ta_visiting_pixels[0] = x;
             ta_visiting_pixels[1] = y;
+            ta_pixels_visited[x + y * scratch_32[0]] = 255;
             scratch_32[7] = 2;
             while (scratch_32[6] < scratch_32[7] && scratch_32[10] < scratch_32[9]) {
                 scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; 
                 scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; 
-                scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
+                scratch_32[8] = scratch_32[5] * this.bytes_per_row + scratch_32[4] * scratch_32[3];
                 ta8_pixels[4] = buffer[scratch_32[8]++];
                 ta8_pixels[5] = buffer[scratch_32[8]++];
                 ta8_pixels[6] = buffer[scratch_32[8]++];
@@ -739,6 +940,7 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                 ta16_pixels[2] = ta8_pixels[6] - ta8_pixels[2];
                 ta16_pixels[3] = ta8_pixels[7] - ta8_pixels[3];
                 if (ta16_pixels[0] === 0 && ta16_pixels[1] === 0 && ta16_pixels[2] === 0 && ta16_pixels[3] === 0) {
+                    scratch_32[10]++;
                     if (scratch_32[4] - 1 >= 0 && scratch_32[4] - 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
                         ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
                         ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
@@ -760,7 +962,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                         ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255
                     }
                 }
-                scratch_32[10]++;
             }
             return scratch_32[10];
         } else if (this.bytes_per_pixel === 1) {
@@ -778,19 +979,21 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                 scratch_32[10] = 0 
                 const ta16_pixels = new Uint8Array(4);
                 const ta_pixels_visited = new Uint8Array(scratch_32[2]);
-                const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
-                scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
+                const ta_visiting_pixels = new Int32Array(scratch_32[2] * 2);
+                scratch_32[8] = y * this.bytes_per_row + x * scratch_32[3];
                 ta8_pixels[0] = buffer[scratch_32[8]++];
                 ta_visiting_pixels[0] = x;
                 ta_visiting_pixels[1] = y;
+                ta_pixels_visited[x + y * scratch_32[0]] = 255;
                 scratch_32[7] = 2;
                 while (scratch_32[6] < scratch_32[7] && scratch_32[10] < scratch_32[9]) {
                     scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; 
                     scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
+                    scratch_32[8] = scratch_32[5] * this.bytes_per_row + scratch_32[4] * scratch_32[3];
                     ta8_pixels[4] = buffer[scratch_32[8]++];
                     ta16_pixels[0] = ta8_pixels[4] - ta8_pixels[0];
                     if (ta16_pixels[0] === 0) {
+                        scratch_32[10]++;
                         if (scratch_32[4] - 1 >= 0 && scratch_32[4] - 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
                             ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
                             ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
@@ -812,7 +1015,6 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                             ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255
                         }
                     }
-                    scratch_32[10]++;
                 }
                 return scratch_32[10];
             })();
@@ -821,22 +1023,22 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         }
     }
     'get_pixel_pos_list_of_pixels_with_color'(color) {
-        let res = new Pixel_Pos_List();
-        if (this.pos) {
-            console.log('this.pos', this.pos);
-            this.each_pixel_ta((pos, px_color) => {
-                if (px_color === color) {
-                    res.add(new Uint16Array([pos[0] + this.pos[0], pos[1] + this.pos[1]]));
-                }
-            });
-            res.pos = this.pos;
-        } else {
-            this.each_pixel_ta((pos, px_color) => {
-                if (px_color === color) {
-                    res.add(pos);
-                }
-            });
-        }
+        const res = new Pixel_Pos_List();
+        const bipp = this.bipp;
+        const offsetX = this.pos ? this.pos[0] : 0;
+        const offsetY = this.pos ? this.pos[1] : 0;
+        this.each_pixel((pos, pxColor) => {
+            const matches = bipp === 1 || bipp === 8
+                ? pxColor === color
+                : bipp === 24
+                    ? pxColor[0] === color[0] && pxColor[1] === color[1] && pxColor[2] === color[2]
+                    : pxColor[0] === color[0] && pxColor[1] === color[1] &&
+                        pxColor[2] === color[2] && pxColor[3] === color[3];
+            if (matches) {
+                res.add(new Uint16Array([pos[0] + offsetX, pos[1] + offsetY]));
+            }
+        });
+        if (this.pos) res.pos = this.pos;
         res.fix();
         return res;
     }
@@ -844,653 +1046,329 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         console.trace();
         throw 'NYI';
     }
-    'flood_fill_self_get_pixel_pos_list'(pos, color) {
-        const size = this.size;
-        if (!(pos instanceof Uint16Array || pos instanceof Uint32Array)) {
-            throw 'Wrong pos data type, pos ' + pos;
+    /**
+     * Four-connected scanline flood fill shared by the public 1/8/24/32bipp
+     * entry points. Filled spans are marked before they are queued, so a
+     * separate image-sized visited bitmap is unnecessary and no coordinate can
+     * be queued twice. The typed stack grows in small chunks and is bounded by
+     * the number of logical pixels rather than a fixed global reservation.
+     *
+     * @returns {number} the number of logical pixels changed
+     */
+    '_scanline_flood_fill'(x, y, r, g, b, a, onPixelFilled) {
+        const {bipp, ta} = this;
+        if (bipp !== 1 && bipp !== 8 && bipp !== 24 && bipp !== 32) {
+            throw new Error('Unsupported bipp: ' + bipp);
         }
-        if (this.bytes_per_pixel === 4) {
-            throw 'NYI'
-        } else if (this.bytes_per_pixel === 1) {
-            const using_ta_pixels_visited = () => {
-                const res = new Pixel_Pos_List();
-                const buffer = this.buffer;
-                const scratch_32 = new Uint32Array(10);
-                scratch_32[0] = this.size[0]; 
-                scratch_32[1] = this.size[1]; 
-                const size = scratch_32;
-                scratch_32[2] = size[0] * size[1];
-                scratch_32[3] = this.bytes_per_pixel;
-                let cpos = pos.slice();
-                scratch_32[6] = 0 
-                scratch_32[7] = 0 
-                scratch_32[8] = 0 
-                scratch_32[9] = 0 
-                const obj_pixels_visited = {};
-                const ppl_visiting_pixels = new Pixel_Pos_List();
-                const ta_visiting_pixels = ppl_visiting_pixels.ta;
-                let ccolor;
-                scratch_32[8] = scratch_32[3] * (cpos[0] + (cpos[1] * size[0]));
-                ccolor = buffer[scratch_32[8]++];
-                ppl_visiting_pixels.add(cpos);
-                scratch_32[7] = 2;
-                while (scratch_32[9] <= scratch_32[2]) {
-                    console.log('scratch_32[9]', scratch_32[9]);
-                    console.log('scratch_32[2]', scratch_32[2]);
-                    cpos[0] = ta_visiting_pixels[scratch_32[6]++];
-                    cpos[1] = ta_visiting_pixels[scratch_32[6]++];
-                    scratch_32[8] = scratch_32[3] * (cpos[0] + (cpos[1] * size[0]));
-                    if (buffer[scratch_32[8]++] - ccolor === 0) {
-                        buffer[scratch_32[8] - 1] = color;
-                        res.add(cpos);
-                        if (cpos[0] - 1 >= 0 && !obj_pixels_visited[cpos[0] - 1 + (size[0] * cpos[1])]) {
-                            ppl_visiting_pixels.add(new Uint16Array([cpos[0] - 1, cpos[1]]));
-                            scratch_32[7] += 2;
-                            obj_pixels_visited[cpos[0] - 1 + (size[0] * cpos[1])] = true;
-                        }
-                        if (cpos[1] - 1 >= 0 && !obj_pixels_visited[cpos[0] + (size[0] * (cpos[1] - 1))]) {
-                            ppl_visiting_pixels.add(new Uint16Array([cpos[0], cpos[1] - 1]));
-                            scratch_32[7] += 2;
-                            obj_pixels_visited[cpos[0] + (size[0] * (cpos[1] - 1))] = true;
-                        }
-                        if (cpos[0] + 1 < size[0] && !obj_pixels_visited[cpos[0] + 1 + (size[0] * cpos[1])]) {
-                            ppl_visiting_pixels.add(new Uint16Array([cpos[0] + 1, cpos[1]]));
-                            scratch_32[7] += 2;
-                            obj_pixels_visited[cpos[0] + 1 + (size[0] * cpos[1])] = true;
-                        }
-                        if (cpos[1] + 1 < size[1] && !obj_pixels_visited[cpos[0] + (size[0] * (cpos[1] + 1))]) {
-                            ppl_visiting_pixels.add(new Uint16Array([cpos[0], cpos[1] + 1]));
-                            scratch_32[7] += 2;
-                            obj_pixels_visited[cpos[0] + (size[0] * (cpos[1] + 1))] = true;
-                        }
-                    }
-                    scratch_32[9]++;
-                }
-                res.fix();
-                return res;
-            }
-            return using_ta_pixels_visited();
+
+        const width = this.size[0];
+        const height = this.size[1];
+        if (!Number.isInteger(x) || !Number.isInteger(y) ||
+            x < 0 || y < 0 || x >= width || y >= height) {
+            throw new RangeError('Flood-fill start position is outside the Pixel Buffer');
+        }
+        if (onPixelFilled !== undefined && typeof onPixelFilled !== 'function') {
+            throw new TypeError('onPixelFilled must be a function when supplied');
+        }
+
+        const rowStrideBytes = this.bytes_per_row;
+        const bytesPerPixel = this.bytes_per_pixel;
+        const replacement = new Uint8Array(4);
+        if (bipp === 1) {
+            // Match set_pixel_1bipp's established convention: only numeric 1
+            // means on; every other value means off.
+            replacement[0] = r === 1 ? 1 : 0;
         } else {
-            console.trace();
-            throw 'NYI';
+            replacement[0] = r;
+            replacement[1] = g;
+            replacement[2] = b;
+            replacement[3] = a;
         }
+
+        let target0;
+        let target1 = 0;
+        let target2 = 0;
+        let target3 = 0;
+        if (bipp === 1) {
+            const startByte = y * rowStrideBytes + Math.floor(x / 8);
+            target0 = (ta[startByte] & (0x80 >> (x % 8))) === 0 ? 0 : 1;
+        } else {
+            const startByte = y * rowStrideBytes + x * bytesPerPixel;
+            target0 = ta[startByte];
+            if (bytesPerPixel >= 3) {
+                target1 = ta[startByte + 1];
+                target2 = ta[startByte + 2];
+            }
+            if (bytesPerPixel === 4) target3 = ta[startByte + 3];
+        }
+
+        if (target0 === replacement[0] &&
+            (bipp === 1 || bipp === 8 ||
+                (target1 === replacement[1] && target2 === replacement[2] &&
+                    (bipp === 24 || target3 === replacement[3])))) {
+            return 0;
+        }
+
+        const matchesTarget = bipp === 1
+            ? (px, py) => {
+                const byte = py * rowStrideBytes + Math.floor(px / 8);
+                const value = (ta[byte] & (0x80 >> (px % 8))) === 0 ? 0 : 1;
+                return value === target0;
+            }
+            : bipp === 8
+                ? (px, py) => ta[py * rowStrideBytes + px] === target0
+                : bipp === 24
+                    ? (px, py) => {
+                        const byte = py * rowStrideBytes + px * 3;
+                        return ta[byte] === target0 && ta[byte + 1] === target1 &&
+                            ta[byte + 2] === target2;
+                    }
+                    : (px, py) => {
+                        const byte = py * rowStrideBytes + px * 4;
+                        return ta[byte] === target0 && ta[byte + 1] === target1 &&
+                            ta[byte + 2] === target2 && ta[byte + 3] === target3;
+                    };
+
+        let changedPixelCount = 0;
+        const paintSpan = bipp === 1
+            ? (left, right, row) => {
+                const rowStart = row * rowStrideBytes;
+                const firstByte = Math.floor(left / 8);
+                const lastByte = Math.floor(right / 8);
+                const firstMask = 0xFF >>> (left % 8);
+                const lastMask = (0xFF << (7 - (right % 8))) & 0xFF;
+                const value = replacement[0];
+
+                if (firstByte === lastByte) {
+                    const mask = firstMask & lastMask;
+                    if (value === 1) ta[rowStart + firstByte] |= mask;
+                    else ta[rowStart + firstByte] &= ~mask & 0xFF;
+                } else {
+                    if (value === 1) ta[rowStart + firstByte] |= firstMask;
+                    else ta[rowStart + firstByte] &= ~firstMask & 0xFF;
+                    if (lastByte > firstByte + 1) {
+                        ta.fill(value === 1 ? 0xFF : 0, rowStart + firstByte + 1, rowStart + lastByte);
+                    }
+                    if (value === 1) ta[rowStart + lastByte] |= lastMask;
+                    else ta[rowStart + lastByte] &= ~lastMask & 0xFF;
+                }
+                changedPixelCount += right - left + 1;
+                if (onPixelFilled) {
+                    for (let px = left; px <= right; px++) onPixelFilled(px, row);
+                }
+            }
+            : bipp === 8
+                ? (left, right, row) => {
+                    ta.fill(replacement[0], row * rowStrideBytes + left,
+                        row * rowStrideBytes + right + 1);
+                    changedPixelCount += right - left + 1;
+                    if (onPixelFilled) {
+                        for (let px = left; px <= right; px++) onPixelFilled(px, row);
+                    }
+                }
+                : (left, right, row) => {
+                    let byte = row * rowStrideBytes + left * bytesPerPixel;
+                    for (let px = left; px <= right; px++, byte += bytesPerPixel) {
+                        ta[byte] = replacement[0];
+                        ta[byte + 1] = replacement[1];
+                        ta[byte + 2] = replacement[2];
+                        if (bytesPerPixel === 4) ta[byte + 3] = replacement[3];
+                        if (onPixelFilled) onPixelFilled(px, row);
+                    }
+                    changedPixelCount += right - left + 1;
+                };
+
+        const pixelCount = width * height;
+        const StackArray = width <= 0xFFFFFFFF && height <= 0xFFFFFFFF
+            ? Uint32Array
+            : Float64Array;
+        const stackChunks = [];
+        const stackLengths = [];
+        let allocatedSpanCapacity = 0;
+        let activeChunk = 0;
+        let stackSize = 0;
+
+        const allocateChunk = () => {
+            const spanCapacity = Math.min(256, pixelCount - allocatedSpanCapacity);
+            if (spanCapacity <= 0) {
+                throw new RangeError('Flood-fill span stack exceeded the logical pixel count');
+            }
+            stackChunks.push(new StackArray(spanCapacity * 3));
+            stackLengths.push(0);
+            allocatedSpanCapacity += spanCapacity;
+        };
+        allocateChunk();
+
+        const pushSpan = (left, right, row) => {
+            let chunk = stackChunks[activeChunk];
+            let length = stackLengths[activeChunk];
+            if (length === chunk.length) {
+                activeChunk++;
+                if (activeChunk === stackChunks.length) allocateChunk();
+                chunk = stackChunks[activeChunk];
+                length = stackLengths[activeChunk];
+            }
+            chunk[length] = left;
+            chunk[length + 1] = right;
+            chunk[length + 2] = row;
+            stackLengths[activeChunk] = length + 3;
+            stackSize++;
+        };
+
+        const fillAndPushSpan = (seedX, row) => {
+            let left = seedX;
+            let right = seedX;
+            while (left > 0 && matchesTarget(left - 1, row)) left--;
+            while (right + 1 < width && matchesTarget(right + 1, row)) right++;
+            paintSpan(left, right, row);
+            pushSpan(left, right, row);
+            return right;
+        };
+
+        fillAndPushSpan(x, y);
+        while (stackSize > 0) {
+            const chunk = stackChunks[activeChunk];
+            const offset = stackLengths[activeChunk] - 3;
+            const left = chunk[offset];
+            const right = chunk[offset + 1];
+            const row = chunk[offset + 2];
+            stackLengths[activeChunk] = offset;
+            stackSize--;
+            if (offset === 0 && activeChunk > 0) activeChunk--;
+
+            const firstAdjacentRow = row > 0 ? row - 1 : -1;
+            const secondAdjacentRow = row + 1 < height ? row + 1 : -1;
+            for (let adjacentPass = 0; adjacentPass < 2; adjacentPass++) {
+                const adjacentRow = adjacentPass === 0 ? firstAdjacentRow : secondAdjacentRow;
+                if (adjacentRow < 0) continue;
+                let scanX = left;
+                while (scanX <= right) {
+                    while (scanX <= right && !matchesTarget(scanX, adjacentRow)) scanX++;
+                    if (scanX <= right) {
+                        scanX = fillAndPushSpan(scanX, adjacentRow) + 1;
+                    }
+                }
+            }
+        }
+
+        return changedPixelCount;
+    }
+    'flood_fill_self_get_pixel_pos_list'(pos, color) {
+        if (!(pos instanceof Uint16Array || pos instanceof Uint32Array)) {
+            throw new TypeError('pos must be a Uint16Array or Uint32Array');
+        }
+        if (this.size[0] > 65536 || this.size[1] > 65536) {
+            throw new RangeError('Pixel_Pos_List cannot represent coordinates above 65535');
+        }
+        const res = new Pixel_Pos_List();
+        let r = color;
+        let g;
+        let b;
+        let a;
+        if (this.bipp === 24 || this.bipp === 32) {
+            if (!color || typeof color !== 'object' || color.length < this.bytes_per_pixel) {
+                throw new TypeError(`A ${this.bytes_per_pixel}-component replacement color is required`);
+            }
+            r = color[0];
+            g = color[1];
+            b = color[2];
+            a = color[3];
+        }
+        this._scanline_flood_fill(pos[0], pos[1], r, g, b, a, (px, py) => {
+            res.add([px, py]);
+        });
+        res.fix();
+        return res;
     }
     'flood_fill_c1_1bipp'(pos) {
-        const target_color = this.get_pixel_1bipp(pos);
-        let [x, y] = pos;
-        if (target_color === 1) {
-            return 0;
-        } else {
-            const ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation = () => {
-                let stack_capacity = 1024 * 1024 * 16; 
-                let ta_stack = new Uint16Array(stack_capacity);
-                let i_stack_pos = 0;
-                let stack_length = 0;
-                let px_color;
-                let ta_pos = new Uint16Array(2);
-                let ta_pos2 = new Uint16Array(2);
-                ta_pos[0] = pos[0];
-                ta_pos[1] = pos[1];
-                if (i_stack_pos < stack_capacity) {
-                    ta_stack[i_stack_pos++] = ta_pos[0];
-                    ta_stack[i_stack_pos++] = ta_pos[1];
-                    stack_length++;
-                } else {
-                    console.log('stack_length', stack_length);
-                    console.log('i_stack_pos', i_stack_pos);
-                    console.trace();
-                    throw 'NYI - stack exceeded capacity';
-                }
-                const [width, height] = this.size;
-                const ta_already_visited = new Uint8Array(width * height);
-                while (stack_length > 0) {
-                    ta_pos[0] = ta_stack[i_stack_pos - 2];
-                    ta_pos[1] = ta_stack[i_stack_pos - 1];
-                    i_stack_pos -= 2;
-                    stack_length--;
-                    if (i_stack_pos >= stack_capacity - 8) {
-                        throw 'Not enough stack for positions yet to visit';
-                    }
-                    px_color = this.get_pixel_1bipp(ta_pos); 
-                    if (px_color === target_color) {
-                        this.set_pixel_on_1bipp(ta_pos);
-                        if (ta_pos[0] > 0) {
-                            ta_pos2[0] = ta_pos[0] - 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                ta_stack[i_stack_pos++] = ta_pos2[0];
-                                ta_stack[i_stack_pos++] = ta_pos2[1];
-                                stack_length++;
-                            };
-                        }
-                        if (ta_pos[0] < width - 1) {
-                            ta_pos2[0] = ta_pos[0] + 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                ta_stack[i_stack_pos++] = ta_pos2[0];
-                                ta_stack[i_stack_pos++] = ta_pos2[1];
-                                stack_length++;
-                            };
-                        }
-                        if (ta_pos[1] > 0) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] - 1;
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                ta_stack[i_stack_pos++] = ta_pos2[0];
-                                ta_stack[i_stack_pos++] = ta_pos2[1];
-                                stack_length++;
-                            };
-                        }
-                        if (ta_pos[1] < height - 1) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] + 1;
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                ta_stack[i_stack_pos++] = ta_pos2[0];
-                                ta_stack[i_stack_pos++] = ta_pos2[1];
-                                stack_length++;
-                            };
-                        }
-                        ta_already_visited[width * ta_pos[1] + ta_pos[0]] = 255
-                    }
-                }
-            }
-            const horizontal_line_filling_stack_to_visit_store_already_visited_implementation = () => {
-                const {ta, size} = this;
-                const aa_x_off_spans = this.calculate_arr_rows_arr_x_off_spans_1bipp();
-                console.log('aa_x_off_spans', aa_x_off_spans);
-                const find_connected_x_off_spans_below = (y, idx_x_off_span) => {
-                    const res = [];
-                    if (y < aa_x_off_spans.length - 1) {
-                        const span1 = aa_x_off_spans[y][idx_x_off_span];
-                        console.log('');
-                        console.log('span1', span1);
-                        const y_below = aa_x_off_spans[y + 1];
-                        console.log('y_below', y_below);
-                        const l_y_below = y_below.length;
-                        for (let i_below = 0; i_below < l_y_below; i_below++) {
-                            const range_below = y_below[i_below];
-                            const has_overlap = range_below[0] >= span1[0] && range_below[0] <= span1[1] || range_below[1] >= span1[0] && range_below[1] <= span1[1];
-                            console.log('range_below', range_below);
-                            console.log('has_overlap', has_overlap);
-                            if (has_overlap) {
-                                res.push(range_below);
-                            }
-                        }
-                    }
-                    return res;
-                }
-                for (let y = 0; y < aa_x_off_spans.length; y++) {
-                    const arr_row_x_off_spans = aa_x_off_spans[y];
-                    for (let idx_x_off_span = 0; idx_x_off_span < arr_row_x_off_spans.length; idx_x_off_span++) {
-                        const x_off_span = arr_row_x_off_spans[idx_x_off_span];
-                        const path_xos = [y, idx_x_off_span];
-                        console.log('path_xos', path_xos);
-                        const spans_connected_below = find_connected_x_off_spans_below(y, idx_x_off_span);
-                        console.log('spans_connected_below', spans_connected_below);
-                    }
-                }
-                const old = () => {
-                    const calculate_1bipp_row_arr_x_spans_off = y => {
-                        const res = [];
-                        const width = this.size[0];
-                        let last_color = 0;
-                        let current_color;
-                        let ta_pos = new Uint16Array(2);
-                        ta_pos[1] = y;
-                        for (let x = 0; x < width; x++) {
-                            ta_pos[0] = x;
-                            current_color = this.get_pixel_1bipp(ta_pos);
-                            if (current_color === last_color) {
-                                if (res.length === 0) {
-                                    res.push([0, 1]);
-                                } else {
-                                    res[res.length - 1][1]++;
-                                }
-                            } else {
-                                if (res.length === 0) {
-                                    res.push([0, 0]); 
-                                    res.push([0, 1]);
-                                } else {
-                                    res.push([x, x + 1]);
-                                }
-                            }
-                            last_color = current_color;
-                        }
-                        return res;
-                    }
-                    const row_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y);
-                    console.log('----------------');
-                    console.log('row_x_off_spans', row_x_off_spans);
-                    if (y > 0) {
-                        const row_above_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y - 1);
-                        console.log('row_above_x_off_spans', row_above_x_off_spans);
-                    }
-                    if (y < this.size[1] - 1) {
-                        const row_below_x_off_spans = calculate_1bipp_row_arr_x_spans_off(y + 1);
-                        console.log('row_below_x_off_spans', row_below_x_off_spans);
-                    }
-                    console.log('----------------');
-                }
-            }
-            return ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation();
+        if (!pos || typeof pos !== 'object' || pos.length < 2) {
+            throw new TypeError('pos must contain x and y coordinates');
         }
+        return this.flood_fill_1bipp(pos[0], pos[1], 1);
     }
     'flood_fill_1bipp'(x, y, color) {
-        const new_color = color;
-        const target_color = this.get_pixel_1bipp([x, y]);
-        const [width, height] = this.size;
-        if (target_color === new_color) {
-            return 0;
-        } else {
-            const ta_stack_fn_calls_inlined_implementation = () => {
-                let stack_capacity = 1024 * 1024 * 8; 
-                let ta_stack = new Uint16Array(stack_capacity);
-                let i_stack_pos = 0;
-                let stack_length = 0;
-                let px_color;
-                let ta_pos = new Uint16Array(2);
-                let ta_pos2 = new Uint16Array(2);
-                ta_pos[0] = x;
-                ta_pos[1] = y;
-                if (i_stack_pos < stack_capacity) {
-                    ta_stack[i_stack_pos++] = ta_pos[0];
-                    ta_stack[i_stack_pos++] = ta_pos[1];
-                    stack_length++;
-                } else {
-                    console.log('stack_length', stack_length);
-                    console.log('i_stack_pos', i_stack_pos);
-                    console.trace();
-                    throw 'NYI - stack exceeded capacity';
-                }
-                const pb_already_visited = new Core({
-                    size: this.size,
-                    bits_per_pixel: 1
-                })
-                while (stack_length > 0) {
-                        ta_pos[0] = ta_stack[i_stack_pos - 2];
-                        ta_pos[1] = ta_stack[i_stack_pos - 1];
-                        i_stack_pos -= 2;
-                        stack_length--;
-                    px_color = this.get_pixel_1bipp(ta_pos); 
-                    if (px_color === target_color) {
-                        this.set_pixel_1bipp(ta_pos, new_color);
-                        if (ta_pos[0] > 0) {
-                            ta_pos2[0] = ta_pos[0] - 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[0] < width - 1) {
-                            ta_pos2[0] = ta_pos[0] + 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[1] > 0) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] - 1;
-                            if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[1] < height - 1) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] + 1;
-                            if (pb_already_visited.get_pixel_1bipp(ta_pos2) === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        pb_already_visited.set_pixel_1bipp(ta_pos, 1);
-                    }
-                }
-            }
-            const ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation = () => {
-                let stack_capacity = 1024 * 1024 * 8; 
-                let ta_stack = new Uint16Array(stack_capacity);
-                let i_stack_pos = 0;
-                let stack_length = 0;
-                let px_color;
-                let ta_pos = new Uint16Array(2);
-                let ta_pos2 = new Uint16Array(2);
-                ta_pos[0] = x;
-                ta_pos[1] = y;
-                if (i_stack_pos < stack_capacity) {
-                    ta_stack[i_stack_pos++] = ta_pos[0];
-                    ta_stack[i_stack_pos++] = ta_pos[1];
-                    stack_length++;
-                } else {
-                    console.log('stack_length', stack_length);
-                    console.log('i_stack_pos', i_stack_pos);
-                    console.trace();
-                    throw 'NYI - stack exceeded capacity';
-                }
-                const [width, height] = this.size;
-                const ta_already_visited = new Uint8Array(width * height);
-                while (stack_length > 0) {
-                        ta_pos[0] = ta_stack[i_stack_pos - 2];
-                        ta_pos[1] = ta_stack[i_stack_pos - 1];
-                        i_stack_pos -= 2;
-                        stack_length--;
-                    px_color = this.get_pixel_1bipp(ta_pos); 
-                    if (px_color === target_color) {
-                        this.set_pixel_1bipp(ta_pos, new_color);
-                        if (ta_pos[0] > 0) {
-                            ta_pos2[0] = ta_pos[0] - 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[0] < width - 1) {
-                            ta_pos2[0] = ta_pos[0] + 1;
-                            ta_pos2[1] = ta_pos[1];
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[1] > 0) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] - 1;
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        if (ta_pos[1] < height - 1) {
-                            ta_pos2[0] = ta_pos[0];
-                            ta_pos2[1] = ta_pos[1] + 1;
-                            if (ta_already_visited[width * ta_pos2[1] + ta_pos2[0]] === 0) {
-                                if (i_stack_pos < stack_capacity) {
-                                    ta_stack[i_stack_pos++] = ta_pos2[0];
-                                    ta_stack[i_stack_pos++] = ta_pos2[1];
-                                    stack_length++;
-                                } else {
-                                    console.log('stack_length', stack_length);
-                                    console.log('i_stack_pos', i_stack_pos);
-                                    console.trace();
-                                    throw 'NYI - stack exceeded capacity';
-                                }
-                            };
-                        }
-                        ta_already_visited[width * ta_pos[1] + ta_pos[0]] = 255
-                    }
-                }
-            }
-            return ta_stack_fn_calls_inlined_8bipp_visited_matrix_implementation();
+        if (this.bipp !== 1) {
+            throw new Error('flood_fill_1bipp requires a 1bipp Pixel Buffer');
         }
+        const changedPixelCount = this._scanline_flood_fill(x, y, color);
+        return changedPixelCount === 0 ? 0 : this;
     }
     'flood_fill'(x, y, r, g, b, a) {
-        const {
-            bipp
-        } = this;
-        if (bipp === 24) {
-            const [w, h] = this.size;
-            let fast_stacked_mapped_flood_fill = () => {
-                const buffer = this.buffer;
-                const scratch_32 = new Uint32Array(16);
-                scratch_32[0] = this.size[0]; 
-                scratch_32[1] = this.size[1]; 
-                scratch_32[2] = scratch_32[0] * scratch_32[1];
-                scratch_32[3] = this.bytes_per_pixel;
-                scratch_32[6] = 0 
-                scratch_32[7] = 0 
-                scratch_32[8] = 0 
-                scratch_32[9] = 0 
-                const ta8_pixels = new Uint8Array(12);
-                ta8_pixels[8] = r;
-                ta8_pixels[9] = g;
-                ta8_pixels[10] = b;
-                const ta_pixels_visited = new Uint8Array(scratch_32[2]);
-                const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
-                scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
-                ta8_pixels[0] = buffer[scratch_32[8]++];
-                ta8_pixels[1] = buffer[scratch_32[8]++];
-                ta8_pixels[2] = buffer[scratch_32[8]++];
-                ta_visiting_pixels[0] = x;
-                ta_visiting_pixels[1] = y;
-                scratch_32[7] = 2;
-                while (scratch_32[9] <= scratch_32[2]) {
-                    scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
-                    if (buffer[scratch_32[8]++] - ta8_pixels[0] === 0 && buffer[scratch_32[8]++] - ta8_pixels[1] === 0 && buffer[scratch_32[8]++] - ta8_pixels[2] === 0) {
-                        scratch_32[8] -= 3;
-                        buffer[scratch_32[8]++] = ta8_pixels[8];
-                        buffer[scratch_32[8]++] = ta8_pixels[9];
-                        buffer[scratch_32[8]++] = ta8_pixels[10];
-                        if (scratch_32[4] - 1 >= 0 && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] - 1 >= 0 && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] - 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] = 255;
-                        }
-                        if (scratch_32[4] + 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] + 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] + 1 < scratch_32[1] && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] + 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255;
-                        }
-                    }
-                    scratch_32[9]++;
-                }
-                return this;
-            }
-            return fast_stacked_mapped_flood_fill();
-        } else if (bipp === 32) {
-            const [w, h] = this.size;
-            let fast_stacked_mapped_flood_fill = () => {
-                const buffer = this.buffer;
-                const scratch_32 = new Uint32Array(16);
-                scratch_32[0] = this.size[0]; 
-                scratch_32[1] = this.size[1]; 
-                scratch_32[2] = scratch_32[0] * scratch_32[1];
-                scratch_32[3] = this.bytes_per_pixel;
-                scratch_32[6] = 0 
-                scratch_32[7] = 0 
-                scratch_32[8] = 0 
-                scratch_32[9] = 0 
-                const ta8_pixels = new Uint8Array(12);
-                ta8_pixels[8] = r;
-                ta8_pixels[9] = g;
-                ta8_pixels[10] = b;
-                ta8_pixels[11] = a;
-                const ta_pixels_visited = new Uint8Array(scratch_32[2]);
-                const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
-                scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
-                ta8_pixels[0] = buffer[scratch_32[8]++];
-                ta8_pixels[1] = buffer[scratch_32[8]++];
-                ta8_pixels[2] = buffer[scratch_32[8]++];
-                ta8_pixels[3] = buffer[scratch_32[8]++];
-                ta_visiting_pixels[0] = x;
-                ta_visiting_pixels[1] = y;
-                scratch_32[7] = 2;
-                while (scratch_32[9] <= scratch_32[2]) {
-                    scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
-                    if (buffer[scratch_32[8]++] - ta8_pixels[0] === 0 && buffer[scratch_32[8]++] - ta8_pixels[1] === 0 && buffer[scratch_32[8]++] - ta8_pixels[2] === 0 && buffer[scratch_32[8]++] - ta8_pixels[3] === 0) {
-                        scratch_32[8] -= 4;
-                        buffer[scratch_32[8]++] = ta8_pixels[8];
-                        buffer[scratch_32[8]++] = ta8_pixels[9];
-                        buffer[scratch_32[8]++] = ta8_pixels[10];
-                        buffer[scratch_32[8]++] = ta8_pixels[11];
-                        if (scratch_32[4] - 1 >= 0 && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] - 1 >= 0 && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] - 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] = 255;
-                        }
-                        if (scratch_32[4] + 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] + 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] + 1 < scratch_32[1] && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] + 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255;
-                        }
-                    }
-                    scratch_32[9]++;
-                }
-                return this;
-            }
-            return fast_stacked_mapped_flood_fill();
-        } else if (bipp === 8) {
-            const [w, h] = this.size;
-            let fast_stacked_mapped_flood_fill = () => {
-                const v = r;
-                const buffer = this.buffer;
-                const scratch_32 = new Uint32Array(16);
-                scratch_32[0] = this.size[0]; 
-                scratch_32[1] = this.size[1]; 
-                scratch_32[2] = scratch_32[0] * scratch_32[1];
-                scratch_32[3] = this.bytes_per_pixel;
-                scratch_32[6] = 0 
-                scratch_32[7] = 0 
-                scratch_32[8] = 0 
-                scratch_32[9] = 0 
-                const ta8_pixels = new Uint8Array(12);
-                ta8_pixels[8] = v;
-                const ta_pixels_visited = new Uint8Array(scratch_32[2]);
-                const ta_visiting_pixels = new Uint16Array(scratch_32[2] * 2);
-                scratch_32[8] = scratch_32[3] * (x + (y * scratch_32[0]));
-                ta8_pixels[0] = buffer[scratch_32[8]++];
-                ta_visiting_pixels[0] = x;
-                ta_visiting_pixels[1] = y;
-                scratch_32[7] = 2;
-                while (scratch_32[9] <= scratch_32[2]) {
-                    scratch_32[4] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[5] = ta_visiting_pixels[scratch_32[6]++]; 
-                    scratch_32[8] = scratch_32[3] * (scratch_32[4] + (scratch_32[5] * scratch_32[0]));
-                    if (buffer[scratch_32[8]++] - ta8_pixels[0] === 0) {
-                        scratch_32[8] -= 1;
-                        buffer[scratch_32[8]++] = ta8_pixels[8];
-                        if (scratch_32[4] - 1 >= 0 && ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] - 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] - 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] - 1 >= 0 && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] - 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] - 1))] = 255;
-                        }
-                        if (scratch_32[4] + 1 < scratch_32[0] && ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4] + 1;
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5];
-                            ta_pixels_visited[scratch_32[4] + 1 + (scratch_32[0] * scratch_32[5])] = 255;
-                        }
-                        if (scratch_32[5] + 1 < scratch_32[1] && ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] === 0) {
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[4];
-                            ta_visiting_pixels[scratch_32[7]++] = scratch_32[5] + 1;
-                            ta_pixels_visited[scratch_32[4] + (scratch_32[0] * (scratch_32[5] + 1))] = 255;
-                        }
-                    }
-                    scratch_32[9]++;
-                }
-                return this;
-            }
-            return fast_stacked_mapped_flood_fill();
-        } else if (bipp === 1) {
+        const {bipp} = this;
+        if (bipp === 1) {
             return this.flood_fill_1bipp(x, y, r);
-        } else {
-            console.trace();
-            throw 'Unsupported bipp: ' + bipp;
         }
+        if (bipp !== 8 && bipp !== 24 && bipp !== 32) {
+            throw new Error('Unsupported bipp: ' + bipp);
+        }
+        this._scanline_flood_fill(x, y, r, g, b, a);
+        return this;
     }
     'invert'() {
         const {
             bipp
         } = this;
         if (bipp === 1) {
-            const {
-                ta
-            } = this;
-            const l = ta.length;
-            for (let i = 0; i < l; i++) {
-                ta[i] = ~ta[i] & 255;
+            const {ta} = this;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = this.layout ? this.layout.rowDataBytes : Math.ceil(width / 8);
+            const rowStrideBytes = this.bytes_per_row;
+            const tailBits = width & 7;
+            const tailMask = this.layout
+                ? this.layout.tailMask
+                : (tailBits === 0 ? 0xFF : (0xFF << (8 - tailBits)) & 0xFF);
+
+            if (tailMask === 0xFF && rowDataBytes === rowStrideBytes) {
+                const l = ta.length;
+                for (let i = 0; i < l; i++) ta[i] = ~ta[i] & 255;
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    const tailByte = rowStart + rowDataBytes - 1;
+                    for (let i = rowStart; i < tailByte; i++) ta[i] = ~ta[i] & 255;
+                    ta[tailByte] = (~ta[tailByte] & 255) & tailMask;
+                    ta.fill(0, rowStart + rowDataBytes, rowStart + rowStrideBytes);
+                }
             }
-        } else {
-            console.trace();
-            throw 'NYI (unsupported bipp) ' + bipp;
+        } else if (bipp === 8) {
+            const width = this.size[0], height = this.size[1];
+            if (this.bytes_per_row === width) {
+                for (let byte = 0, end = this.ta.length; byte < end; byte++) {
+                    this.ta[byte] = 255 - this.ta[byte];
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * this.bytes_per_row;
+                    for (let x = 0; x < width; x++) {
+                        this.ta[rowStart + x] = 255 - this.ta[rowStart + x];
+                    }
+                    this.ta.fill(0, rowStart + width, rowStart + this.bytes_per_row);
+                }
+            }
+        } else if (bipp === 24 || bipp === 32) {
+            const bypp = this.bytes_per_pixel;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = width * bypp;
+            if (this.bytes_per_row === rowDataBytes) {
+                for (let byte = 0, end = this.ta.length; byte < end; byte += bypp) {
+                    this.ta[byte] = 255 - this.ta[byte];
+                    this.ta[byte + 1] = 255 - this.ta[byte + 1];
+                    this.ta[byte + 2] = 255 - this.ta[byte + 2];
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * this.bytes_per_row;
+                    const rowEnd = rowStart + rowDataBytes;
+                    for (let byte = rowStart; byte < rowEnd; byte += bypp) {
+                        this.ta[byte] = 255 - this.ta[byte];
+                        this.ta[byte + 1] = 255 - this.ta[byte + 1];
+                        this.ta[byte + 2] = 255 - this.ta[byte + 2];
+                    }
+                    this.ta.fill(0, rowEnd, rowStart + this.bytes_per_row);
+                }
+            }
         }
+        return this;
     }
     'or'(other_pb) {
         const {
@@ -1499,19 +1377,36 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         if (bipp === 1) {
             const other_bipp = other_pb.bipp;
             if (other_bipp === 1) {
-                const {
-                    ta
-                } = this;
-                const l_my_ta = ta.length;
+                const {ta} = this;
                 const other_ta = other_pb.ta;
-                const l_other_ta = other_ta.length;
-                if (l_other_ta === l_my_ta) {
-                    for (let i = 0; i < l_my_ta; i++) {
-                        ta[i] = ta[i] | other_ta[i];
+                const width = this.size[0], height = this.size[1];
+                if (other_pb.size[0] === width && other_pb.size[1] === height) {
+                    const rowDataBytes = this.layout ? this.layout.rowDataBytes : Math.ceil(width / 8);
+                    const rowStrideBytes = this.bytes_per_row;
+                    const otherStrideBytes = other_pb.bytes_per_row;
+                    const tailBits = width & 7;
+                    const tailMask = this.layout
+                        ? this.layout.tailMask
+                        : (tailBits === 0 ? 0xFF : (0xFF << (8 - tailBits)) & 0xFF);
+                    if (tailMask === 0xFF &&
+                        rowDataBytes === rowStrideBytes &&
+                        rowStrideBytes === otherStrideBytes) {
+                        const l = ta.length;
+                        for (let i = 0; i < l; i++) ta[i] |= other_ta[i];
+                    } else {
+                        for (let y = 0; y < height; y++) {
+                            const rowStart = y * rowStrideBytes;
+                            const otherRowStart = y * otherStrideBytes;
+                            for (let xByte = 0; xByte < rowDataBytes; xByte++) {
+                                ta[rowStart + xByte] |= other_ta[otherRowStart + xByte];
+                            }
+                            ta[rowStart + rowDataBytes - 1] &= tailMask;
+                            ta.fill(0, rowStart + rowDataBytes, rowStart + rowStrideBytes);
+                        }
                     }
                 } else {
                     console.trace();
-                    throw 'lengths of pixel buffer typed arrays must match';
+                    throw 'pixel buffer dimensions must match';
                 }
             } else {
                 console.trace();
@@ -1523,33 +1418,23 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         }
     }
     each_outer_boundary_pixel(callback) {
-        let ta_pos = new Uint16Array(2);
-        const {size} = this;
-        const [w, h] = size;
-        ta_pos[0] = 0;
-        ta_pos[1] = 0;
-        for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
-            const px = this.get_pixel(ta_pos);
-            callback(px, ta_pos);
+        const [width, height] = this.size;
+        const PositionArray = width > 32767 || height > 32767 ? Int32Array : Int16Array;
+        const pos = new PositionArray(2);
+        const visit = (x, y) => {
+            pos[0] = x;
+            pos[1] = y;
+            callback(unsafeGetPixel(this, pos), pos);
+        };
+
+        for (let x = 0; x < width; x++) visit(x, 0);
+        for (let y = 1; y < height; y++) visit(width - 1, y);
+        if (height > 1) {
+            for (let x = width - 2; x >= 0; x--) visit(x, height - 1);
         }
-        ta_pos[0]--;
-        for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
-            const px = this.get_pixel(ta_pos);
-            callback(px, ta_pos);
+        if (width > 1) {
+            for (let y = height - 2; y > 0; y--) visit(0, y);
         }
-        ta_pos[1]--;
-        for (ta_pos[0] = w - 1; ta_pos[0] > 0; ta_pos[0]--) {
-            const px = this.get_pixel(ta_pos);
-            callback(px, ta_pos);
-        }
-        let px = this.get_pixel(ta_pos);
-        callback(px, ta_pos);
-        for (ta_pos[1] = h - 1; ta_pos[1] > 0; ta_pos[1]--) {
-            const px = this.get_pixel(ta_pos);
-            callback(px, ta_pos);
-        }
-        px = this.get_pixel(ta_pos);
-        callback(px, ta_pos);
     }
     flood_fill_off_pixels_from_outer_boundary_on_1bipp() {
         this.each_outer_boundary_pixel((b_color, pos) => {
@@ -1575,69 +1460,46 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
                     this.flood_fill(pos[0], pos[1], fill_color);
                 }
             });
-        } else {
-            console.log('not flood filling');
-            console.log('bits_per_pixel', bits_per_pixel);
-            throw 'NYI';
-            console.trace();
+        } else if (bits_per_pixel === 8) {
+            this.each_outer_boundary_pixel((boundaryColor, pos) => {
+                if (boundaryColor === given_color) {
+                    this.flood_fill(pos[0], pos[1], fill_color);
+                }
+            });
+        } else if (bits_per_pixel === 32) {
+            this.each_outer_boundary_pixel((boundaryColor, pos) => {
+                if (boundaryColor[0] === given_color[0] && boundaryColor[1] === given_color[1] &&
+                    boundaryColor[2] === given_color[2] && boundaryColor[3] === given_color[3]) {
+                    this.flood_fill(
+                        pos[0], pos[1],
+                        fill_color[0], fill_color[1], fill_color[2], fill_color[3]
+                    );
+                }
+            });
         }
+        return this;
     }
     each_x_span(cb) {
-        const [w, h] = this.size;
-        const ta_x_span_toggle_bits = get_ta_bits_that_differ_from_previous_as_1s(this.ta);
-        let prev_x, prev_y;
-        let x_delta, y_delta;
-        let color_leading_on_from_current_x_toggle_position;
-        const found_empty_rows = (y0, y1_inclusive) => {
+        if (this.bipp !== 1) {
+            throw new Error('each_x_span requires a packed 1bipp Pixel Buffer');
         }
-        const found_x_span = (x0, x1, y, color) => {
-            cb(x0, x1, y, color);
-        }
-        const complete_previous_row_x_span = () => {
-        }
-        const complete_any_empty_in_between_rows = () => {
-        }
-        const complete_current_x_span = (x, y) => {
-            found_x_span(prev_x, x - 1, y, color_leading_on_from_current_x_toggle_position);
-            color_leading_on_from_current_x_toggle_position^=1;
-        }
-        const found_row_beginning_color_0_x_span = (x_span_end, y) => {
-            found_x_span(0, x_span_end, y, 0);
-            color_leading_on_from_current_x_toggle_position = 1;
-        }
-        const found_row_beginning_color_1_x_span_beginning = (y) => {
-            color_leading_on_from_current_x_toggle_position = 1;
-        }
-        const handle_xy_toggle_position = (x, y) => {
-            if (prev_x === undefined) {
-                if (y > 0) {
-                    found_empty_rows(0, y - 1);
-                }
-                if (x > 0) {
-                    found_row_beginning_color_0_x_span(x, y);
-                } else {
-                    found_row_beginning_color_1_x_span_beginning(y);
-                }
-            } else {
-                if (y > prev_y) {
-                    complete_previous_row_x_span();
-                    complete_any_empty_in_between_rows();
-                    if (x === 0) {
-                        found_row_beginning_color_1_x_span_beginning(y);
-                    } else {
-                        found_row_beginning_color_0_x_span(x - 1, y);
-                    }
-                } else {
-                    complete_current_x_span(x, y);
+        const [width, height] = this.size;
+        const stride = this.bytes_per_row;
+        const ta = this.ta;
+        for (let y = 0; y < height; y++) {
+            const rowStart = y * stride;
+            let spanStart = 0;
+            let color = (ta[rowStart] & 0x80) === 0 ? 0 : 1;
+            for (let x = 1; x < width; x++) {
+                const nextColor = (ta[rowStart + (x >> 3)] & (0x80 >> (x & 7))) === 0 ? 0 : 1;
+                if (nextColor !== color) {
+                    cb(spanStart, x - 1, y, color);
+                    spanStart = x;
+                    color = nextColor;
                 }
             }
-            prev_x = x; prev_y = y;
+            cb(spanStart, width - 1, y, color);
         }
-        each_1_index(ta_x_span_toggle_bits, i => {
-            const y = Math.floor(i / w);
-            const x = i % w;
-            handle_xy_toggle_position(x, y);
-        });
     }
     not_very_fast_flood_fill_inner_pixels_off_to_on_1bipp() {
         const identify_overlaps = (higher_row_x_spans, lower_row_x_spans) => {

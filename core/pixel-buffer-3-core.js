@@ -127,37 +127,16 @@ let ta_math = require('./ta-math')
 let { resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp } = ta_math;
 
 const Pixel_Buffer_Core_Reference_Implementations = require('./pixel-buffer-2-core-reference-implementations');
+const Pixel_Buffer_Core_Get_Set_Pixels = require('./pixel-buffer-1-core-get-set-pixel');
+const {
+    unsafeGetPixel,
+    unsafeGetPixel1bipp,
+    unsafeSetPixel
+} = require('./pixel-buffer-pixel-access');
 
 class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     constructor(spec) {
         super(spec);
-        const pos = new Int16Array(2);
-        const size = new Int16Array(2);
-
-        const ta_bpp = new Uint8Array(2);
-        ta_bpp[1] = 8; // byte to bit multiplier. will stay as 8.
-        const _24bipp_to_8bipp = () => {
-            const old_ta = ta;
-            const new_ta = ta = new Uint8Array(this.num_px);
-            const l_read = old_ta.length;
-            let iby_read = 0, iby_write = 0;
-            while (iby_read < l_read) {
-                new_ta[iby_write++] = Math.round((old_ta[iby_read++] + old_ta[iby_read++] + old_ta[iby_read++]) / 3);
-            }
-        }
-        const _change_bipp_inner_update = (old_bipp, new_bipp) => {
-            if (old_bipp === 24) {
-                if (new_bipp === 8) {
-                    _24bipp_to_8bipp();
-                } else {
-                    console.trace();
-                    throw 'NYI';
-                }
-            } else {
-                console.trace();
-                throw 'NYI';
-            }
-        }
 
         if (spec instanceof Pixel_Pos_List) {
             throw 'NYI - change to 1bipp';
@@ -183,19 +162,29 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
 
     }
     new_convolved(convolution) {
+        const bipp = this.bipp;
+        if (bipp !== 8 && bipp !== 24) {
+            throw new Error('new_convolved currently supports 8bipp and 24bipp Pixel Buffers only');
+        }
+        const calc_method = bipp === 8
+            ? 'calc_from_8bipp_ta'
+            : 'calc_from_24bipp_ta';
+        if (!convolution || typeof convolution[calc_method] !== 'function') {
+            throw new TypeError('new_convolved requires a compatible convolution object');
+        }
         const res = this.blank_copy();
         const xy_conv_center = convolution.xy_center;
-        const edge_distances_from_center_px_edge = new Int16Array(4);
+        const convolution_size = convolution.size;
+        const edge_distances_from_center_px_edge = new Float64Array(4);
         edge_distances_from_center_px_edge[0] = xy_conv_center[0] * -1;
         edge_distances_from_center_px_edge[1] = xy_conv_center[1] * -1;
-        edge_distances_from_center_px_edge[2] = edge_distances_from_center_px_edge[0] + convolution.size[0] - 1;
-        edge_distances_from_center_px_edge[3] = edge_distances_from_center_px_edge[1] + convolution.size[1] - 1;
+        edge_distances_from_center_px_edge[2] = edge_distances_from_center_px_edge[0] + convolution_size[0] - 1;
+        edge_distances_from_center_px_edge[3] = edge_distances_from_center_px_edge[1] + convolution_size[1] - 1;
         const pb_window = this.new_window({
-            size: convolution.size,
+            size: convolution_size,
             pos_bounds: [edge_distances_from_center_px_edge[0], edge_distances_from_center_px_edge[1], this.size[0] - edge_distances_from_center_px_edge[2], this.size[1] - edge_distances_from_center_px_edge[3]],
             pos: [edge_distances_from_center_px_edge[0], edge_distances_from_center_px_edge[1]]
         });
-        const pos_window = pb_window.pos;
         const ta_window = pb_window.ta;
         /*
         const pb_conv_res = new Pixel_Buffer({
@@ -204,32 +193,134 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         });
         */
         let i_write = 0;
+        let x_write = 0;
+        const width = this.size[0];
+        const row_padding = res.bytes_per_row - width * res.bytes_per_pixel;
         const ta_conv_res = res.ta;
-        pb_window.each_pos_within_bounds(() => {
-            const rgb = convolution.calc_from_24bipp_ta(ta_window);
-            ta_conv_res[i_write++] = rgb[0];
-            ta_conv_res[i_write++] = rgb[1];
-            ta_conv_res[i_write++] = rgb[2];
-        });
+        if (bipp === 8) {
+            pb_window.each_pos_within_bounds(() => {
+                ta_conv_res[i_write++] = Math.round(
+                    convolution.calc_from_8bipp_ta(ta_window)
+                );
+                if (++x_write === width) {
+                    x_write = 0;
+                    i_write += row_padding;
+                }
+            });
+        } else {
+            pb_window.each_pos_within_bounds(() => {
+                const rgb = convolution.calc_from_24bipp_ta(ta_window);
+                ta_conv_res[i_write++] = rgb[0];
+                ta_conv_res[i_write++] = rgb[1];
+                ta_conv_res[i_write++] = rgb[2];
+                if (++x_write === width) {
+                    x_write = 0;
+                    i_write += row_padding;
+                }
+            });
+        }
         return res;
     }
     new_resized(size) {
+        if (!size || !Number.isSafeInteger(size[0]) || !Number.isSafeInteger(size[1]) ||
+            size[0] <= 0 || size[1] <= 0) {
+            throw new RangeError('Resize dimensions must be positive safe integers');
+        }
+        if (size[0] === this.size[0] && size[1] === this.size[1]) {
+            return this.clone();
+        }
         const dest = new this.constructor({
             size: size,
             bits_per_pixel: this.bipp
         });
-        resize_ta_colorspace(this.ta, this.ta_colorspace, dest.size, dest.ta);
+        if (this.bipp === 24) {
+            // Retain the established area-weighted implementation and its
+            // optimized up/down-sampling paths for RGB images.
+            resize_ta_colorspace(this.ta, this.ta_colorspace, dest.size, dest.ta);
+            return dest;
+        }
+
+        const sourceWidth = this.size[0], sourceHeight = this.size[1];
+        const targetWidth = dest.size[0], targetHeight = dest.size[1];
+        if (this.bipp === 1) {
+            for (let targetY = 0; targetY < targetHeight; targetY++) {
+                const sourceY = Math.floor(targetY * sourceHeight / targetHeight);
+                const sourceRow = sourceY * this.bytes_per_row;
+                const targetRow = targetY * dest.bytes_per_row;
+                for (let targetX = 0; targetX < targetWidth; targetX++) {
+                    const sourceX = Math.floor(targetX * sourceWidth / targetWidth);
+                    if ((this.ta[sourceRow + (sourceX >> 3)] & (0x80 >> (sourceX & 7))) !== 0) {
+                        dest.ta[targetRow + (targetX >> 3)] |= 0x80 >> (targetX & 7);
+                    }
+                }
+            }
+        } else {
+            const bytesPerPixel = this.bytes_per_pixel;
+            for (let targetY = 0; targetY < targetHeight; targetY++) {
+                const sourceY = Math.floor(targetY * sourceHeight / targetHeight);
+                const sourceRow = sourceY * this.bytes_per_row;
+                let targetByte = targetY * dest.bytes_per_row;
+                for (let targetX = 0; targetX < targetWidth; targetX++) {
+                    const sourceX = Math.floor(targetX * sourceWidth / targetWidth);
+                    let sourceByte = sourceRow + sourceX * bytesPerPixel;
+                    for (let component = 0; component < bytesPerPixel; component++) {
+                        dest.ta[targetByte++] = this.ta[sourceByte++];
+                    }
+                }
+            }
+        }
         return dest;
     }
     copy_rect_by_bounds_to(ta_bounds, pb_target) {
-        console.log('pb.copy_rect_by_bounds_to');
-        const bipp = this.bipp;
-        if (bipp === 24) {
-            return this.copy_rect_by_bounds_to_24bipp(ta_bounds, pb_target)
-        } else {
-            console.trace();
-            throw 'NYI';
+        if (!ta_bounds || ta_bounds.length < 4 ||
+            !Number.isInteger(ta_bounds[0]) || !Number.isInteger(ta_bounds[1]) ||
+            !Number.isInteger(ta_bounds[2]) || !Number.isInteger(ta_bounds[3])) {
+            throw new TypeError('Bounds must contain four integer coordinates');
         }
+        if (!pb_target || pb_target.bipp !== this.bipp) {
+            throw new TypeError('Source and target Pixel Buffers must use the same pixel format');
+        }
+
+        const left = ta_bounds[0], top = ta_bounds[1];
+        const right = ta_bounds[2], bottom = ta_bounds[3];
+        const requestedWidth = right - left, requestedHeight = bottom - top;
+        if (requestedWidth <= 0 || requestedHeight <= 0) {
+            throw new RangeError('Bounds must describe a positive-area rectangle');
+        }
+        if (pb_target.size[0] < requestedWidth || pb_target.size[1] < requestedHeight) {
+            throw new RangeError('Target Pixel Buffer is smaller than the requested rectangle');
+        }
+
+        const sourceLeft = Math.max(0, left);
+        const sourceTop = Math.max(0, top);
+        const sourceRight = Math.min(this.size[0], right);
+        const sourceBottom = Math.min(this.size[1], bottom);
+        if (sourceLeft >= sourceRight || sourceTop >= sourceBottom) return pb_target;
+
+        const targetLeft = sourceLeft - left;
+        const targetTop = sourceTop - top;
+        const copyWidth = sourceRight - sourceLeft;
+        const copyHeight = sourceBottom - sourceTop;
+        if (this.bipp === 1) {
+            for (let y = 0; y < copyHeight; y++) {
+                for (let x = 0; x < copyWidth; x++) {
+                    unsafeSetPixel(
+                        pb_target,
+                        [targetLeft + x, targetTop + y],
+                        unsafeGetPixel(this, [sourceLeft + x, sourceTop + y])
+                    );
+                }
+            }
+        } else {
+            const bytesPerPixel = this.bytes_per_pixel;
+            const copyBytes = copyWidth * bytesPerPixel;
+            for (let y = 0; y < copyHeight; y++) {
+                const sourceStart = (sourceTop + y) * this.bytes_per_row + sourceLeft * bytesPerPixel;
+                const targetStart = (targetTop + y) * pb_target.bytes_per_row + targetLeft * bytesPerPixel;
+                pb_target.ta.set(this.ta.subarray(sourceStart, sourceStart + copyBytes), targetStart);
+            }
+        }
+        return pb_target;
     }
     each_px_convolution(ta_size, pb_conv_window, ta_pos, callback) {
         console.trace();
@@ -249,24 +340,35 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             });
             const rta = res.ta;
             const ta = this.ta;
-            const cpx = this.num_px;
-            let i_px = 0;
-            let i_dest_byte = 0, i_dest_bit = 7;
-            let meets_threshold = false;
-            let out_byte = 0;
-            while (i_px < cpx) {
-                meets_threshold = ta[i_px] >= ui8_threshold;
-                if (meets_threshold) {
-                    out_byte = out_byte | Math.pow(2, i_dest_bit)
-                } else {
+            const width = this.size[0], height = this.size[1];
+            const srcStride = this.bytes_per_row;
+            const dstStride = res.bytes_per_row;
+            for (let y = 0; y < height; y++) {
+                let read = y * srcStride;
+                let write = y * dstStride;
+                let x = 0;
+                while (x + 8 <= width) {
+                    rta[write++] =
+                        (ta[read] >= ui8_threshold ? 0x80 : 0) |
+                        (ta[read + 1] >= ui8_threshold ? 0x40 : 0) |
+                        (ta[read + 2] >= ui8_threshold ? 0x20 : 0) |
+                        (ta[read + 3] >= ui8_threshold ? 0x10 : 0) |
+                        (ta[read + 4] >= ui8_threshold ? 0x08 : 0) |
+                        (ta[read + 5] >= ui8_threshold ? 0x04 : 0) |
+                        (ta[read + 6] >= ui8_threshold ? 0x02 : 0) |
+                        (ta[read + 7] >= ui8_threshold ? 0x01 : 0);
+                    read += 8;
+                    x += 8;
                 }
-                i_px++;
-                i_dest_bit--;
-                if (i_dest_bit === -1) {
-                    rta[i_dest_byte] = out_byte;
-                    i_dest_bit = 7;
-                    i_dest_byte++;
-                    out_byte = 0;
+                if (x < width) {
+                    let outByte = 0;
+                    let mask = 0x80;
+                    while (x < width) {
+                        if (ta[read++] >= ui8_threshold) outByte |= mask;
+                        mask >>= 1;
+                        x++;
+                    }
+                    rta[write] = outByte;
                 }
             }
             return res;
@@ -281,16 +383,35 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             const res = new this.constructor({
                 size: this.size,
                 bits_per_pixel: 8
-            })
-            let i_px = 0;
-            let i_byte = 0;
-            const num_bytes = this.ta.length;
-            while (i_byte < num_bytes) {
-                for (var b = 0; b < 8; b++) {
-                    const color = this.get_pixel_by_idx_1bipp(i_px) === 1 ? 255 : 0;
-                    res.set_pixel_by_idx_8bipp(i_px++, color);
+            });
+            const ta = this.ta, rta = res.ta;
+            const width = this.size[0], height = this.size[1];
+            const srcStride = this.bytes_per_row, dstStride = res.bytes_per_row;
+            for (let y = 0; y < height; y++) {
+                let read = y * srcStride;
+                let write = y * dstStride;
+                let x = 0;
+                while (x + 8 <= width) {
+                    const value = ta[read++];
+                    rta[write++] = value & 0x80 ? 255 : 0;
+                    rta[write++] = value & 0x40 ? 255 : 0;
+                    rta[write++] = value & 0x20 ? 255 : 0;
+                    rta[write++] = value & 0x10 ? 255 : 0;
+                    rta[write++] = value & 0x08 ? 255 : 0;
+                    rta[write++] = value & 0x04 ? 255 : 0;
+                    rta[write++] = value & 0x02 ? 255 : 0;
+                    rta[write++] = value & 0x01 ? 255 : 0;
+                    x += 8;
                 }
-                i_byte++;
+                if (x < width) {
+                    const value = ta[read];
+                    let mask = 0x80;
+                    while (x < width) {
+                        rta[write++] = value & mask ? 255 : 0;
+                        mask >>= 1;
+                        x++;
+                    }
+                }
             }
             return res;
         } else if (bipp === 8) {
@@ -341,22 +462,31 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     }
     to_24bipp() {
         const bipp = this.bits_per_pixel;
-        const bypp = this.bytes_per_pixel;
-        let i_px = 0;
-        const num_px = this.size[0] * this.size[1];
         if (bipp === 1) {
             const res = new this.constructor({
                 size: this.size,
                 bits_per_pixel: 24
-            })
-            let i_byte = 0;
-            const num_bytes = this.ta.length;
-            while (i_byte < num_bytes) {
-                for (var b = 0; b < 8; b++) {
-                    const color = this.get_pixel_by_idx_1bipp(i_px) === 1 ? new Uint8ClampedArray([255, 255, 255]) : new Uint8ClampedArray([0, 0, 0]);
-                    res.set_pixel_by_idx_24bipp(i_px++, color);
+            });
+            const ta = this.ta, rta = res.ta;
+            const width = this.size[0], height = this.size[1];
+            const srcStride = this.bytes_per_row, dstStride = res.bytes_per_row;
+            for (let y = 0; y < height; y++) {
+                let read = y * srcStride;
+                let write = y * dstStride;
+                let remaining = width;
+                while (remaining > 0) {
+                    const value = ta[read++];
+                    const bits = remaining >= 8 ? 8 : remaining;
+                    let mask = 0x80;
+                    for (let bit = 0; bit < bits; bit++) {
+                        const color = value & mask ? 255 : 0;
+                        rta[write++] = color;
+                        rta[write++] = color;
+                        rta[write++] = color;
+                        mask >>= 1;
+                    }
+                    remaining -= bits;
                 }
-                i_byte++;
             }
             return res;
         } else if (bipp === 8) {
@@ -365,12 +495,29 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
                 bits_per_pixel: 24
             });
             const ta_res = res.ta;
-            const ta = this.ta, l = ta.length;
-            let pos_w = 0, c = 0;
-            for (c = 0; c < l; c++) {
-                ta_res[pos_w++] = ta[c];
-                ta_res[pos_w++] = ta[c];
-                ta_res[pos_w++] = ta[c];
+            const ta = this.ta;
+            const width = this.size[0], height = this.size[1];
+            const srcStride = this.bytes_per_row;
+            const dstStride = res.bytes_per_row;
+            if (srcStride === width) {
+                let write = 0;
+                for (let read = 0, length = ta.length; read < length; read++) {
+                    const value = ta[read];
+                    ta_res[write++] = value;
+                    ta_res[write++] = value;
+                    ta_res[write++] = value;
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    let read = y * srcStride;
+                    let write = y * dstStride;
+                    for (let x = 0; x < width; x++) {
+                        const value = ta[read++];
+                        ta_res[write++] = value;
+                        ta_res[write++] = value;
+                        ta_res[write++] = value;
+                    }
+                }
             }
             return res;
         } else if (bipp === 24) {
@@ -419,34 +566,88 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     }
     */
     color_whole(color) {
-        if (this.bytes_per_pixel === 1) {
-            const ta_32_scratch = new Uint32Array(12);
-            ta_32_scratch[0] = this.size[0] * this.size[1];
-            const buf = this.buffer;
-            let i;
-            for (i = 0; i < ta_32_scratch[0]; i++) {
-                buf[i] = color;
+        if (this.bits_per_pixel === 1) {
+            const ta = this.ta;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = this.layout ? this.layout.rowDataBytes : Math.ceil(width / 8);
+            const rowStrideBytes = this.bytes_per_row;
+            const tailBits = width & 7;
+            const tailMask = this.layout
+                ? this.layout.tailMask
+                : (tailBits === 0 ? 0xFF : (0xFF << (8 - tailBits)) & 0xFF);
+
+            if (color !== 1) {
+                ta.fill(0);
+            } else if (tailMask === 0xFF && rowDataBytes === rowStrideBytes) {
+                // Keep the common, byte-aligned layout on the native bulk-fill path.
+                ta.fill(0xFF);
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    ta.fill(0xFF, rowStart, rowStart + rowDataBytes);
+                    ta[rowStart + rowDataBytes - 1] &= tailMask;
+                    ta.fill(0, rowStart + rowDataBytes, rowStart + rowStrideBytes);
+                }
             }
-        } else if (this.bytes_per_pixel === 3) {
-            const ta_32_scratch = new Uint32Array(12);
-            ta_32_scratch[0] = this.size[0] * this.size[1] * 3;
-            const buf = this.buffer;
-            let i, c = 0;
-            for (i = 0; i < ta_32_scratch[0]; i++) {
-                buf[c++] = color[0];
-                buf[c++] = color[1];
-                buf[c++] = color[2];
+        } else if (this.bits_per_pixel === 8) {
+            const {ta, bytes_per_row: rowStrideBytes} = this;
+            const width = this.size[0], height = this.size[1];
+            if (rowStrideBytes === width) {
+                ta.fill(color);
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    ta.fill(color, rowStart, rowStart + width);
+                    ta.fill(0, rowStart + width, rowStart + rowStrideBytes);
+                }
             }
-        } else if (this.bytes_per_pixel === 4) {
-            const ta_32_scratch = new Uint32Array(12);
-            ta_32_scratch[0] = this.size[0] * this.size[1] * 4;
-            const buf = this.buffer;
-            let i, c = 0;
-            for (i = 0; i < ta_32_scratch[0]; i++) {
-                buf[c++] = color[0];
-                buf[c++] = color[1];
-                buf[c++] = color[2];
-                buf[c++] = color[3];
+        } else if (this.bits_per_pixel === 24) {
+            const {ta, bytes_per_row: rowStrideBytes} = this;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = width * 3;
+            const r = color[0], g = color[1], b = color[2];
+            if (rowStrideBytes === rowDataBytes) {
+                for (let byte = 0, length = ta.length; byte < length;) {
+                    ta[byte++] = r;
+                    ta[byte++] = g;
+                    ta[byte++] = b;
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    const rowEnd = rowStart + rowDataBytes;
+                    for (let byte = rowStart; byte < rowEnd;) {
+                        ta[byte++] = r;
+                        ta[byte++] = g;
+                        ta[byte++] = b;
+                    }
+                    ta.fill(0, rowEnd, rowStart + rowStrideBytes);
+                }
+            }
+        } else if (this.bits_per_pixel === 32) {
+            const {ta, bytes_per_row: rowStrideBytes} = this;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = width * 4;
+            const r = color[0], g = color[1], b = color[2], a = color[3];
+            if (rowStrideBytes === rowDataBytes) {
+                for (let byte = 0, length = ta.length; byte < length;) {
+                    ta[byte++] = r;
+                    ta[byte++] = g;
+                    ta[byte++] = b;
+                    ta[byte++] = a;
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    const rowEnd = rowStart + rowDataBytes;
+                    for (let byte = rowStart; byte < rowEnd;) {
+                        ta[byte++] = r;
+                        ta[byte++] = g;
+                        ta[byte++] = b;
+                        ta[byte++] = a;
+                    }
+                    ta.fill(0, rowEnd, rowStart + rowStrideBytes);
+                }
             }
         } else {
             throw 'Unsupported this.bytes_per_pixel: ' + this.bytes_per_pixel;
@@ -454,64 +655,122 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
         return this;
     }
     crop(size) {
-        let new_size = new Uint16Array([this.size[0] - size * 2, this.size[1] - size * 2]);
-        let res = new this.constructor({
-            bytes_per_pixel: this.bytes_per_pixel,
-            size: new_size
-        });
-        if (this.pos) {
-            res.pos = new Int16Array([this.pos[0] - size, this.pos[1] - size])
+        if (!Number.isInteger(size) || size < 0) {
+            throw new RangeError('Crop size must be a non-negative integer');
         }
-        this.each_pixel_ta((pos, color) => {
-            const new_pos = new Int16Array([pos[0] - size, pos[1] - size]);
-            if (new_pos[0] >= 0 && new_pos[0] < new_size[0] && new_pos[1] >= 0 && new_pos[1] < new_size[1]) {
-                res.set_pixel_ta(new_pos, color);
-            }
+        const newWidth = this.size[0] - size * 2;
+        const newHeight = this.size[1] - size * 2;
+        if (newWidth <= 0 || newHeight <= 0) {
+            throw new RangeError('Crop size must leave a positive width and height');
+        }
+        const res = new this.constructor({
+            bits_per_pixel: this.bipp,
+            size: [newWidth, newHeight],
+            rowAlignmentBytes: this.layout.rowAlignmentBytes
         });
+        // Cropping removes pixels from the top and left, so the remaining
+        // image begins farther into the same coordinate space.
+        res.pos = [this.pos[0] + size, this.pos[1] + size];
+
+        if (this.bipp === 1) {
+            for (let y = 0; y < newHeight; y++) {
+                for (let x = 0; x < newWidth; x++) {
+                    unsafeSetPixel(res, [x, y], unsafeGetPixel(this, [x + size, y + size]));
+                }
+            }
+        } else {
+            const rowBytes = newWidth * this.bytes_per_pixel;
+            const sourceXByte = size * this.bytes_per_pixel;
+            for (let y = 0; y < newHeight; y++) {
+                const sourceStart = (y + size) * this.bytes_per_row + sourceXByte;
+                res.ta.set(
+                    this.ta.subarray(sourceStart, sourceStart + rowBytes),
+                    y * res.bytes_per_row
+                );
+            }
+        }
         return res;
     }
     uncrop(size, color) {
-        let res = new this.constructor({
-            bytes_per_pixel: this.bytes_per_pixel,
-            size: new Uint16Array([this.size[0] + size * 2, this.size[1] + size * 2])
-        })
-        if (this.pos) res.pos = this.pos;
-        if (this.pos) {
+        if (!Number.isInteger(size) || size < 0) {
+            throw new RangeError('Uncrop size must be a non-negative integer');
         }
-        res.color_whole(color);
-        console.log('size', size);
-        this.each_pixel_ta((pos, color) => {
-            res.set_pixel_ta(new Uint16Array([pos[0] + size, pos[1] + size]), color);
-        })
+        const res = new this.constructor({
+            bits_per_pixel: this.bipp,
+            size: [this.size[0] + size * 2, this.size[1] + size * 2],
+            rowAlignmentBytes: this.layout.rowAlignmentBytes
+        });
+        // Uncropping adds a border above and to the left of the old image.
+        res.pos = [this.pos[0] - size, this.pos[1] - size];
+        if (color !== undefined) res.color_whole(color);
+
+        if (this.bipp === 1) {
+            for (let y = 0; y < this.size[1]; y++) {
+                for (let x = 0; x < this.size[0]; x++) {
+                    unsafeSetPixel(res, [x + size, y + size], unsafeGetPixel(this, [x, y]));
+                }
+            }
+        } else {
+            const rowBytes = this.size[0] * this.bytes_per_pixel;
+            const targetXByte = size * this.bytes_per_pixel;
+            for (let y = 0; y < this.size[1]; y++) {
+                const sourceStart = y * this.bytes_per_row;
+                const targetStart = (y + size) * res.bytes_per_row + targetXByte;
+                res.ta.set(this.ta.subarray(sourceStart, sourceStart + rowBytes), targetStart);
+            }
+        }
         return res;
     }
     color_rect(bounds, color) {
-        for (let y = bounds[1]; y < bounds[3]; y++) {
-            this.draw_horizontal_line([bounds[0], bounds[2] - 1], y, color);
+        if (!bounds || bounds.length < 4) {
+            throw new TypeError('color_rect bounds must contain four coordinates');
+        }
+        for (let index = 0; index < 4; index++) {
+            if (!Number.isSafeInteger(bounds[index])) {
+                throw new TypeError('color_rect bounds must be safe integers');
+            }
+        }
+        const left = Math.max(0, bounds[0]);
+        const top = Math.max(0, bounds[1]);
+        const right = Math.min(this.size[0], bounds[2]);
+        const bottom = Math.min(this.size[1], bounds[3]);
+        if (left >= right || top >= bottom) return;
+
+        for (let y = top; y < bottom; y++) {
+            this.draw_horizontal_line([left, right - 1], y, color);
         }
     }
     each_pixel_byte_index(cb) {
         const { bipp } = this;
         let ctu = true;
         const stop = () => ctu = false;
-        if (bipp === 8) {
-            const buf = this.buffer, l = buf.length, bpp = this.bytes_per_pixel;
-            for (let c = 0; ctu && c < l; c += bpp) {
-                cb(c, stop);
+        if (bipp === 8 || bipp === 24 || bipp === 32) {
+            const {ta, bytes_per_pixel: bytesPerPixel, bytes_per_row: rowStrideBytes} = this;
+            const width = this.size[0], height = this.size[1];
+            const rowDataBytes = width * bytesPerPixel;
+            if (rowStrideBytes === rowDataBytes) {
+                for (let byte = 0, length = ta.length; ctu && byte < length; byte += bytesPerPixel) {
+                    cb(byte, stop);
+                }
+            } else {
+                for (let y = 0; ctu && y < height; y++) {
+                    const rowStart = y * rowStrideBytes;
+                    for (let x = 0; ctu && x < width; x++) {
+                        cb(rowStart + x * bytesPerPixel, stop);
+                    }
+                }
             }
-        } else if (bipp === 24) {
-            const buf = this.buffer, l = buf.length, bpp = this.bytes_per_pixel;
-            for (let c = 0; ctu && c < l; c += bpp) {
-                cb(c, stop);
-            }
-        } else if (bipp === 32) {
-            const buf = this.buffer, l = buf.length, bpp = this.bytes_per_pixel;
-            for (let c = 0; ctu && c < l; c += bpp) {
-                cb(c, stop);
+        } else if (bipp === 1) {
+            const width = this.size[0], height = this.size[1];
+            const rowStrideBytes = this.bytes_per_row;
+            for (let y = 0; ctu && y < height; y++) {
+                const rowStart = y * rowStrideBytes;
+                for (let x = 0; ctu && x < width; x++) {
+                    cb(rowStart + (x >> 3), stop);
+                }
             }
         } else {
-            console.trace();
-            throw 'NYI';
+            throw new Error('Unsupported bits per pixel: ' + bipp);
         }
     }
     /*
@@ -528,7 +787,7 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     each_ta_24bipp(ta_pos, ta_px_value, ta_info, callback) {
         const bipp = this.bipp;
         if (bipp === 24) {
-            if (ta_pos instanceof Int16Array || ta_pos instanceof Int32Array && ta_pos.length >= 2) {
+            if ((ta_pos instanceof Int16Array || ta_pos instanceof Int32Array) && ta_pos.length >= 2) {
                 if (ta_px_value instanceof Uint8ClampedArray && ta_px_value.length >= 3) {
                     if (ta_info instanceof Uint32Array && ta_info.length >= 4) {
                         const ta = this.ta;
@@ -536,18 +795,21 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
                         ta_info[1] = this.size[1];
                         ta_info[2] = 0;
                         ta_info[3] = 24; // bipp;
+                        let byteIndex = 0;
                         const update = () => {
-                            ta[ta_info[2] * 3] = ta_px_value[0];
-                            ta[ta_info[2] * 3 + 1] = ta_px_value[1];
-                            ta[ta_info[2] * 3 + 2] = ta_px_value[2];
+                            ta[byteIndex] = ta_px_value[0];
+                            ta[byteIndex + 1] = ta_px_value[1];
+                            ta[byteIndex + 2] = ta_px_value[2];
                         }
                         for (ta_pos[1] = 0; ta_pos[1] < ta_info[1]; ta_pos[1]++) {
+                            byteIndex = ta_pos[1] * this.bytes_per_row;
                             for (ta_pos[0] = 0; ta_pos[0] < ta_info[0]; ta_pos[0]++) {
-                                ta_px_value[0] = ta[ta_info[2] * 3];
-                                ta_px_value[1] = ta[ta_info[2] * 3 + 1];
-                                ta_px_value[2] = ta[ta_info[2] * 3 + 2];
+                                ta_px_value[0] = ta[byteIndex];
+                                ta_px_value[1] = ta[byteIndex + 1];
+                                ta_px_value[2] = ta[byteIndex + 2];
                                 callback(update);
                                 ta_info[2]++;
+                                byteIndex += 3;
                             }
                         }
                     }
@@ -563,7 +825,7 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             const [w, h] = this.size;
             for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
                 for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
-                    const px = this.get_pixel_1bipp(ta_pos);
+                    const px = unsafeGetPixel1bipp(this, ta_pos);
                     ta_px_value[0] = px;
                     callback(px, ta_pos);
                 }
@@ -578,7 +840,7 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             const [w, h] = this.size;
             for (ta_pos[1] = 0; ta_pos[1] < h; ta_pos[1]++) {
                 for (ta_pos[0] = 0; ta_pos[0] < w; ta_pos[0]++) {
-                    if (this.get_pixel_1bipp(ta_pos) === 1 | 0) {
+                    if (unsafeGetPixel1bipp(this, ta_pos) === 1) {
                         callback(1 | 0, ta_pos);
                     }
                 }
@@ -604,203 +866,8 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
     }
     paint_pixel_list(pixel_pos_list, color) {
         pixel_pos_list.each_pixel(pos => {
-            this.set_pixel_ta(pos, color);
+            this.set_pixel(pos, color);
         });
-    }
-    'get_pixel_byte_bit_1bipp'(pos) {
-        /*
-        */
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        return { byte, bit };
-    }
-    'get_pixel_byte_bit_BE_1bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        return { byte, bit };
-    }
-    set_pixel_on_1bipp_by_pixel_index(pixel_index) {
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
-    }
-
-    'set_pixel_on_1bipp_xy'(x, y) {
-        const pixel_index = y * this.size[0] + x;
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
-    }
-
-    'set_pixel_on_1bipp'(pos) {
-        const pixel_index = pos[1] * this.size[0] + pos[0];
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
-    }
-    set_pixel_off_1bipp_by_pixel_index(pixel_index) {
-        this.ta[pixel_index >> 3] &= (~(128 >> (pixel_index & 0b111))) & 255;
-    }
-    'set_pixel_off_1bipp'(pos) {
-        const pixel_idx = pos[1] * this.size[0] + pos[0];
-        this.ta[pixel_idx >> 3] &= (~(128 >> (pixel_idx & 0b111))) & 255;
-    }
-    'set_pixel_1bipp'(pos, color) {
-        const idx_bit = (pos[1] * this.size[0]) + pos[0];
-        const byte = idx_bit >> 3;
-        const bit = (idx_bit & 0b111);
-        if (color === 1) {
-            this.ta[byte] |= (128 >> bit);
-        } else {
-            this.ta[byte] &= (~(128 >> bit)) & 255;
-        }
-    }
-    'set_pixel_8bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        this.ta[idx] = color;
-    }
-    'set_pixel_24bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        let byte = idx * 3;
-        this.ta[byte++] = color[0];
-        this.ta[byte++] = color[1];
-        this.ta[byte] = color[2];
-    }
-    'set_pixel_32bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        let byte = idx * 4;
-        this.ta[byte++] = color[0];
-        this.ta[byte++] = color[1];
-        this.ta[byte++] = color[2];
-        this.ta[byte] = color[3];
-    }
-    'set_pixel_by_idx_8bipp'(idx, color) {
-        const byte = idx;
-        this.ta[byte] = color;
-    }
-    'set_pixel_by_idx_24bipp'(idx, color) {
-        const byte = idx * 3;
-        this.ta[byte] = color[0];
-        this.ta[byte + 1] = color[1];
-        this.ta[byte + 2] = color[2];
-    }
-    'set_pixel_by_idx_32bipp'(idx, color) {
-        const byte = idx * 4;
-        this.ta[byte] = color[0];
-        this.ta[byte + 1] = color[1];
-        this.ta[byte + 2] = color[2];
-        this.ta[byte + 3] = color[3];
-    }
-    'set_pixel_by_idx'(idx, color) {
-        const a = arguments;
-        const l = a.length;
-        const bipp = this.bipp;
-        if (bipp === 1) {
-            return this.set_pixel_by_idx_1bipp(a[0], a[1]);
-        } else if (bipp === 8) {
-            if (l === 2) {
-                return (this.set_pixel_by_idx_8bipp(a[0], a[1]));
-            }
-        } else if (bipp === 24) {
-            if (l === 2) {
-                return (this.set_pixel_by_idx_24bipp(a[0], a[1]));
-            }
-        } else if (bipp === 32) {
-            if (l === 2) {
-                return (this.set_pixel_by_idx_32bipp(a[0], a[1]));
-            }
-        }
-    }
-    'set_pixel'(pos, color) {
-        const a = arguments;
-        const l = a.length;
-        const bipp = this.bipp;
-        if (bipp === 1) {
-            return (this.set_pixel_1bipp(a[0], a[1]));
-        } else if (bipp === 8) {
-            if (l === 2) {
-                return (this.set_pixel_8bipp(a[0], a[1]));
-            }
-        } else if (bipp === 24) {
-            if (l === 2) {
-                return (this.set_pixel_24bipp(a[0], a[1]));
-            }
-        } else if (bipp === 32) {
-            if (l === 2) {
-                return (this.set_pixel_32bipp(a[0], a[1]));
-            }
-        } else {
-            console.trace();
-            throw 'unsupported bipp: ' + bipp;
-        }
-    }
-    'get_pixel_by_idx_1bipp'(idx) {
-        /*
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        */
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        const pow = 128 >> bit;
-        return ((this.ta[byte] & pow) === pow) ? 1 : 0;
-    }
-    'get_pixel_by_idx_8bipp'(idx) {
-        const byte = idx;
-        return this.ta[byte];
-    }
-    'get_pixel_by_idx_24bipp'(idx) {
-        const byte = idx * 3;
-        return this.ta.slice(byte, byte + 3);
-    }
-    'get_pixel_by_idx_32bipp'(idx) {
-        const byte = idx * 4;
-        return this.ta.slice(byte, byte + 4);
-    }
-    'get_pixel_by_idx'(idx) {
-        const bipp = this.bits_per_pixel;
-        if (bipp === 1) {
-            return this.get_pixel_by_idx_1bipp(idx);
-        } else if (bipp === 8) {
-            return this.get_pixel_by_idx_8bipp(idx);
-        } else if (bipp === 24) {
-            return this.get_pixel_by_idx_24bipp(idx);
-        } else if (bipp === 32) {
-            return this.get_pixel_by_idx_32bipp(idx);
-        } else {
-            throw 'Unsupported bipp'
-        }
-    }
-    'get_pixel_1bipp'(pos) {
-        const idx = (pos[1] * this.size[0]) + pos[0];
-        const byte = idx >> 3;
-        return ((this.ta[byte] & 128 >> (idx & 0b111)) !== 0) ? 1 : 0;
-    }
-    'get_pixel_8bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx;
-        return this.ta[byte];
-    }
-    'get_pixel_24bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx * 3;
-        return this.ta.slice(byte, byte + 3);
-    }
-    'get_pixel_32bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx * 4;
-        return this.ta.slice(byte, byte + 4);
-    }
-    'get_pixel'(pos) {
-        const bipp = this.bits_per_pixel;
-        if (bipp === 1) {
-            return this.get_pixel_1bipp(pos);
-        } else if (bipp === 8) {
-            return this.get_pixel_8bipp(pos);
-        } else if (bipp === 24) {
-            return this.get_pixel_24bipp(pos);
-        } else if (bipp === 32) {
-            return this.get_pixel_32bipp(pos);
-        } else {
-            console.trace();
-            throw 'bits per pixels error';
-        }
     }
     get num_px() {
         return this.size[0] * this.size[1];
@@ -824,12 +891,26 @@ class Pixel_Buffer_Core extends Pixel_Buffer_Core_Reference_Implementations {
             let i_byte = 0;
             const [ta_r, ta_g, ta_b] = [r.ta, g.ta, b.ta];
             const ta = this.ta;
-            while (i_px < num_px) {
-                ta_r[i_px] = ta[i_byte];
-                ta_g[i_px] = ta[i_byte + 1];
-                ta_b[i_px] = ta[i_byte + 2];
-                i_px++;
-                i_byte += bypp;
+            const width = this.size[0], height = this.size[1];
+            if (this.bytes_per_row === width * bypp) {
+                while (i_px < num_px) {
+                    ta_r[i_px] = ta[i_byte];
+                    ta_g[i_px] = ta[i_byte + 1];
+                    ta_b[i_px] = ta[i_byte + 2];
+                    i_px++;
+                    i_byte += bypp;
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    i_byte = y * this.bytes_per_row;
+                    for (let x = 0; x < width; x++) {
+                        ta_r[i_px] = ta[i_byte];
+                        ta_g[i_px] = ta[i_byte + 1];
+                        ta_b[i_px] = ta[i_byte + 2];
+                        i_px++;
+                        i_byte += bypp;
+                    }
+                }
             }
             return res;
         } else if (bipp === 8) {
@@ -854,7 +935,7 @@ return a.every((val, i) => val === b[i]);
         let buf1 = this.ta;
         let buf2 = other_pixel_buffer.ta;
         const other_colorspace = other_pixel_buffer.ta_colorspace;
-        const my_colorspace = other_pixel_buffer.ta_colorspace;
+        const my_colorspace = this.ta_colorspace;
         if (my_colorspace.length === other_colorspace.length) {
             if (my_colorspace.every((val, i) => val === other_colorspace[i])) {
                 if (buf1.length === buf2.length) {
@@ -867,21 +948,21 @@ return a.every((val, i) => val === b[i]);
         return false;
     }
     copy_pixel_pos_list_region(pixel_pos_list, bg_color) {
-        let bounds = pixel_pos_list.bounds;
-        let size = new Uint16Array([bounds[2] - bounds[0] + 1, bounds[3] - bounds[1] + 1]);
+        const bounds = pixel_pos_list.bounds;
+        const size = [bounds[2] - bounds[0] + 1, bounds[3] - bounds[1] + 1];
         const res = new this.constructor({
             size: size,
-            bytes_per_pixel: this.bytes_per_pixel
+            bits_per_pixel: this.bipp,
+            rowAlignmentBytes: this.layout.rowAlignmentBytes
         });
-        if (this.pos) res.pos = this.pos;
-        if (bg_color) {
+        if (bg_color !== undefined) {
             res.color_whole(bg_color);
         }
-        res.pos = new Int16Array([bounds[0], bounds[1]]);
+        res.pos = [bounds[0], bounds[1]];
         pixel_pos_list.each_pixel((pos) => {
-            let color = this.get_pixel_ta(pos);
-            const target_pos = new Int16Array([(pos[0] - bounds[0]), (pos[1] - bounds[1])]);
-            res.set_pixel_ta(target_pos, color);
+            const color = this.get_pixel(pos);
+            const target_pos = [pos[0] - bounds[0], pos[1] - bounds[1]];
+            res.set_pixel(target_pos, color);
         });
         return res;
     }
@@ -912,55 +993,92 @@ return a.every((val, i) => val === b[i]);
 
 
 
-        function draw_bitmap(target, target_width, source, source_width, source_height, target_x, target_y) {
-            // Compute bytes per row using bitwise math
-            const target_bytes_per_row = (target_width + 7) >> 3;
-            const source_bytes_per_row = (source_width + 7) >> 3;
+        function draw_bitmap(
+            target, target_width, target_height, target_stride,
+            source, source_width, source_height, source_stride,
+            target_x, target_y, draw_color
+        ) {
+            const source_data_bytes = Math.ceil(source_width / 8);
+            const source_tail_bits = source_width & 7;
+            const source_tail_mask = source_tail_bits === 0
+                ? 0xFF
+                : (0xFF << (8 - source_tail_bits)) & 0xFF;
+            const target_tail_bits = target_width & 7;
+            const target_tail_mask = target_tail_bits === 0
+                ? 0xFF
+                : (0xFF << (8 - target_tail_bits)) & 0xFF;
+            const set_on = draw_color !== 0;
 
-            // Iterate over each row of the source bitmap
-            for (let row = 0; row < source_height; row++) {
-                // Source row offset in bytes
-                const source_row_start = row * source_bytes_per_row;
-
-                // Target row offset in bytes
-                const target_row_start = (target_y + row) * target_bytes_per_row;
-
-                // Bit offset within the target byte
-                const bit_offset = target_x & 7; // Faster alternative to target_x % 8
-
-                // Start byte in the target where source will be drawn
-                let target_byte_index = target_row_start + (target_x >> 3); // Divide target_x by 8 using bitwise shift
-
-                // Iterate over source bytes for this row
-                for (let col = 0; col < source_bytes_per_row; col++) {
-                    const source_byte = source[source_row_start + col];
-
-                    if (bit_offset === 0) {
-                        // Direct copy if aligned with byte boundary
-                        target[target_byte_index] |= source_byte;
-                    } else {
-                        // Handle unaligned case
-                        const next_byte_index = target_byte_index + 1;
-
-                        // Shift source byte into position
-                        const shifted_byte = source_byte << bit_offset;
-                        const carry_over = source_byte >> (8 - bit_offset);
-
-                        // Merge with target
-                        target[target_byte_index] |= shifted_byte;
-                        if (next_byte_index < target.length) {
-                            target[next_byte_index] |= carry_over;
+            // Keep the in-bounds case byte-oriented. Clipped placement is uncommon and
+            // deliberately falls back to checked pixel writes rather than aliasing rows.
+            if (target_x < 0 || target_y < 0 ||
+                target_x + source_width > target_width ||
+                target_y + source_height > target_height) {
+                const source_x_start = Math.max(0, -target_x);
+                const source_x_end = Math.min(source_width, target_width - target_x);
+                const source_y_start = Math.max(0, -target_y);
+                const source_y_end = Math.min(source_height, target_height - target_y);
+                for (let sy = source_y_start; sy < source_y_end; sy++) {
+                    const source_row = sy * source_stride;
+                    const target_row = (target_y + sy) * target_stride;
+                    for (let sx = source_x_start; sx < source_x_end; sx++) {
+                        if ((source[source_row + (sx >> 3)] & (128 >> (sx & 7))) !== 0) {
+                            const tx = target_x + sx;
+                            const target_byte = target_row + (tx >> 3);
+                            const mask = 128 >> (tx & 7);
+                            if (set_on) target[target_byte] |= mask;
+                            else target[target_byte] &= ~mask & 255;
                         }
                     }
+                }
+                return;
+            }
 
+            const bit_offset = target_x & 7;
+            for (let row = 0; row < source_height; row++) {
+                const source_row_start = row * source_stride;
+                const target_row_start = (target_y + row) * target_stride;
+                let target_byte_index = target_row_start + (target_x >> 3);
+
+                for (let col = 0; col < source_data_bytes; col++) {
+                    let source_byte = source[source_row_start + col];
+                    if (col === source_data_bytes - 1) source_byte &= source_tail_mask;
+                    if (source_byte === 0) {
+                        target_byte_index++;
+                        continue;
+                    }
+
+                    if (bit_offset === 0) {
+                        if (set_on) target[target_byte_index] |= source_byte;
+                        else target[target_byte_index] &= ~source_byte & 255;
+                    } else {
+                        const first_bits = source_byte >>> bit_offset;
+                        const carry_bits = (source_byte << (8 - bit_offset)) & 255;
+                        if (set_on) {
+                            target[target_byte_index] |= first_bits;
+                            if (carry_bits !== 0) target[target_byte_index + 1] |= carry_bits;
+                        } else {
+                            target[target_byte_index] &= ~first_bits & 255;
+                            if (carry_bits !== 0) target[target_byte_index + 1] &= ~carry_bits & 255;
+                        }
+                    }
                     target_byte_index++;
+                }
+
+                if (target_tail_mask !== 0xFF) {
+                    const target_tail_byte = target_row_start + Math.ceil(target_width / 8) - 1;
+                    target[target_tail_byte] &= target_tail_mask;
                 }
             }
         }
 
 
         const chatgpto1_draw_bitmap_implementation = () => {
-            draw_bitmap(this.ta, this.size[0], pb_1bipp_mask.ta, pb_1bipp_mask.size[0], pb_1bipp_mask.size[1], dest_pos[0], dest_pos[1]);
+            draw_bitmap(
+                this.ta, this.size[0], this.size[1], this.bytes_per_row,
+                pb_1bipp_mask.ta, pb_1bipp_mask.size[0], pb_1bipp_mask.size[1], pb_1bipp_mask.bytes_per_row,
+                dest_pos[0], dest_pos[1], color
+            );
         }
 
 
@@ -1140,46 +1258,53 @@ return a.every((val, i) => val === b[i]);
 
     }
     'blank_copy'() {
-        var res = new this.constructor({
+        const storage = typeof Buffer !== 'undefined' && Buffer.isBuffer(this.storage)
+            ? Buffer.alloc(this.storage.length)
+            : new this.storage.constructor(this.storage.length);
+        const res = new this.constructor({
             'size': this.size,
-            'bits_per_pixel': this.bits_per_pixel
+            'bits_per_pixel': this.bits_per_pixel,
+            rowStrideBytes: this.bytes_per_row,
+            rowAlignmentBytes: this.layout.rowAlignmentBytes,
+            ta: storage
         });
-        res.buffer.fill(0);
         if (this.pos) res.pos = this.pos;
         return res;
     }
     'clone'() {
-        var res = new this.constructor({
+        const storage = typeof Buffer !== 'undefined' && Buffer.isBuffer(this.storage)
+            ? Buffer.from(this.storage)
+            : new this.storage.constructor(this.storage);
+        const res = new this.constructor({
             'size': this.size,
             'bits_per_pixel': this.bits_per_pixel,
-            'buffer': new this.buffer.constructor(this.buffer)
+            rowStrideBytes: this.bytes_per_row,
+            rowAlignmentBytes: this.layout.rowAlignmentBytes,
+            ta: storage
         });
         if (this.pos) res.pos = this.pos;
         return res;
     }
     'add_alpha_channel'() {
-        console.log('add_alpha_channel this.bytes_per_pixel', this.bytes_per_pixel);
         if (this.bytes_per_pixel === 3) {
-            var res = new this.constructor({
+            const res = new this.constructor({
                 'size': this.size,
                 'bytes_per_pixel': 4
             });
             if (this.pos) res.pos = this.pos;
-            /*
-            this.each_pixel((x, y, r, g, b) => {
-                res.set_pixel(x, y, r, g, b, 255);
-            });
-            */
-            const buf = this.buffer,
-                res_buf = res.buffer;
-            const px_count = this.size[0] * this.size[1];
-            let i = 0,
-                ir = 0;
-            for (let p = 0; p < px_count; p++) {
-                res_buf[ir++] = buf[i++];
-                res_buf[ir++] = buf[i++];
-                res_buf[ir++] = buf[i++];
-                res_buf[ir++] = 255;
+            const source = this.ta, target = res.ta;
+            const width = this.size[0], height = this.size[1];
+            const sourceStride = this.bytes_per_row;
+            const targetStride = res.bytes_per_row;
+            for (let y = 0; y < height; y++) {
+                let read = y * sourceStride;
+                let write = y * targetStride;
+                for (let x = 0; x < width; x++) {
+                    target[write++] = source[read++];
+                    target[write++] = source[read++];
+                    target[write++] = source[read++];
+                    target[write++] = 255;
+                }
             }
             return res;
         }
@@ -1252,25 +1377,29 @@ return a.every((val, i) => val === b[i]);
         return res;
     }
     '__invert_greyscale_self'() {
+        if (this.bipp !== 8) {
+            throw new Error('__invert_greyscale_self requires an 8bipp Pixel Buffer');
+        }
         const bres = this.buffer;
-        let i = 0;
-        this.each_pixel((x, y, v) => {
-            bres[i++] = 255 - v;
-        });
+        const width = this.size[0], height = this.size[1];
+        if (this.bytes_per_row === width) {
+            for (let byte = 0, length = bres.length; byte < length; byte++) {
+                bres[byte] = 255 - bres[byte];
+            }
+        } else {
+            for (let y = 0; y < height; y++) {
+                const rowStart = y * this.bytes_per_row;
+                const rowEnd = rowStart + width;
+                for (let byte = rowStart; byte < rowEnd; byte++) {
+                    bres[byte] = 255 - bres[byte];
+                }
+                bres.fill(0, rowEnd, rowStart + this.bytes_per_row);
+            }
+        }
         return this;
     }
     '__invert_greyscale'() {
-        let res = new this.constructor({
-            'size': this.size,
-            'bits_per_pixel': 8
-        });
-        if (this.pos) res.pos = this.pos;
-        const bres = res.buffer;
-        let i = 0;
-        this.each_pixel((x, y, v) => {
-            bres[i++] = 255 - v;
-        });
-        return res;
+        return this.clone().__invert_greyscale_self();
     }
 
     draw_rect(pos_corner, pos_other_corner, color) {
@@ -1295,6 +1424,20 @@ return a.every((val, i) => val === b[i]);
     get xspans() {
     }
 }
+
+// Core 3 historically duplicated the complete Core 1 access surface. Install
+// the canonical checked descriptors at the same effective lookup position so
+// public ownership and descriptor flags remain unchanged while both deep-import
+// classes share one implementation.
+const canonicalAccessDescriptors = Object.getOwnPropertyDescriptors(
+    Pixel_Buffer_Core_Get_Set_Pixels.prototype
+);
+for (const [name, descriptor] of Object.entries(canonicalAccessDescriptors)) {
+    if (/^(?:get_pixel(?:_|$)|set_pixel(?:_|$))/.test(name)) {
+        Object.defineProperty(Pixel_Buffer_Core.prototype, name, descriptor);
+    }
+}
+
 module.exports = Pixel_Buffer_Core;
 if (require.main === module) {
     const lg = console.log;

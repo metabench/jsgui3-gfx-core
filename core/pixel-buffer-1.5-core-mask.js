@@ -1,4 +1,8 @@
 const Pixel_Buffer_Core_Draw_Polygons = require('./pixel-buffer-1.2-core-draw-polygon');
+const {
+    unsafeGetPixelByIndex,
+    unsafeSetPixelByIndex
+} = require('./pixel-buffer-pixel-access');
 const Polygon_Scanline_Edges = require('./shapes/Polygon_Scanline_Edges');
 const ScanlineProcessor = require('./shapes/ScanlineProcessor');
 class Pixel_Buffer_Core_Masks extends Pixel_Buffer_Core_Draw_Polygons {
@@ -136,77 +140,111 @@ class Pixel_Buffer_Core_Masks extends Pixel_Buffer_Core_Draw_Polygons {
     }
     mask_each_pixel(cb_pixel) {
         const bipp = this.bits_per_pixel;
-        let i_byte = 0;
-        let i_px = 0;
         const bypp = this.bytes_per_pixel;
         const ta = this.ta;
-        const l = ta.length;
         const res_mask = new this.constructor({
             size: this.size,
             bits_per_pixel: 1
         });
+        const target = res_mask.ta;
+        const width = this.size[0], height = this.size[1];
+        const sourceStride = this.bytes_per_row;
+        const targetStride = res_mask.bytes_per_row;
+
         if (bipp === 1) {
-            console.trace();
-            throw 'NYI';
-        } else if (bipp === 8) {
-            console.trace();
-            throw 'NYI';
-        } else if (bipp === 24 || bipp === 32) {
-            while (i_byte < l) {
-                const ta_sub = ta.slice(i_byte, i_byte + bypp);
-                const px_on = cb_pixel(ta_sub) ? 1 : 0;
-                res_mask.set_pixel_by_idx(i_px, px_on);
-                i_byte += bypp;
-                i_px++;
+            for (let y = 0; y < height; y++) {
+                const sourceRow = y * sourceStride;
+                const targetRow = y * targetStride;
+                for (let x = 0; x < width; x++) {
+                    const sourceMask = 0x80 >> (x & 7);
+                    const value = (ta[sourceRow + (x >> 3)] & sourceMask) === 0 ? 0 : 1;
+                    if (cb_pixel(value)) {
+                        target[targetRow + (x >> 3)] |= sourceMask;
+                    }
+                }
             }
+        } else if (bipp === 8) {
+            if (sourceStride === width) {
+                const pixelCount = width * height;
+                for (let pixel = 0; pixel < pixelCount; pixel++) {
+                    if (cb_pixel(ta[pixel])) {
+                        const y = Math.floor(pixel / width);
+                        const x = pixel - y * width;
+                        target[y * targetStride + (x >> 3)] |= 0x80 >> (x & 7);
+                    }
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    const sourceRow = y * sourceStride;
+                    const targetRow = y * targetStride;
+                    for (let x = 0; x < width; x++) {
+                        if (cb_pixel(ta[sourceRow + x])) {
+                            target[targetRow + (x >> 3)] |= 0x80 >> (x & 7);
+                        }
+                    }
+                }
+            }
+        } else if (bipp === 24 || bipp === 32) {
+            if (sourceStride === width * bypp) {
+                const pixelCount = width * height;
+                for (let pixel = 0, sourceByte = 0; pixel < pixelCount; pixel++, sourceByte += bypp) {
+                    if (cb_pixel(ta.slice(sourceByte, sourceByte + bypp))) {
+                        const y = Math.floor(pixel / width);
+                        const x = pixel - y * width;
+                        target[y * targetStride + (x >> 3)] |= 0x80 >> (x & 7);
+                    }
+                }
+            } else {
+                for (let y = 0; y < height; y++) {
+                    let sourceByte = y * sourceStride;
+                    const targetRow = y * targetStride;
+                    for (let x = 0; x < width; x++) {
+                        if (cb_pixel(ta.slice(sourceByte, sourceByte + bypp))) {
+                            target[targetRow + (x >> 3)] |= 0x80 >> (x & 7);
+                        }
+                        sourceByte += bypp;
+                    }
+                }
+            }
+        } else {
+            throw new Error('Unsupported bits per pixel: ' + bipp);
         }
         return res_mask;
     }
     apply_mask(pb_mask, mr, mg, mb, ma) {
-        let res = this.blank_copy();
-        res.flood_fill(0, 0, 255, 255, 255, 255);
-        let px;
-        pb_mask.each_pixel((x, y, r, g, b, a) => {
-            if (r === mr && g === mg && b === mb && a === ma) {
-                px = this.get_pixel(x, y);
-                res.set_pixel(x, y, px[0], px[1], px[2], px[3])
+        if (!pb_mask || pb_mask.size[0] !== this.size[0] || pb_mask.size[1] !== this.size[1]) {
+            throw new RangeError('Mask and source Pixel Buffers must have matching dimensions');
+        }
+
+        const res = this.blank_copy();
+        if (this.bipp === 1) {
+            res.color_whole(1);
+        } else if (this.bipp === 8) {
+            res.color_whole(255);
+        } else if (this.bipp === 24) {
+            res.color_whole([255, 255, 255]);
+        } else {
+            res.color_whole([255, 255, 255, 255]);
+        }
+
+        const pixelCount = this.size[0] * this.size[1];
+        const maskBipp = pb_mask.bipp;
+        for (let pixel = 0; pixel < pixelCount; pixel++) {
+            const maskColor = unsafeGetPixelByIndex(pb_mask, pixel);
+            const matches = maskBipp === 1 || maskBipp === 8
+                ? maskColor === mr
+                : maskBipp === 24
+                    ? maskColor[0] === mr && maskColor[1] === mg && maskColor[2] === mb
+                    : maskColor[0] === mr && maskColor[1] === mg &&
+                        maskColor[2] === mb && maskColor[3] === ma;
+            if (matches) {
+                unsafeSetPixelByIndex(res, pixel, unsafeGetPixelByIndex(this, pixel));
             }
-        })
+        }
         return res;
     }
     'get_mask_each_px'(fn_mask) {
-        const bipp = this.bipp;
-        console.log('get_mask_each_px bipp', bipp);
-        const res_mask = new this.constructor({
-            size: this.size,
-            bits_per_pixel: 1
-        })
-        if (bipp === 1) {
-            let byte = 0,
-                bit = 0; 
-            console.trace();
-            throw 'NYI'
-            const ta = this.ta,
-                l = ta.length;
-            while (byte < l) {
-            }
-        } else if (bipp === 8) {
-            console.trace();
-            throw 'NYI';
-        } else if (bipp === 24) {
-            let byte_pos = 0,
-                i_px = 0;
-            const l = this.ta.length;
-            while (byte_pos < l) {
-                const ta_px = this.ta.slice(byte_pos, byte_pos + 3);
-                const mask_res = fn_mask(ta_px);
-                byte_pos += 3;
-            }
-        } else if (bipp === 32) {
-            console.trace();
-            throw 'NYI';
-        }
-        return res_mask;
+        return this.mask_each_pixel(fn_mask);
     }
 }
 module.exports = Pixel_Buffer_Core_Masks;

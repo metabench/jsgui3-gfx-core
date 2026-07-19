@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "label": "pre-checked-public-access",
+  "generatedAt": "2026-07-18T03:26:54.158Z",
+  "environment": {
+    "node": "v20.19.5",
+    "v8": "11.3.244.8-node.30",
+    "platform": "linux",
+    "arch": "x64",
+    "release": "5.15.167.4-microsoft-standard-WSL2",
+    "cpu": "13th Gen Intel(R) Core(TM) i9-13900HX",
+    "logicalCpuCount": 32,
+    "sampleCount": 15,
+    "minimumSampleMs": 8,
+    "warmupMs": 25
+  },
+  "results": {
+    "construct.8bipp.256x256": {"medianMs": 0.047332394531250266, "p95Ms": 0.13031765234374992, "absoluteNoiseMs": 0.003},
+    "access.public.8bipp.tight.batch4096": {"medianMs": 0.37176284374999824, "p95Ms": 0.4206383750000029, "absoluteNoiseMs": 0.01},
+    "access.direct.8bipp.tight.batch4096": {"medianMs": 0.005283793457031227, "p95Ms": 0.005655669921875051, "absoluteNoiseMs": 0.005},
+    "access.public.24bipp.padded.batch4096": {"medianMs": 0.8417601250000075, "p95Ms": 1.3806649375000006, "absoluteNoiseMs": 0.02},
+    "iterate.each_pixel.8bipp.128x128": {"medianMs": 0.09912735937500017, "p95Ms": 0.1137354453124999, "absoluteNoiseMs": 0.02},
+    "raster.line.24bipp.512px": {"medianMs": 0.001380862792968729, "p95Ms": 0.0023818280029296868, "absoluteNoiseMs": 0.005},
+    "painter.rect.24bipp.384x256": {"medianMs": 0.016209384765625057, "p95Ms": 0.03414470800781233, "absoluteNoiseMs": 0.01},
+    "mask.create.24bipp.128x128": {"medianMs": 0.9550377500000877, "p95Ms": 1.173641499999917, "absoluteNoiseMs": 0.02},
+    "resize.24bipp.64x48.to37x61": {"medianMs": 0.1552039843749995, "p95Ms": 0.22323128125000125, "absoluteNoiseMs": 0.03},
+    "convolution.8bipp.64x64.3x3": {"medianMs": 2.0379219999999805, "p95Ms": 2.881170999999995, "absoluteNoiseMs": 0.05},
+    "flood.8bipp.128x128": {"medianMs": 0.16669739062500355, "p95Ms": 0.176914406249999, "absoluteNoiseMs": 0.02},
+    "placement.24bipp.32x32.into128x128": {"medianMs": 0.0021186091308593724, "p95Ms": 0.002725517578125003, "absoluteNoiseMs": 0.01},
+    "window.copy.24bipp.64x64.from256x256": {"medianMs": 0.005306513671875068, "p95Ms": 0.006384054199218614, "absoluteNoiseMs": 0.01}
+  }
+}

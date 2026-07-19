@@ -109,6 +109,7 @@ Full documentation with SVG illustrations available in [`docs/`](./docs/):
 8. [Shapes, Pixel_Pos_List & Utilities](./docs/08-utilities.md)
 9. [Ecosystem & Integration](./docs/09-ecosystem.md)
 10. [Dense Agent Reference](./docs/10-agent-reference.md)
+11. [Pixel Buffer Layout Contract](./docs/11-pixel-buffer-layout-contract.md)
 
 ## Dependencies
 
@@ -127,3 +128,12 @@ npm test
 ## License
 
 MIT
+
+---
+
+## Ecosystem Coordination
+
+This repository is a core component of the **jsgui3 ecosystem**.
+
+For cross-repo architecture maps, coding standards, coordination workflows, and orientation guides, see the ecosystem coordination headquarters:
+👉 **[jsgui3-ecosystem](https://github.com/metabench/jsgui3-ecosystem)**

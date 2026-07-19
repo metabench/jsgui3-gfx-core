@@ -66,33 +66,45 @@ const {
     tf
 } = lang;
 
-const oext = require('obext')();
+// obext exports its property helpers directly.  Older releases exposed a
+// callable factory, so invoking the installed object here made this entire
+// module fail during require().
+const oext = require('obext');
 
 const {ro, prop} = oext;
 
 
 // Size is read only, set at the beginning.
 class Convolution {
-    constructor(spec) {
-        const size = new Uint16Array(2);
-
-        if (spec.size) {
-            size[0] = spec.size[0];
-            size[1] = spec.size[1];
+    constructor(spec = {}) {
+        if (!spec || typeof spec !== 'object') {
+            throw new TypeError('Convolution options must be an object');
         }
+        if (!spec.size || spec.size.length !== 2 ||
+            !Number.isSafeInteger(spec.size[0]) || !Number.isSafeInteger(spec.size[1]) ||
+            spec.size[0] <= 0 || spec.size[1] <= 0 ||
+            spec.size[0] % 2 === 0 || spec.size[1] % 2 === 0) {
+            throw new RangeError('Convolution size must contain two positive odd integers');
+        }
+        const num_px = spec.size[0] * spec.size[1];
+        if (!Number.isSafeInteger(num_px) || num_px > 0xFFFFFFFF) {
+            throw new RangeError('Convolution coefficient count exceeds typed-array limits');
+        }
+        const size = new Uint32Array([spec.size[0], spec.size[1]]);
 
         // size property...
 
-        ro(this, 'size', () => size);
-        ro(this, 'num_px', () => size[0] * size[1]);
+        // Do not expose the owned geometry: mutating it used to desynchronise
+        // num_px from the already allocated coefficient array.
+        ro(this, 'size', () => size.slice());
+        ro(this, 'num_px', () => num_px);
 
-        const xy_center = new Int16Array(2);
+        const xy_center = new Int32Array([
+            Math.floor(size[0] / 2),
+            Math.floor(size[1] / 2)
+        ]);
 
-        ro(this, 'xy_center', () => {
-            xy_center[0] = Math.floor(size[0] / 2);
-            xy_center[1] = Math.floor(size[1] / 2);
-            return xy_center;
-        })
+        ro(this, 'xy_center', () => xy_center.slice());
     }
 }
 
@@ -118,17 +130,23 @@ class Float32Convolution extends Convolution {
     constructor(spec) {
         super(spec);
         const ta = new Float32Array(this.num_px);
-        if (spec.value) {
-            const tv = tf(spec.value);
-            //console.log('tv', tv);
-            if (tv === 'a' || spec.value instanceof Float32Array) {
-                if (spec.value.length === this.num_px) {
-                    ta.set(spec.value);
-                } else {
-                    const msg = 'Unexpected value array length: ' + spec.value.length + ', expected this.num_px: ' + this.num_px;
-                    throw msg;
+        if (spec.value !== undefined) {
+            const value_is_array = Array.isArray(spec.value) ||
+                (ArrayBuffer.isView(spec.value) && !(spec.value instanceof DataView));
+            if (!value_is_array) {
+                throw new TypeError('Convolution value must be an array or typed array');
+            }
+            if (spec.value.length !== this.num_px) {
+                throw new RangeError(
+                    `Unexpected value array length: ${spec.value.length}; expected ${this.num_px}`
+                );
+            }
+            for (const coefficient of spec.value) {
+                if (!Number.isFinite(coefficient)) {
+                    throw new RangeError('Convolution coefficients must be finite numbers');
                 }
             }
+            ta.set(spec.value);
             // if it's an array...
             //  check it matches the number of px.
 

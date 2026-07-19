@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc" font-family="'Segoe UI',Inter,system-ui,sans-serif">
+  <title id="title">Method ranges, deep imports, and factory-shadow research</title>
+  <desc id="desc">Evidence map showing method-range access classification, repository deep-import evidence, all-format by-index benchmarks, divergent factory-shadow results, verification, and the next repair phase.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#121c31"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#4dd8ff"/><stop offset=".52" stop-color="#977cff"/><stop offset="1" stop-color="#59e3a6"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#6484a7"/></marker>
+    <style>
+      .panel{fill:#101f33;stroke:#29415e;stroke-width:1.5}.card{fill:#172a43;stroke:#355473;stroke-width:1.2}.title{fill:#f6f9ff;font-size:17px;font-weight:760}.subtitle{fill:#8ea4be;font-size:10px}.body{fill:#b8c9dc;font-size:11px}.small{fill:#96abc3;font-size:9px}.tiny{fill:#8197b1;font-size:8px}.label{font-size:9px;font-weight:780;letter-spacing:.75px}.metric{fill:#f8fbff;font-size:21px;font-weight:820}.metricLabel{fill:#8ea4bd;font-size:8px;font-weight:700;letter-spacing:.75px}.white{fill:#f7fbff}.cyan{fill:#57d9ff}.green{fill:#64e3a8}.amber{fill:#ffc46b}.red{fill:#ff7d90}.violet{fill:#ab94ff}.mono{font-family:Consolas,'SFMono-Regular',monospace}.check{fill:#63e2a7;font-size:12px;font-weight:800}
+    </style>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect width="1600" height="5" fill="url(#accent)"/>
+  <circle cx="1490" cy="25" r="230" fill="#7661eb" opacity=".08"/>
+  <text x="38" y="45" class="white" font-size="26" font-weight="820">Method Ranges · Deep Imports · Factory Shadows</text>
+  <text x="39" y="68" class="subtitle">jsgui3-gfx-core · evidence before hierarchy consolidation · 18 July 2026</text>
+  <g transform="translate(1290 25)"><rect width="272" height="48" rx="24" fill="#143128" stroke="#326651"/><circle cx="25" cy="24" r="8" fill="#63e2a7"/><text x="44" y="20" class="small" font-weight="700">FINAL CORRECTNESS</text><text x="44" y="36" class="green" font-size="12" font-weight="800">177 passed · 0 failed</text></g>
+
+  <g transform="translate(38 91)">
+    <g><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">291</text><text x="16" y="45" class="metricLabel">METHOD RANGES</text></g>
+    <g transform="translate(191)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">9 / 0</text><text x="16" y="45" class="metricLabel">ACCESS SITES / UNRESOLVED</text></g>
+    <g transform="translate(382)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">44</text><text x="16" y="45" class="metricLabel">CORE IMPORT TARGETS</text></g>
+    <g transform="translate(573)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">36</text><text x="16" y="45" class="metricLabel">NEED EXTERNAL EVIDENCE</text></g>
+    <g transform="translate(764)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">30 / 30</text><text x="16" y="45" class="metricLabel">BENCHMARK GATE</text></g>
+    <g transform="translate(955)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">21</text><text x="16" y="45" class="metricLabel">DIVERGENT SHADOWS</text></g>
+    <g transform="translate(1146)"><rect width="181" height="58" rx="10" class="card"/><text x="16" y="28" class="metric">6 / 6</text><text x="16" y="45" class="metricLabel">FACTORY ORACLE GROUPS</text></g>
+    <g transform="translate(1337)"><rect width="187" height="58" rx="10" fill="#2d2721" stroke="#6f5838"/><text x="16" y="28" class="metric amber">0</text><text x="16" y="45" class="metricLabel">METHODS CONSOLIDATED</text></g>
+  </g>
+
+  <g transform="translate(38 169)">
+    <rect width="754" height="365" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="title">Access inventory: source line → effective evidence</text>
+    <text x="20" y="49" class="subtitle">Comments and strings are masked; brace ranges preserve exact source lines.</text>
+
+    <g transform="translate(22 72)">
+      <rect width="150" height="74" rx="10" class="card"/><text x="14" y="21" class="label cyan">LEXICAL MASK</text><text x="14" y="42" class="body">comments · strings</text><text x="14" y="58" class="small">line count retained</text>
+      <path d="M150 37 H194" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(198)"><rect width="150" height="74" rx="10" class="card"/><text x="14" y="21" class="label cyan">BRACE TRACKER</text><text x="14" y="42" class="body">class + method</text><text x="14" y="58" class="small">291 ranges</text></g>
+      <path d="M348 37 H392" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(396)"><rect width="150" height="74" rx="10" class="card"/><text x="14" y="21" class="label violet">OWNER LOOKUP</text><text x="14" y="42" class="body">runtime hierarchy</text><text x="14" y="58" class="small">effective dispatch</text></g>
+      <path d="M546 37 H590" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(594)"><rect width="116" height="74" rx="10" fill="#143129" stroke="#326651"/><text x="12" y="21" class="label green">RESULT</text><text x="12" y="42" class="body">9 classified</text><text x="12" y="58" class="small">0 unresolved</text></g>
+    </g>
+
+    <g transform="translate(22 177)">
+      <text class="label white">FINAL CLASSIFICATIONS</text>
+      <g transform="translate(0 18)"><rect width="710" height="36" rx="8" class="card"/><rect width="237" height="36" rx="8" fill="#355779"/><text x="14" y="23" class="body white">Shadow-only</text><text x="218" y="23" text-anchor="end" class="white" font-size="13" font-weight="800">3</text><text x="253" y="23" class="small">enclosing method overridden in final dispatch</text></g>
+      <g transform="translate(0 60)"><rect width="710" height="36" rx="8" class="card"/><rect width="237" height="36" rx="8" fill="#4a3c78"/><text x="14" y="23" class="body white">Module examples</text><text x="218" y="23" text-anchor="end" class="white" font-size="13" font-weight="800">3</text><text x="253" y="23" class="small">below require.main guards</text></g>
+      <g transform="translate(0 102)"><rect width="710" height="36" rx="8" class="card"/><rect width="158" height="36" rx="8" fill="#745a35"/><text x="14" y="23" class="body white">External positions</text><text x="139" y="23" text-anchor="end" class="white" font-size="13" font-weight="800">2</text><text x="174" y="23" class="small">checked pixel-list coordinates retained</text></g>
+      <g transform="translate(0 144)"><rect width="710" height="36" rx="8" class="card"/><rect width="79" height="36" rx="8" fill="#34725f"/><text x="14" y="23" class="body white">Effective</text><text x="61" y="23" text-anchor="end" class="white" font-size="13" font-weight="800">1</text><text x="95" y="23" class="small">derived target coordinate; checked and non-hot</text></g>
+    </g>
+  </g>
+
+  <g transform="translate(812 169)">
+    <rect width="750" height="365" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="title">Deep-import evidence is local—not external proof</text>
+    <text x="20" y="49" class="subtitle">CommonJS, ESM, dynamic imports and documented paths are resolved to real files.</text>
+
+    <g transform="translate(22 72)">
+      <g><rect width="706" height="54" rx="9" fill="#19344d" stroke="#3d6382"/><text x="15" y="22" class="label cyan">227 DEDUPLICATED REFERENCES</text><text x="15" y="40" class="small">repository source · tests · examples · docs · benchmarks · tooling</text></g>
+      <path d="M353 54 V75" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(62 79)"><rect width="582" height="54" rx="9" fill="#1d304a" stroke="#3d5878"/><text x="15" y="22" class="label white">44 RESOLVED CORE TARGETS</text><text x="15" y="40" class="small">every recorded target exists in this repository</text></g>
+      <path d="M353 133 V154" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(124 158)"><rect width="458" height="54" rx="9" fill="#24304a" stroke="#5a4d78"/><text x="15" y="22" class="label violet">37 WITH REPOSITORY CONSUMER EVIDENCE</text><text x="15" y="40" class="small">tests, examples or documentation reference the path</text></g>
+      <path d="M353 212 V233" stroke="#6484a7" stroke-width="2" marker-end="url(#arrow)"/>
+      <g transform="translate(182 237)"><rect width="342" height="54" rx="9" fill="#352b27" stroke="#7a5d3f"/><text x="15" y="22" class="label amber">36 DEEP PATHS STILL UNKNOWN EXTERNALLY</text><text x="15" y="40" class="small">no exports/files restriction is justified</text></g>
+    </g>
+  </g>
+
+  <g transform="translate(38 554)">
+    <rect width="710" height="404" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="title">Factory shadows: tight agreement, padded divergence</text>
+    <text x="20" y="49" class="subtitle">Direct deep-import tests explain why moving these methods is unsafe.</text>
+    <g transform="translate(20 72)">
+      <text x="0" class="label white">FAMILY</text><text x="215" class="label white">LOWER SHADOW</text><text x="475" class="label white">EFFECTIVE CORE / PUBLIC</text>
+      <line x1="0" y1="12" x2="670" y2="12" stroke="#34506c"/>
+      <g transform="translate(0 34)"><text class="body">Blank / clone</text><text x="215" class="small">tight ✓ · padded stride lost</text><text x="475" class="small green">layout + ownership ✓</text></g>
+      <g transform="translate(0 76)"><text class="body">Alpha / channels</text><text x="215" class="small">tight ✓ · padding consumed</text><text x="475" class="small green">row-stride oracle ✓</text></g>
+      <g transform="translate(0 118)"><text class="body">Pixel-list region</text><text x="215" class="small red">missing get/set_pixel_ta</text><text x="475" class="small green">checked region oracle ✓</text></g>
+      <g transform="translate(0 160)"><text class="body">Crop / uncrop</text><text x="215" class="small red">absent / missing each_pixel_ta</text><text x="475" class="small green">1/8/24/32bipp ✓</text></g>
+      <g transform="translate(0 202)"><text class="body">Packed copies</text><text x="215" class="small amber">not safe to consolidate</text><text x="475" class="small green">tail + padding ✓</text></g>
+    </g>
+    <g transform="translate(20 302)">
+      <rect width="670" height="76" rx="10" fill="#342a25" stroke="#785b3d"/>
+      <text x="15" y="23" class="label amber">CONCLUSION · 0 METHODS MOVED</text>
+      <text x="15" y="44" class="body">The family is genuinely divergent. Repair broken deep paths in place,</text>
+      <text x="15" y="61" class="body">then repeat equivalence research in a later phase.</text>
+    </g>
+  </g>
+
+  <g transform="translate(768 554)">
+    <rect width="390" height="404" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="title">By-index kernel economics</text>
+    <text x="20" y="49" class="subtitle">Baseline ms per 1,024 checked/unsafe pairs.</text>
+    <g transform="translate(20 78)">
+      <text class="label white">FORMAT</text><text x="79" class="label white">TIGHT</text><text x="222" class="label white">PADDED</text>
+      <g transform="translate(0 27)"><text class="body">1bipp</text><rect x="72" y="-12" width="126" height="16" rx="7" fill="#355b7c"/><rect x="72" y="7" width="46" height="8" rx="4" fill="#48aa87"/><text x="215" class="small">.184 / .067</text><text x="215" y="24" class="small">.161 / .071</text></g>
+      <g transform="translate(0 84)"><text class="body">8bipp</text><rect x="72" y="-12" width="129" height="16" rx="7" fill="#355b7c"/><rect x="72" y="7" width="47" height="8" rx="4" fill="#48aa87"/><text x="215" class="small">.189 / .069</text><text x="215" y="24" class="small">.194 / .075</text></g>
+      <g transform="translate(0 141)"><text class="body">24bipp</text><rect x="72" y="-12" width="169" height="16" rx="7" fill="#5d4f91"/><rect x="72" y="7" width="96" height="8" rx="4" fill="#48aa87"/><text x="250" class="small">.248 / .141</text><text x="250" y="24" class="small">.287 / .159</text></g>
+      <g transform="translate(0 198)"><text class="body">32bipp</text><rect x="72" y="-12" width="177" height="16" rx="7" fill="#5d4f91"/><rect x="72" y="7" width="100" height="8" rx="4" fill="#48aa87"/><text x="258" class="small">.260 / .147</text><text x="258" y="24" class="small">.296 / .174</text></g>
+    </g>
+    <g transform="translate(20 322)"><rect width="350" height="56" rx="9" fill="#143129" stroke="#326651"/><text x="14" y="23" class="check">✓ 30 / 30 benchmark cases</text><text x="14" y="42" class="small">dual gate + independent candidate confirmation</text></g>
+  </g>
+
+  <g transform="translate(1178 554)">
+    <rect width="384" height="404" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="title">Next safe phase</text>
+    <text x="20" y="49" class="subtitle">Repair shadow-only paths; keep ownership stable.</text>
+    <g transform="translate(20 82)">
+      <circle cx="6" cy="-3" r="4" fill="#ffc46b"/><text x="19" class="body">padded + packed direct-class oracles</text>
+      <g transform="translate(0 39)"><circle cx="6" cy="-3" r="4" fill="#ffc46b"/><text x="19" class="body">replace missing legacy helper calls</text></g>
+      <g transform="translate(0 78)"><circle cx="6" cy="-3" r="4" fill="#ffc46b"/><text x="19" class="body">preserve immutable layout in lower factories</text></g>
+      <g transform="translate(0 117)"><circle cx="6" cy="-3" r="4" fill="#ffc46b"/><text x="19" class="body">search external package/code evidence</text></g>
+      <g transform="translate(0 156)"><circle cx="6" cy="-3" r="4" fill="#ffc46b"/><text x="19" class="body">add conversion + polygon benchmarks</text></g>
+    </g>
+    <line x1="20" y1="270" x2="364" y2="270" stroke="#314a66"/>
+    <g transform="translate(20 299)">
+      <text class="label green">GUARDRAILS</text>
+      <text y="25" class="small">• no descriptor-owner changes</text>
+      <text y="44" class="small">• no hierarchy flattening</text>
+      <text y="63" class="small">• no package restrictions without evidence</text>
+      <text y="82" class="small">• final dispatch stays benchmark-identical</text>
+    </g>
+  </g>
+
+  <text x="38" y="984" class="tiny">Detailed evidence: docs/14-method-ranges-deep-imports-and-shadows.md · inventories: scripts/pixel-buffer-inventory.js + scripts/deep-import-inventory.js</text>
+</svg>

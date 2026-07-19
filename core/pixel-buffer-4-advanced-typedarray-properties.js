@@ -24,6 +24,19 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
     constructor(...a) {
         super(...a);
 
+        // Preserve the compact, faster scratch representation for ordinary
+        // images, widening only when a validated dimension cannot fit Int16.
+        const maxDimension = Math.max(this.size[0], this.size[1]);
+        const PositionArray = maxDimension <= 32767
+            ? Int16Array
+            : maxDimension <= 2147483647
+                ? Int32Array
+                : Float64Array;
+        const SizeArray = maxDimension <= 65535
+            ? Uint16Array
+            : maxDimension <= 4294967295
+                ? Uint32Array
+                : Float64Array;
 
         let ta_scratch;
         let ta_pos_scratch;        // Int16Array(2)
@@ -68,14 +81,10 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
                     if (ta_scratch.length !== this.ta.length) {
                         ta_scratch = new this.ta.constructor(this.ta);
                     } else {
-                        const l = this.ta.length;
-                        // Could use faster copy?
-                        //  Is typed array copy that fast compared to assignment operators?
-                        for (c = 0; c < l; c++) {
-                            ta_scratch[c] = this.ta[c];
-                        }
+                        ta_scratch.set(this.ta);
                     }
                 }
+                return ta_scratch;
             });
     
     
@@ -91,13 +100,13 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
                     if (ta_row_scratch.length !== this.bypr) {
                         ta_row_scratch = new Uint8ClampedArray(this.bypr);
                     }
-                    return ta_row_scratch;
                 }
+                return ta_row_scratch;
             });
             
             ro(this, 'ta_pos_scratch', () => {
                 if (!ta_pos_scratch) {
-                    ta_pos_scratch = new Int16Array(2);
+                    ta_pos_scratch = new PositionArray(2);
                 }
                 return ta_pos_scratch;
             });
@@ -106,7 +115,7 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
     
             ro(this, 'ta_pos_iterator', () => {
                 if (!ta_pos_iterator) {
-                    ta_pos_iterator = new Int16Array(2);
+                    ta_pos_iterator = new PositionArray(2);
                 }
                 return ta_pos_iterator;
             });
@@ -130,13 +139,13 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
 
             ro(this, 'ta_move_vector', () => {
                 if (!ta_move_vector) {
-                    ta_move_vector = new Int16Array(2);
+                    ta_move_vector = new PositionArray(2);
                 }
                 return ta_move_vector;
             });
             ro(this, 'ta_bounds', () => {
                 if (!ta_bounds) {
-                    ta_bounds = new Int16Array(4);
+                    ta_bounds = new PositionArray(4);
                 }
                 return ta_bounds;
             });
@@ -178,37 +187,37 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
 
             ro(this, 'ta_bounds_scratch', () => {
                 if (!ta_bounds_scratch) {
-                    ta_bounds_scratch = new Int16Array(4);
+                    ta_bounds_scratch = new PositionArray(4);
                 }
                 return ta_bounds_scratch;
             });
             ro(this, 'ta_bounds2_scratch', () => {
                 if (!ta_bounds2_scratch) {
-                    ta_bounds2_scratch = new Int16Array(4);
+                    ta_bounds2_scratch = new PositionArray(4);
                 }
                 return ta_bounds2_scratch;
             });
             ro(this, 'ta_bounds3_scratch', () => {
                 if (!ta_bounds3_scratch) {
-                    ta_bounds3_scratch = new Int16Array(4);
+                    ta_bounds3_scratch = new PositionArray(4);
                 }
                 return ta_bounds3_scratch;
             });
             ro(this, 'ta_bounds4_scratch', () => {
                 if (!ta_bounds4_scratch) {
-                    ta_bounds4_scratch = new Int16Array(4);
+                    ta_bounds4_scratch = new PositionArray(4);
                 }
                 return ta_bounds4_scratch;
             });
             ro(this, 'ta_size_scratch', () => {
                 if (!ta_size_scratch) {
-                    ta_size_scratch = new Uint16Array(2);
+                    ta_size_scratch = new SizeArray(2);
                 }
                 return ta_size_scratch;
             });
             ro(this, 'ta_size2_scratch', () => {
                 if (!ta_size2_scratch) {
-                    ta_size2_scratch = new Uint16Array(2);
+                    ta_size2_scratch = new SizeArray(2);
                 }
                 return ta_size2_scratch;
             });
@@ -253,7 +262,10 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
         setup_ta_ro_props();
 
 
-        const ta_colorspace = new Int16Array(6);
+        // Layout dimensions and strides are validated as safe integers and may
+        // exceed the old signed-16-bit range. Float64 preserves those integer
+        // values exactly throughout the supported range.
+        const ta_colorspace = new Float64Array(6);
 
         // Seems more like an advanced typed array property.
         
@@ -276,7 +288,9 @@ class Pixel_Buffer_Advanced_TypedArray_Properties extends Pixel_Buffer_Core {
                     bpp = this.bytes_per_pixel * 8;
                 }
                 ta_colorspace[2] = bpp % 8 === 0 ? bpp / 8 : 0;
-                ta_colorspace[3] = ta_colorspace[2] * ta_colorspace[0];
+                // Row stride is part of the Pixel Buffer layout contract.  It
+                // can be larger than the pixel payload when rows are aligned.
+                ta_colorspace[3] = this.bytes_per_row;
                 ta_colorspace[4] = bpp;
                 ta_colorspace[5] = ta_colorspace[4] * ta_colorspace[0];
                 return ta_colorspace;

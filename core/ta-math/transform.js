@@ -317,7 +317,7 @@ const read_3x2_weight_write_24bipp = (ta_source, bypr, byi_read, edge_distances_
     const bypp = 3;
     let byi_tl = byi_read;
     let byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
-    let byi_bl = byi_tm + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
+    let byi_bl = byi_tl + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
     ta_dest[dest_byi] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
         ta_source[byi_bl++] * corner_weights_ltrb[2] + ta_source[byi_bm++] * edge_distances_proportions_of_total[3] + ta_source[byi_br++] * corner_weights_ltrb[3];
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_weights_ltrb[0] + ta_source[byi_tm++] * edge_distances_proportions_of_total[1] + ta_source[byi_tr++] * corner_weights_ltrb[1] +
@@ -332,7 +332,7 @@ const read_3x2_weight_write_24bipp$locals = (ta_source, bypr, byi_read,
     const bypp = 3;
     let byi_tl = byi_read;
     let byi_tm = byi_tl + bypp, byi_tr = byi_tm + bypp;
-    let byi_bl = byi_tm + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
+    let byi_bl = byi_tl + bypr, byi_bm = byi_bl + bypp, byi_br = byi_bm + bypp;
     ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
         ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
     ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
@@ -1074,6 +1074,8 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
     const dest_to_source_ratio = new Float32Array([source_colorspace[0] / dest_size[0], source_colorspace[1] / dest_size[1]]);
     const fpx_area_recip = 1 / (dest_to_source_ratio[0] * dest_to_source_ratio[1]);
     const [fpxw, fpxh] = [source_colorspace[0] / dest_size[0], source_colorspace[1] / dest_size[1]];
+    const integer_x_ratio = Number.isInteger(fpxw);
+    const integer_y_ratio = Number.isInteger(fpxh);
     let edge_l, edge_t, edge_r, edge_b;
     let edge_p_l, edge_p_t, edge_p_r, edge_p_b;
     let corner_p_tl, corner_p_tr, corner_p_bl, corner_p_br;
@@ -1098,8 +1100,13 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
     let byi_bl, byi_bm, byi_br;
     let end_hmiddle, end_vmiddle;
     for (y = 0; y < height; y++) {
-        fbounds_t = y * fpxh;
-        fbounds_b = fbounds_t + fpxh;
+        if (integer_y_ratio) {
+            fbounds_t = y * fpxh;
+            fbounds_b = fbounds_t + fpxh;
+        } else {
+            fbounds_t = y * source_colorspace[1] / height;
+            fbounds_b = (y + 1) * source_colorspace[1] / height;
+        }
         ibounds_t = Math.floor(fbounds_t);
         ibounds_b = Math.ceil(fbounds_b);
         any_coverage_h = ibounds_b - ibounds_t;
@@ -1114,8 +1121,13 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
         fbounds_l = 0;
         fbounds_r = fpxw;
         for (x = 0; x < width; x++) {
-            fbounds_l = x * fpxw;
-            fbounds_r = (x + 1) * fpxw;
+            if (integer_x_ratio) {
+                fbounds_l = x * fpxw;
+                fbounds_r = fbounds_l + fpxw;
+            } else {
+                fbounds_l = x * source_colorspace[0] / width;
+                fbounds_r = (x + 1) * source_colorspace[0] / width;
+            }
             ibounds_l = Math.floor(fbounds_l);
             ibounds_r = Math.ceil(fbounds_r);
             any_coverage_w = ibounds_r - ibounds_l;
@@ -1203,7 +1215,7 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
                     } else if (any_coverage_w === 3 && any_coverage_h === 2) {
                         byi_tl = byi_read;
                         byi_tm = byi_tl + 3; byi_tr = byi_tm + 3;
-                        byi_bl = byi_tm + source_bypr; byi_bm = byi_bl + 3; byi_br = byi_bm + 3;
+                        byi_bl = byi_tl + source_bypr; byi_bm = byi_bl + 3; byi_br = byi_bm + 3;
                         ta_dest[dest_byi] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
                             ta_source[byi_bl++] * corner_p_bl + ta_source[byi_bm++] * edge_p_b + ta_source[byi_br++] * corner_p_br;
                         ta_dest[dest_byi + 1] = ta_source[byi_tl++] * corner_p_tl + ta_source[byi_tm++] * edge_p_t + ta_source[byi_tr++] * corner_p_tr +
@@ -1234,56 +1246,219 @@ const resize_ta_colorspace_24bipp$superpixel$inline$locals$inline = (ta_source, 
     }
 }
 const resize_ta_colorspace_24bipp$superpixel = resize_ta_colorspace_24bipp$superpixel$inline$locals$inline;
-const resize_ta_colorspace_24bipp$general = (ta_source, source_colorspace, dest_size, opt_ta_dest) => {
-    const dest_to_source_ratio = new Float32Array([source_colorspace[0] / dest_size[0], source_colorspace[1] / dest_size[1]]);
-    const [width, height, bypp, bypr, bipp, bipr] = source_colorspace;
-    const fpx_area_recip = 1 / (dest_to_source_ratio[0] * dest_to_source_ratio[1]);
-    each_source_dest_pixels_resized_limited_further_info(source_colorspace, dest_size, (dest_byi, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_areas_proportions_of_total, byi_read) => {
-        if (source_i_any_coverage_size[0] === 1) {
-            if (source_i_any_coverage_size[1] === 1) {
-                copy_px_24bipp(ta_source, byi_read, opt_ta_dest, dest_byi);
-            } else if (source_i_any_coverage_size[1] === 2) {
-                read_1x2_weight_write_24bipp(ta_source, bypr, byi_read, opt_ta_dest, dest_byi, edge_distances_proportions_of_total[1], edge_distances_proportions_of_total[3]);
-            } else {
-                console.log('source_i_any_coverage_size', source_i_any_coverage_size);
-                console.trace();
-                throw 'NYI';
+// Resample one axis at a time.  Besides covering the formerly NYI mixed-ratio
+// cases, the separable implementation avoids multiplying the horizontal and
+// vertical source coverage counts for large reductions.
+const resample_rows_24bipp = (
+    ta_source, source_width, height, source_bypr,
+    dest_width, ta_dest, dest_bypr
+) => {
+    const x_scale = source_width / dest_width;
+
+    for (let y = 0; y < height; y++) {
+        const source_row = y * source_bypr;
+        let dest_byi = y * dest_bypr;
+
+        for (let dest_x = 0; dest_x < dest_width; dest_x++) {
+            const source_left = dest_x * source_width / dest_width;
+            const source_right = (dest_x + 1) * source_width / dest_width;
+            const first_source_x = Math.floor(source_left);
+            const source_x_end = Math.min(source_width, Math.ceil(source_right));
+            let red = 0, green = 0, blue = 0;
+
+            for (let source_x = first_source_x; source_x < source_x_end; source_x++) {
+                const overlap = Math.min(source_right, source_x + 1) -
+                    Math.max(source_left, source_x);
+                if (overlap <= 0) continue;
+                const source_byi = source_row + source_x * 3;
+                red += ta_source[source_byi] * overlap;
+                green += ta_source[source_byi + 1] * overlap;
+                blue += ta_source[source_byi + 2] * overlap;
             }
-        } else if (source_i_any_coverage_size[0] === 2) {
-            if (source_i_any_coverage_size[1] === 1) {
-                read_2x1_weight_write_24bipp(ta_source, byi_read, opt_ta_dest, dest_byi, edge_distances_proportions_of_total[0], edge_distances_proportions_of_total[2]);
-            } else if (source_i_any_coverage_size[1] === 2) {
-                read_2x2_weight_write_24bipp(ta_source, bypr, byi_read, opt_ta_dest, dest_byi, corner_areas_proportions_of_total);
-            } else {
-                read_2x3_weight_write_24bipp(ta_source, bypr, byi_read, edge_distances_proportions_of_total, corner_areas_proportions_of_total, opt_ta_dest, dest_byi);
-            }
-        } else if (source_i_any_coverage_size[0] === 3) {
-            if (source_i_any_coverage_size[1] === 1) {
-                console.log('source_i_any_coverage_size', source_i_any_coverage_size);
-                console.trace();
-                throw 'NYI';
-            } else if (source_i_any_coverage_size[1] === 2) {
-                read_3x2_weight_write_24bipp(ta_source, bypr, byi_read, edge_distances_proportions_of_total, corner_areas_proportions_of_total, opt_ta_dest, dest_byi);
-            } else if (source_i_any_coverage_size[1] === 3) {
-                read_3x3_weight_write_24bipp(ta_source, bypr, byi_read, edge_distances_proportions_of_total, corner_areas_proportions_of_total, fpx_area_recip, opt_ta_dest, dest_byi);
-            } else {
-                read_gt3x3_weight_write_24bipp(ta_source, bypr, byi_read, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_areas_proportions_of_total, fpx_area_recip, opt_ta_dest, dest_byi);
-            }
-        } else {
-            read_gt3x3_weight_write_24bipp(ta_source, bypr, byi_read, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_areas_proportions_of_total, fpx_area_recip, opt_ta_dest, dest_byi);
+
+            ta_dest[dest_byi++] = red / x_scale;
+            ta_dest[dest_byi++] = green / x_scale;
+            ta_dest[dest_byi++] = blue / x_scale;
         }
-    });
-}
-const resize_ta_colorspace_24bipp = (ta_source, source_colorspace, dest_size, opt_ta_dest) => {
-    const dest_to_source_ratio = new Float32Array([source_colorspace[0] / dest_size[0], source_colorspace[1] / dest_size[1]]);
-    if (dest_to_source_ratio[0] < 1 && dest_to_source_ratio[1] < 1) {
-        return resize_ta_colorspace_24bipp$subpixel(ta_source, source_colorspace, dest_size, opt_ta_dest);
-    } else if (dest_to_source_ratio[0] > 1 && dest_to_source_ratio[1] > 1) {
-        return resize_ta_colorspace_24bipp$superpixel(ta_source, source_colorspace, dest_size, opt_ta_dest);
-    } else {
-        return resize_ta_colorspace_24bipp$general(ta_source, source_colorspace, dest_size, opt_ta_dest);
     }
-}
+};
+
+const resample_columns_24bipp = (
+    ta_source, width, source_height, source_bypr,
+    dest_height, ta_dest, dest_bypr
+) => {
+    const row_bytes = width * 3;
+    const y_scale = source_height / dest_height;
+    const accumulators = new Float64Array(row_bytes);
+
+    for (let dest_y = 0; dest_y < dest_height; dest_y++) {
+        accumulators.fill(0);
+        const source_top = dest_y * source_height / dest_height;
+        const source_bottom = (dest_y + 1) * source_height / dest_height;
+        const first_source_y = Math.floor(source_top);
+        const source_y_end = Math.min(source_height, Math.ceil(source_bottom));
+
+        for (let source_y = first_source_y; source_y < source_y_end; source_y++) {
+            const overlap = Math.min(source_bottom, source_y + 1) -
+                Math.max(source_top, source_y);
+            if (overlap <= 0) continue;
+            let source_byi = source_y * source_bypr;
+            for (let row_byi = 0; row_byi < row_bytes; row_byi++) {
+                accumulators[row_byi] += ta_source[source_byi++] * overlap;
+            }
+        }
+
+        let dest_byi = dest_y * dest_bypr;
+        for (let row_byi = 0; row_byi < row_bytes; row_byi++) {
+            ta_dest[dest_byi++] = accumulators[row_byi] / y_scale;
+        }
+    }
+};
+
+const resize_ta_colorspace_24bipp$area = (
+    ta_source, source_colorspace, dest_size, ta_dest
+) => {
+    const source_width = source_colorspace[0];
+    const source_height = source_colorspace[1];
+    const source_bypr = source_colorspace[3];
+    const dest_width = dest_size[0];
+    const dest_height = dest_size[1];
+    const dest_bypr = dest_width * 3;
+
+    if (source_width === dest_width && source_height === dest_height * 2) {
+        // Common vertical half-size case: avoid a row-sized accumulator and
+        // perform the two-row average directly.
+        const row_bytes = source_width * 3;
+        for (let dest_y = 0; dest_y < dest_height; dest_y++) {
+            let source_top = dest_y * 2 * source_bypr;
+            let source_bottom = source_top + source_bypr;
+            let dest_byi = dest_y * dest_bypr;
+            const dest_end = dest_byi + row_bytes;
+            while (dest_byi < dest_end) {
+                ta_dest[dest_byi++] =
+                    (ta_source[source_top++] + ta_source[source_bottom++]) * 0.5;
+            }
+        }
+    } else if (source_width === dest_width) {
+        resample_columns_24bipp(
+            ta_source, source_width, source_height, source_bypr,
+            dest_height, ta_dest, dest_bypr
+        );
+    } else if (source_height === dest_height) {
+        resample_rows_24bipp(
+            ta_source, source_width, source_height, source_bypr,
+            dest_width, ta_dest, dest_bypr
+        );
+    } else if (dest_width * source_height <= source_width * dest_height) {
+        const intermediate_bypr = dest_width * 3;
+        const intermediate = new Float32Array(intermediate_bypr * source_height);
+        resample_rows_24bipp(
+            ta_source, source_width, source_height, source_bypr,
+            dest_width, intermediate, intermediate_bypr
+        );
+        resample_columns_24bipp(
+            intermediate, dest_width, source_height, intermediate_bypr,
+            dest_height, ta_dest, dest_bypr
+        );
+    } else {
+        const intermediate_bypr = source_width * 3;
+        const intermediate = new Float32Array(intermediate_bypr * dest_height);
+        resample_columns_24bipp(
+            ta_source, source_width, source_height, source_bypr,
+            dest_height, intermediate, intermediate_bypr
+        );
+        resample_rows_24bipp(
+            intermediate, source_width, dest_height, intermediate_bypr,
+            dest_width, ta_dest, dest_bypr
+        );
+    }
+
+    return ta_dest;
+};
+
+const resize_ta_colorspace_24bipp = (ta_source, source_colorspace, dest_size, opt_ta_dest) => {
+    if (!ArrayBuffer.isView(ta_source) || ta_source instanceof DataView) {
+        throw new TypeError('24bipp resize source must be a typed array');
+    }
+    if (!source_colorspace || source_colorspace.length < 5) {
+        throw new TypeError('24bipp resize requires colorspace metadata');
+    }
+
+    const source_width = source_colorspace[0];
+    const source_height = source_colorspace[1];
+    const source_bypp = source_colorspace[2];
+    const source_bypr = source_colorspace[3];
+    const source_bipp = source_colorspace[4];
+    const dest_width = dest_size && dest_size[0];
+    const dest_height = dest_size && dest_size[1];
+
+    if (!Number.isSafeInteger(source_width) || !Number.isSafeInteger(source_height) ||
+        source_width <= 0 || source_height <= 0 || source_bypp !== 3 ||
+        source_bipp !== 24 || !Number.isSafeInteger(source_bypr) ||
+        source_bypr < source_width * 3) {
+        throw new RangeError('Invalid 24bipp source colorspace');
+    }
+    if (!Number.isSafeInteger(dest_width) || !Number.isSafeInteger(dest_height) ||
+        dest_width <= 0 || dest_height <= 0) {
+        throw new RangeError('Resize dimensions must be positive safe integers');
+    }
+
+    const source_required_length = (source_height - 1) * source_bypr + source_width * 3;
+    const dest_required_length = dest_width * dest_height * 3;
+    if (!Number.isSafeInteger(source_required_length) || ta_source.length < source_required_length) {
+        throw new RangeError('Source storage is too small for its colorspace');
+    }
+    if (!Number.isSafeInteger(dest_required_length) || dest_required_length > 0xFFFFFFFF) {
+        throw new RangeError('Destination storage length is outside typed-array limits');
+    }
+
+    const ta_dest = opt_ta_dest === undefined
+        ? new Uint8ClampedArray(dest_required_length)
+        : opt_ta_dest;
+    if (!ArrayBuffer.isView(ta_dest) || ta_dest instanceof DataView ||
+        ta_dest.length < dest_required_length) {
+        throw new RangeError('Destination storage is too small for the resized image');
+    }
+
+    if (source_width === dest_width && source_height === dest_height) {
+        const row_bytes = source_width * 3;
+        if (source_bypr === row_bytes) {
+            ta_dest.set(ta_source.subarray(0, dest_required_length));
+        } else {
+            for (let y = 0; y < source_height; y++) {
+                const source_row = y * source_bypr;
+                ta_dest.set(ta_source.subarray(source_row, source_row + row_bytes), y * row_bytes);
+            }
+        }
+        return ta_dest;
+    }
+
+    // Retain the existing, well-characterised upscale hot path.  Its Int32
+    // byte-index table cannot represent larger source buffers, which therefore
+    // use the exact-number fallback below.
+    if (source_width < dest_width && source_height < dest_height &&
+        source_required_length <= 0x7FFFFFFF) {
+        resize_ta_colorspace_24bipp$subpixel(
+            ta_source, source_colorspace, dest_size, ta_dest
+        );
+        return ta_dest;
+    }
+
+    // Keep the original allocation-free superpixel hot path for two-axis
+    // reductions.  Its boundary arithmetic and 3x2 row origin are corrected
+    // above; mixed-direction transforms use the separable implementation.
+    if (source_width > dest_width && source_height > dest_height &&
+        dest_width * 3 <= 0x7FFFFFFF) {
+        resize_ta_colorspace_24bipp$superpixel(
+            ta_source, source_colorspace, dest_size, ta_dest
+        );
+        return ta_dest;
+    }
+
+    return resize_ta_colorspace_24bipp$area(
+        ta_source, source_colorspace, dest_size, ta_dest
+    );
+};
 const read_fpx_weight_write_24bipp = (dest_byi, source_i_any_coverage_size, edge_distances_proportions_of_total, corner_areas_proportions_of_total, byi_read) => {
     if (source_i_any_coverage_size[0] === 1) {
         if (source_i_any_coverage_size[1] === 1) {

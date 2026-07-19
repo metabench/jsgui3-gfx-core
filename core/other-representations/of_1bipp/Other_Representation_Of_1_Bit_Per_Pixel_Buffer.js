@@ -21,17 +21,24 @@ const Other_Representation_Buffer = require("../Other_Representation_Buffer");
 
 class Other_Representation_Of_1_Bit_Per_Pixel_Buffer extends Other_Representation_Buffer {
     constructor(spec = {}) {
+        if (!spec || typeof spec !== 'object') {
+            throw new TypeError('1bipp representation options must be an object');
+        }
+        if (spec.invariants !== undefined && !Array.isArray(spec.invariants)) {
+            throw new TypeError('invariants must be an array');
+        }
 
-        // spec.invariants = ...
-
-        spec.invariants = spec.invariants || [];
-        spec.invariants.push({
-            test_pb(pb) {
-                return pb.bits_per_pixel === 1;
-            }
-        })
-
-        super(spec);
+        super({
+            ...spec,
+            invariants: [
+                ...(spec.invariants || []),
+                {
+                    test_pb(pb) {
+                        return Boolean(pb) && pb.bits_per_pixel === 1;
+                    }
+                }
+            ]
+        });
     }
 
 }

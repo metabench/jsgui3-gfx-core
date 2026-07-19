@@ -376,7 +376,9 @@ class Virtual_Float_Pixel {
         
 
         Object.defineProperty(this, 'bounds', {
-            get() { return taf_bounds; },
+            // Derived coverage values are updated only through the setters.
+            // Return snapshots so external writes cannot desynchronise them.
+            get() { return taf_bounds.slice(); },
             set(value) {
 
 
@@ -418,7 +420,7 @@ class Virtual_Float_Pixel {
         });
 
         Object.defineProperty(this, 'pos', {
-            get() { return taf_pos; },
+            get() { return taf_pos.slice(); },
             set(value) {
 
                 //console.log('set pos', value);
@@ -505,7 +507,7 @@ class Virtual_Float_Pixel {
 
 
         Object.defineProperty(this, 'size', {
-            get() { return taf_size; },
+            get() { return taf_size.slice(); },
             set(value) {
 
                 //console.log('set size', value);
@@ -555,7 +557,7 @@ class Virtual_Float_Pixel {
         // tai_any_coverage_size
         //  size of the area of int pixels totally or partially covered
         Object.defineProperty(this, 'i_any_coverage_size', {
-            get() { return tai_any_coverage_size; },
+            get() { return tai_any_coverage_size.slice(); },
             enumerable: true,
             configurable: false
         });
@@ -601,13 +603,13 @@ class Virtual_Float_Pixel {
 
 
         Object.defineProperty(this, 'i_any_coverage_bounds', {
-            get() { return tai_any_coverage_bounds; },
+            get() { return tai_any_coverage_bounds.slice(); },
             enumerable: true,
             configurable: false
         });
 
         Object.defineProperty(this, 'i_total_coverage_bounds', {
-            get() { return tai_total_coverage_bounds; },
+            get() { return tai_total_coverage_bounds.slice(); },
             enumerable: true,
             configurable: false
         });
@@ -626,13 +628,13 @@ class Virtual_Float_Pixel {
         // f_ltrb_edge_proportions
 
         Object.defineProperty(this, 'f_ltrb_edge_proportions', {
-            get() { return taf_ltrb_edge_proportions; },
+            get() { return taf_ltrb_edge_proportions.slice(); },
             enumerable: true,
             configurable: false
         });
 
         Object.defineProperty(this, 'f_tl_tr_bl_br_corner_proportions', {
-            get() { return taf_tl_tr_bl_br_corner_proportions; },
+            get() { return taf_tl_tr_bl_br_corner_proportions.slice(); },
             enumerable: true,
             configurable: false
         });
@@ -829,7 +831,7 @@ class Virtual_Float_Pixel {
                 if (num_any_coverage_px === 1) {
                     // special simple case. may happen a lot with subpixel sampling especially with large upscaling.
                     //  weight is 1.
-                    return taf_1_weight;
+                    return taf_1_weight.slice();
 
                 } else {
                     // All other cases.
@@ -844,7 +846,7 @@ class Virtual_Float_Pixel {
                         //res.fill(1 / area);
                         //return res;
 
-                        return get_taf_cached_weights(num_any_coverage_px).fill(1 / area);
+                        return get_taf_cached_weights(num_any_coverage_px).fill(1 / area).slice();
 
 
 
@@ -1412,7 +1414,7 @@ class Virtual_Float_Pixel {
 
                         }
                         */
-                        return res;
+                        return res.slice();
                         /*
 
                         else if (w === 1 && h === 2) {

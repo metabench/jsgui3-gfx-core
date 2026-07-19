@@ -8,25 +8,21 @@
 const inspect = Symbol.for('nodejs.util.inspect.custom');
 
 const Ui16toUi32 = (ui16) => {
-    let res = new Uint32Array(ui16.length / 2);
-    let dv = new DataView(ui16.buffer);
-    let l = ui16.length;
-    let hl = l / 2;
-    let resw = 0;
-    for (let c = 0; c < hl; c++) {
-        res[resw++] = dv.getUint32(c * 4);
+    const res = new Uint32Array(ui16.length / 2);
+    for (let read = 0, write = 0; read < ui16.length; read += 2, write++) {
+        // x occupies the high 16 bits so native numeric sorting is x-major,
+        // then y-major, independent of the host's byte order.
+        res[write] = ui16[read] * 0x10000 + ui16[read + 1];
     }
     return res;
 }
 
 const Ui32toUi16 = (ui32) => {
-    let res = new Uint16Array(ui32.length * 2);
-    let dv = new DataView(ui32.buffer);
-    let l = ui32.length;
-    let resw = 0;
-    for (let c = 0; c < l; c++) {
-        res[resw++] = dv.getUint16(c * 4 + 2);
-        res[resw++] = dv.getUint16(c * 4);
+    const res = new Uint16Array(ui32.length * 2);
+    for (let read = 0, write = 0; read < ui32.length; read++) {
+        const packed = ui32[read];
+        res[write++] = Math.floor(packed / 0x10000);
+        res[write++] = packed & 0xFFFF;
     }
     return res;
 }
@@ -178,13 +174,15 @@ class Pixel_Pos_List {
          */
         this.add = (pos) => {
             // Validate input
-            if (!pos || pos.length < 2) {
+            if (pos == null || typeof pos !== 'object' || !(pos.length >= 2)) {
                 throw new Error('Invalid pixel position. Expected [x, y] array with at least 2 elements.');
             }
             
             // Ensure position values are integers
-            const x = Math.floor(pos[0]);
-            const y = Math.floor(pos[1]);
+            const floored_x = Math.floor(pos[0]);
+            const floored_y = Math.floor(pos[1]);
+            const x = floored_x < 0 ? 0 : floored_x;
+            const y = floored_y < 0 ? 0 : floored_y;
             
             // Check if we need to resize the array
             if (i > max_index) {
@@ -196,7 +194,10 @@ class Pixel_Pos_List {
                     for (let c = 0; c < l; c++) {
                         new_ta[c] = ta_pixels[c + read_pos];
                     }
-                    ta_pixels = new_ta;
+                    // Keep the public storage view synchronized with the compacted
+                    // backing array. This branch is reached only after the current
+                    // buffer is full, so it stays off the normal add hot path.
+                    ta_pixels = this.ta = new_ta;
                     i -= read_pos;
                     read_pos = 0;
                 } else {
@@ -245,10 +246,12 @@ class Pixel_Pos_List {
          * @returns {Pixel_Pos_List} this instance for chaining
          */
         this.fix = () => {
-            // Slice the array to only include the actual pixels
-            const adjusted = ta_pixels.slice(0, i);
+            // Slice only the active range, excluding positions consumed by shift().
+            const adjusted = ta_pixels.slice(read_pos, i);
             // Update both the instance property and the local variable
             this.ta = ta_pixels = adjusted;
+            i = adjusted.length;
+            read_pos = 0;
             // Reset the max_index since we've resized
             max_index = this.ta.length - 1;
             return this;

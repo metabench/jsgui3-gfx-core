@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc" font-family="'Segoe UI',Inter,system-ui,sans-serif">
+  <title id="title">Checked public pixel access and explicit unsafe kernels</title>
+  <desc id="desc">Architecture, safety boundaries, format behavior, inheritance inventory, performance evidence, validation results, and next improvements for jsgui3-gfx-core.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#111c31"/></linearGradient>
+    <linearGradient id="head" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#4bd4ff"/><stop offset=".55" stop-color="#8d7cff"/><stop offset="1" stop-color="#55e6a5"/></linearGradient>
+    <linearGradient id="safe" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#123c54"/><stop offset="1" stop-color="#153257"/></linearGradient>
+    <linearGradient id="fast" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#153c31"/><stop offset="1" stop-color="#19314a"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#000" flood-opacity=".38"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#6684a6"/></marker>
+    <marker id="greenArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#55e6a5"/></marker>
+    <style>
+      .panel{fill:#101f33;stroke:#283f5b;stroke-width:1.5}.pt{fill:#f5f9ff;font-size:17px;font-weight:750}.sub{fill:#8da2bb;font-size:10px}.body{fill:#b8c8dc;font-size:11px}.small{fill:#95aac2;font-size:9px}.tiny{fill:#8398b1;font-size:8px}.mono{font-family:Consolas,'SFMono-Regular',monospace}.white{fill:#f7fbff}.green{fill:#66e6aa}.cyan{fill:#58d8ff}.amber{fill:#ffc66d}.red{fill:#ff7d8e}.label{font-size:9px;font-weight:750;letter-spacing:.8px}.node{fill:#172a43;stroke:#355273;stroke-width:1.2}.nodeTitle{fill:#f3f8ff;font-size:11px;font-weight:750}.nodeCopy{fill:#9eb1c8;font-size:9px}.metric{fill:#f8fbff;font-size:21px;font-weight:800}.metricLabel{fill:#8fa4bd;font-size:8px;font-weight:700;letter-spacing:.8px}.check{fill:#61e2a6;font-size:12px;font-weight:800}
+    </style>
+  </defs>
+  <rect width="1600" height="1000" fill="url(#bg)"/>
+  <rect width="1600" height="5" fill="url(#head)"/>
+  <circle cx="1480" cy="30" r="230" fill="#725bea" opacity=".08"/>
+  <text x="38" y="45" class="white" font-size="26" font-weight="820">Pixel Access Safety &amp; Performance Review</text>
+  <text x="39" y="68" class="sub">jsgui3-gfx-core · immutable layout → checked public boundary → explicit unchecked kernels · 18 July 2026</text>
+  <g transform="translate(1290 25)"><rect width="272" height="48" rx="24" fill="#142940" stroke="#32604f"/><circle cx="25" cy="24" r="8" fill="#61e2a6"/><text x="44" y="20" class="small" font-weight="700">FINAL GATES</text><text x="44" y="36" class="green" font-size="12" font-weight="800">170 passed · 0 failed</text></g>
+
+  <g transform="translate(38 91)">
+    <g><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">27</text><text x="16" y="45" class="metricLabel">PUBLIC ACCESS METHODS</text></g>
+    <g transform="translate(190)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">9</text><text x="16" y="45" class="metricLabel">CLASSIFIED CALL SITES</text></g>
+    <g transform="translate(380)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">11</text><text x="16" y="45" class="metricLabel">PROTOTYPE LEVELS</text></g>
+    <g transform="translate(570)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">57</text><text x="16" y="45" class="metricLabel">SHADOWED NAMES</text></g>
+    <g transform="translate(760)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">36 / 21</text><text x="16" y="45" class="metricLabel">IDENTICAL / DIVERGENT</text></g>
+    <g transform="translate(950)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">56</text><text x="16" y="45" class="metricLabel">UPWARD DEPENDENCIES</text></g>
+    <g transform="translate(1140)"><rect width="180" height="58" rx="10" class="node"/><text x="16" y="28" class="metric">14 / 14</text><text x="16" y="45" class="metricLabel">BENCHMARK GATE</text></g>
+    <g transform="translate(1330)"><rect width="194" height="58" rx="10" fill="#133029" stroke="#2e6753"/><text x="16" y="28" class="metric green">0</text><text x="16" y="45" class="metricLabel">INVALID WRITES</text></g>
+  </g>
+
+  <g transform="translate(38 169)">
+    <rect width="930" height="414" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="pt">One boundary, two execution paths</text>
+    <text x="20" y="49" class="sub">Public calls prove geometry every time; internal raster operations prove it once and retain straight-line kernels.</text>
+
+    <g transform="translate(22 70)">
+      <rect width="208" height="86" rx="11" fill="#192a43" stroke="#4c6a8d"/>
+      <text x="16" y="22" class="label cyan">CALLERS</text>
+      <text x="16" y="43" class="nodeTitle">External / random access</text>
+      <text x="16" y="61" class="nodeCopy mono">get_pixel* · set_pixel*</text>
+      <text x="16" y="76" class="nodeCopy">coordinates or logical index</text>
+    </g>
+    <path d="M230 113 H283" stroke="#6684a6" stroke-width="2" marker-end="url(#arrow)"/>
+    <g transform="translate(287 70)">
+      <rect width="260" height="86" rx="11" fill="url(#safe)" stroke="#55d4ff" stroke-width="1.6"/>
+      <text x="16" y="22" class="label cyan">CHECKED PUBLIC CONTRACT</text>
+      <text x="16" y="43" class="nodeTitle">safe integer + logical bounds</text>
+      <text x="16" y="61" class="nodeCopy">TypeError malformed · RangeError outside</text>
+      <text x="16" y="76" class="nodeCopy">validation completes before any byte access</text>
+    </g>
+    <path d="M547 113 H601" stroke="#6684a6" stroke-width="2" marker-end="url(#arrow)"/>
+    <g transform="translate(605 70)">
+      <rect width="292" height="86" rx="11" class="node"/>
+      <text x="16" y="22" class="label green">STRIDE-AWARE READ / WRITE</text>
+      <text x="16" y="43" class="nodeTitle mono">rowStart + pixelOffset</text>
+      <text x="16" y="61" class="nodeCopy">1 / 8 / 24 / 32bipp dispatch preserved</text>
+      <text x="16" y="76" class="nodeCopy">same valid bytes, aliases and descriptors</text>
+    </g>
+
+    <g transform="translate(22 200)">
+      <rect width="208" height="86" rx="11" fill="#192a43" stroke="#4c6a8d"/>
+      <text x="16" y="22" class="label green">INTERNAL CALLERS</text>
+      <text x="16" y="43" class="nodeTitle">Clipped / bounded loops</text>
+      <text x="16" y="61" class="nodeCopy">lines · masks · crop · spans</text>
+      <text x="16" y="76" class="nodeCopy">bounds proved at operation setup</text>
+    </g>
+    <path d="M230 243 H283" stroke="#55e6a5" stroke-width="2" marker-end="url(#greenArrow)"/>
+    <g transform="translate(287 200)">
+      <rect width="260" height="86" rx="11" fill="url(#fast)" stroke="#55e6a5" stroke-width="1.6"/>
+      <text x="16" y="22" class="label green">EXPLICIT UNSAFE KERNELS</text>
+      <text x="16" y="43" class="nodeTitle mono">unsafeGet* · unsafeSet*</text>
+      <text x="16" y="61" class="nodeCopy">not installed on public prototypes</text>
+      <text x="16" y="76" class="nodeCopy">no repeated validation or wrapper layering</text>
+    </g>
+    <path d="M547 243 H601" stroke="#55e6a5" stroke-width="2" marker-end="url(#greenArrow)"/>
+    <g transform="translate(605 200)">
+      <rect width="292" height="86" rx="11" class="node"/>
+      <text x="16" y="22" class="label green">HOT KERNEL</text>
+      <text x="16" y="43" class="nodeTitle">direct typed-array arithmetic</text>
+      <text x="16" y="61" class="nodeCopy">tight fast paths · padded-row fallbacks</text>
+      <text x="16" y="76" class="nodeCopy">MSB-first packed addressing retained</text>
+    </g>
+
+    <g transform="translate(22 316)">
+      <rect width="875" height="76" rx="10" fill="#12263a" stroke="#2a4e64"/>
+      <text x="15" y="22" class="label amber">ATOMIC FAILURE BARRIER</text>
+      <g transform="translate(16 36)">
+        <rect width="154" height="25" rx="12" fill="#263047"/><text x="77" y="17" text-anchor="middle" class="small">logical pixels</text>
+        <rect x="166" width="154" height="25" rx="12" fill="#263047"/><text x="243" y="17" text-anchor="middle" class="small">neighbour rows</text>
+        <rect x="332" width="154" height="25" rx="12" fill="#263047"/><text x="409" y="17" text-anchor="middle" class="small">row padding</text>
+        <rect x="498" width="154" height="25" rx="12" fill="#263047"/><text x="575" y="17" text-anchor="middle" class="small">1bipp tail bits</text>
+        <rect x="664" width="194" height="25" rx="12" fill="#263047"/><text x="761" y="17" text-anchor="middle" class="small">subview sentinels / capacity</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(988 169)">
+    <rect width="574" height="414" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="pt">Immutable layout governs every address</text>
+    <text x="20" y="49" class="sub">Tight and padded rows share the same logical-pixel policy.</text>
+    <g transform="translate(20 70)">
+      <rect width="534" height="75" rx="10" fill="#14283e" stroke="#31506c"/>
+      <text x="14" y="21" class="label cyan">LAYOUT CONTRACT</text>
+      <text x="14" y="42" class="body mono">logicalByteLength · capacityByteLength · rowStrideBytes</text>
+      <text x="14" y="60" class="body mono">bitOrder=msb-first · padding=zero · tailMask</text>
+    </g>
+    <g transform="translate(20 159)">
+      <text x="0" y="0" class="label white">FORMAT MATRIX</text>
+      <g transform="translate(0 13)">
+        <rect width="534" height="42" rx="7" class="node"/><text x="13" y="18" class="nodeTitle">1bipp</text><text x="78" y="18" class="nodeCopy mono">row + floor(x/8) · 0x80 &gt;&gt; (x%8)</text><text x="13" y="33" class="green small">tail + padding protected</text>
+      </g>
+      <g transform="translate(0 61)">
+        <rect width="534" height="42" rx="7" class="node"/><text x="13" y="18" class="nodeTitle">8bipp</text><text x="78" y="18" class="nodeCopy mono">row + x</text><text x="13" y="33" class="green small">padded row cannot be aliased</text>
+      </g>
+      <g transform="translate(0 109)">
+        <rect width="534" height="42" rx="7" class="node"/><text x="13" y="18" class="nodeTitle">24bipp</text><text x="78" y="18" class="nodeCopy mono">row + 3x</text><text x="13" y="33" class="green small">no partial RGB outside logical pixels</text>
+      </g>
+      <g transform="translate(0 157)">
+        <rect width="534" height="42" rx="7" class="node"/><text x="13" y="18" class="nodeTitle">32bipp</text><text x="78" y="18" class="nodeCopy mono">row + 4x</text><text x="13" y="33" class="green small">no partial RGBA outside logical pixels</text>
+      </g>
+    </g>
+    <g transform="translate(20 380)"><circle cx="7" cy="0" r="5" fill="#61e2a6"/><text x="19" y="4" class="small">Wide safe-integer coordinates remain valid; outside values reject.</text></g>
+  </g>
+
+  <g transform="translate(38 604)">
+    <rect width="600" height="354" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="pt">Hierarchy: preserved, inventoried, not flattened</text>
+    <text x="20" y="49" class="sub">Effective lookup order · bar width approximates own definition count.</text>
+    <g transform="translate(22 67)">
+      <g><text x="0" y="14" class="small">Specialised Enh</text><rect x="160" width="150" height="18" rx="5" fill="#315174"/><text x="319" y="13" class="tiny">21</text></g>
+      <g transform="translate(0 24)"><text x="0" y="14" class="small">Perf Focus Enh</text><rect x="160" width="330" height="18" rx="5" fill="#376289"/><text x="499" y="13" class="tiny">46</text></g>
+      <g transform="translate(0 48)"><text x="0" y="14" class="small">Idiomatic Enh</text><rect x="160" width="29" height="18" rx="5" fill="#315174"/><text x="198" y="13" class="tiny">4</text></g>
+      <g transform="translate(0 72)"><text x="0" y="14" class="small">Advanced TA Props</text><rect x="160" width="3" height="18" rx="2" fill="#315174"/><text x="172" y="13" class="tiny">0</text></g>
+      <g transform="translate(0 96)"><text x="0" y="14" class="small">Core</text><rect x="160" width="400" height="18" rx="5" fill="#8a6fe6"/><text x="568" y="13" class="tiny">62</text></g>
+      <g transform="translate(0 120)"><text x="0" y="14" class="small">Reference Impl</text><rect x="160" width="208" height="18" rx="5" fill="#315174"/><text x="377" y="13" class="tiny">29</text></g>
+      <g transform="translate(0 144)"><text x="0" y="14" class="small">Masks</text><rect x="160" width="36" height="18" rx="5" fill="#315174"/><text x="205" y="13" class="tiny">5</text></g>
+      <g transform="translate(0 168)"><text x="0" y="14" class="small">Draw Polygons</text><rect x="160" width="50" height="18" rx="5" fill="#315174"/><text x="219" y="13" class="tiny">7</text></g>
+      <g transform="translate(0 192)"><text x="0" y="14" class="small">Draw Lines</text><rect x="160" width="115" height="18" rx="5" fill="#315174"/><text x="284" y="13" class="tiny">16</text></g>
+      <g transform="translate(0 216)"><text x="0" y="14" class="small">Get / Set Pixels</text><rect x="160" width="194" height="18" rx="5" fill="#3c8270"/><text x="363" y="13" class="tiny">27</text></g>
+      <g transform="translate(0 240)"><text x="0" y="14" class="small">Inner Structures</text><rect x="160" width="86" height="18" rx="5" fill="#315174"/><text x="255" y="13" class="tiny">12</text></g>
+    </g>
+    <g transform="translate(22 343)"><text class="green label">27 ACCESS SHADOWS NOW IDENTICAL</text><text x="245" class="amber label">21 DIVERGENT SHADOWS DEFERRED</text></g>
+  </g>
+
+  <g transform="translate(658 604)">
+    <rect width="438" height="354" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="pt">Performance gate</text>
+    <text x="20" y="49" class="sub">Median / p95 ms per operation · Node 20 · WSL2.</text>
+    <g transform="translate(20 70)">
+      <text x="0" y="11" class="small">Checked 8bipp ×4096</text><rect x="150" width="226" height="13" rx="6" fill="#315c7d"/><text x="300" y="11" class="tiny white">.465 / 1.209</text>
+      <g transform="translate(0 35)"><text x="0" y="11" class="small">Unsafe 8bipp ×4096</text><rect x="150" width="64" height="13" rx="6" fill="#3d9077"/><text x="223" y="11" class="tiny">.132 / .170</text></g>
+      <g transform="translate(0 70)"><text x="0" y="11" class="small">Checked RGB padded</text><rect x="150" width="252" height="13" rx="6" fill="#315c7d"/><text x="300" y="11" class="tiny white">.764 / .953</text></g>
+      <g transform="translate(0 105)"><text x="0" y="11" class="small">Mask 128²</text><rect x="150" width="264" height="13" rx="6" fill="#725eb8"/><text x="300" y="11" class="tiny white">.896 / 1.045</text></g>
+      <g transform="translate(0 140)"><text x="0" y="11" class="small">Convolution 64²</text><rect x="150" width="240" height="13" rx="6" fill="#8a6542"/><text x="300" y="11" class="tiny white">2.080 / 2.287</text></g>
+      <g transform="translate(0 175)"><text x="0" y="11" class="small">Flood 128²</text><rect x="150" width="72" height="13" rx="6" fill="#3d9077"/><text x="231" y="11" class="tiny">.149 / .165</text></g>
+    </g>
+    <g transform="translate(20 278)">
+      <rect width="398" height="54" rx="9" fill="#143129" stroke="#2c6852"/>
+      <text x="15" y="22" class="check">✓ 14 / 14 benchmark cases passed</text>
+      <text x="15" y="40" class="small">failure requires &gt;5% and &gt;absolute noise floor</text>
+    </g>
+  </g>
+
+  <g transform="translate(1116 604)">
+    <rect width="446" height="354" rx="15" class="panel" filter="url(#shadow)"/>
+    <text x="20" y="31" class="pt">Evidence &amp; next safe phase</text>
+    <text x="20" y="49" class="sub">All public contracts remain while safety becomes explicit.</text>
+    <g transform="translate(20 70)">
+      <text class="check">✓</text><text x="23" y="0" class="body">170 / 170 tests · 16 files</text>
+      <g transform="translate(0 29)"><text class="check">✓</text><text x="23" y="0" class="body">68 syntax checks · 23 smoke loads</text></g>
+      <g transform="translate(0 58)"><text class="check">✓</text><text x="23" y="0" class="body">seeded access + raster + window oracles</text></g>
+      <g transform="translate(0 87)"><text class="check">✓</text><text x="23" y="0" class="body">subviews, tails, padding, wide coordinates</text></g>
+      <g transform="translate(0 116)"><text class="check">✓</text><text x="23" y="0" class="body">128-file npm pack audit</text></g>
+    </g>
+    <line x1="20" y1="211" x2="426" y2="211" stroke="#2d435d"/>
+    <text x="20" y="235" class="label amber">SMALLEST SAFE FOLLOW-UP</text>
+    <g transform="translate(20 256)">
+      <circle cx="6" cy="-3" r="3" fill="#ffc66d"/><text x="17" class="body">cross-platform benchmark baselines</text>
+      <g transform="translate(0 24)"><circle cx="6" cy="-3" r="3" fill="#ffc66d"/><text x="17" class="body">benchmark by-index access across all formats</text></g>
+      <g transform="translate(0 48)"><circle cx="6" cy="-3" r="3" fill="#ffc66d"/><text x="17" class="body">parse method ranges for broader inventory work</text></g>
+      <g transform="translate(0 72)"><circle cx="6" cy="-3" r="3" fill="#ffc66d"/><text x="17" class="body">differential-test divergent shadows by family</text></g>
+    </g>
+  </g>
+
+  <text x="38" y="984" class="tiny">Detailed evidence: docs/13-pixel-access-safety-performance-and-hierarchy.md · generated inventory: node scripts/pixel-buffer-inventory.js</text>
+</svg>

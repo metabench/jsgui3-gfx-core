@@ -40,7 +40,7 @@ const sharpen = new Float32Convolution({
 **Properties:**
 | Property | Type | Description |
 |----------|------|-------------|
-| `size` | `Array` | Kernel dimensions `[w, h]` |
+| `size` | `Uint32Array` snapshot | Read-only kernel dimensions `[w, h]`; each read returns an owned snapshot |
 | `ta` | `Float32Array` | The kernel weights |
 
 ### `Convolution` (Legacy)
@@ -62,9 +62,14 @@ const edge_conv = new Float32Convolution({
     value: [-1, -1, -1, -1, 8, -1, -1, -1, -1]
 });
 
-// Apply to an 8bipp pixel buffer (returns a new buffer)
+// Apply to an 8bipp or 24bipp pixel buffer (returns a new buffer)
 const edge_result = pb.new_convolved(edge_conv);
 ```
+
+`new_convolved` currently supports 8bipp greyscale and 24bipp RGB buffers. It
+convolves each color channel independently, rounds and clamps channel results,
+and observes explicit source and destination row strides. Other formats throw
+an explicit unsupported-format error.
 
 ### API Path 2: `apply_square_convolution(f32a_kernel)` — Level 6
 
@@ -80,6 +85,8 @@ const edges = pb.apply_square_convolution(
 ```
 
 The kernel size is inferred from the array length: `sqrt(length)` must be an integer.
+For 32bipp input, RGB channels are convolved and the source alpha channel is
+preserved.
 
 ### API Path 3: `blur(size, sigma)` — Level 5
 

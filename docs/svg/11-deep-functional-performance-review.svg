@@ -1,0 +1,437 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1280" role="img" aria-labelledby="title desc" font-family="'Segoe UI', Inter, system-ui, -apple-system, sans-serif">
+  <title id="title">Deep functionality and performance review baseline of jsgui3-gfx-core</title>
+  <desc id="desc">Historical pre-remediation architecture map, evidence-backed correctness risks, local performance measurements, test coverage, and a prioritized roadmap for the repository review performed in July 2026. The linked remediation report records the fixes and current status.</desc>
+
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08111f"/>
+      <stop offset="0.55" stop-color="#0d1728"/>
+      <stop offset="1" stop-color="#101c31"/>
+    </linearGradient>
+    <linearGradient id="headerGlow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#56d4ff"/>
+      <stop offset="0.55" stop-color="#8b7cff"/>
+      <stop offset="1" stop-color="#ff6b91"/>
+    </linearGradient>
+    <linearGradient id="blueNode" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#153b62"/>
+      <stop offset="1" stop-color="#1c3156"/>
+    </linearGradient>
+    <linearGradient id="violetNode" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#35265f"/>
+      <stop offset="1" stop-color="#22325b"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff526e"/>
+      <stop offset="0.36" stop-color="#ffb454"/>
+      <stop offset="0.70" stop-color="#56d4ff"/>
+      <stop offset="1" stop-color="#6ee7a8"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#000814" flood-opacity="0.42"/>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="7"/>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#57708e"/>
+    </marker>
+    <marker id="arrowHot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#ff6b7d"/>
+    </marker>
+    <style>
+      .panel { fill:#111f33; stroke:#263a55; stroke-width:1.5; }
+      .panel-title { fill:#f2f7ff; font-size:17px; font-weight:750; letter-spacing:.2px; }
+      .panel-subtitle { fill:#8094ae; font-size:10px; }
+      .body { fill:#b9c8db; font-size:11px; }
+      .muted { fill:#7f91a9; font-size:10px; }
+      .mono { font-family:'SFMono-Regular', Consolas, monospace; }
+      .node-title { fill:#f4f8ff; font-size:11px; font-weight:700; }
+      .node-note { fill:#9db0c8; font-size:9px; }
+      .tiny { fill:#8699b2; font-size:8px; }
+      .stat-num { fill:#f7fbff; font-size:20px; font-weight:800; }
+      .stat-label { fill:#8fa3bc; font-size:9px; letter-spacing:.7px; }
+      .risk { fill:#ff8291; font-size:9px; font-weight:750; }
+      .warn { fill:#ffc76b; font-size:9px; font-weight:750; }
+      .good { fill:#75e6ad; font-size:9px; font-weight:750; }
+      .finding-title { fill:#f6f9ff; font-size:11px; font-weight:750; }
+      .finding-copy { fill:#a9bad0; font-size:9.5px; }
+      .priority { fill:#07101e; font-size:9px; font-weight:900; }
+    </style>
+  </defs>
+
+  <rect width="1800" height="1280" fill="url(#background)"/>
+  <circle cx="1525" cy="-50" r="310" fill="#5f46d7" opacity="0.10" filter="url(#softGlow)"/>
+  <circle cx="160" cy="1130" r="260" fill="#00a8cf" opacity="0.08" filter="url(#softGlow)"/>
+  <rect x="0" y="0" width="1800" height="5" fill="url(#headerGlow)"/>
+
+  <!-- Header -->
+  <text x="42" y="49" fill="#f7fbff" font-size="27" font-weight="800">jsgui3-gfx-core · Deep Functional &amp; Performance Review</text>
+  <text x="43" y="74" fill="#91a5bf" font-size="12">Historical pre-remediation snapshot · see docs/12-remediation-research-and-next-turn.md for the repaired state · 18 July 2026</text>
+  <g transform="translate(1495,31)">
+    <rect width="263" height="48" rx="24" fill="#17283f" stroke="#3a5270"/>
+    <circle cx="26" cy="24" r="8" fill="#75e6ad"/>
+    <text x="45" y="21" fill="#f4f8ff" font-size="10" font-weight="750">BASELINE FINDINGS</text>
+    <text x="45" y="36" fill="#75e6ad" font-size="12" font-weight="800">Remediation report available</text>
+  </g>
+
+  <!-- Stat strip -->
+  <g transform="translate(42,96)">
+    <g>
+      <rect width="205" height="60" rx="11" fill="#12233a" stroke="#29425f"/>
+      <text x="18" y="29" class="stat-num">47</text><text x="18" y="46" class="stat-label">CORE JAVASCRIPT FILES</text>
+    </g>
+    <g transform="translate(216,0)">
+      <rect width="205" height="60" rx="11" fill="#12233a" stroke="#29425f"/>
+      <text x="18" y="29" class="stat-num">20,864</text><text x="18" y="46" class="stat-label">CORE SOURCE LINES</text>
+    </g>
+    <g transform="translate(432,0)">
+      <rect width="205" height="60" rx="11" fill="#2d202d" stroke="#704052"/>
+      <text x="18" y="29" class="stat-num">47 / 3</text><text x="18" y="46" class="stat-label">TESTS PASS / FAIL</text>
+    </g>
+    <g transform="translate(648,0)">
+      <rect width="205" height="60" rx="11" fill="#2b2722" stroke="#665137"/>
+      <text x="18" y="29" class="stat-num">120</text><text x="18" y="46" class="stat-label">NYI MARKERS IN CORE</text>
+    </g>
+    <g transform="translate(864,0)">
+      <rect width="205" height="60" rx="11" fill="#12233a" stroke="#29425f"/>
+      <text x="18" y="29" class="stat-num">24.5%</text><text x="18" y="46" class="stat-label">FUNCTIONS ENTERED BY TESTS</text>
+    </g>
+    <g transform="translate(1080,0)">
+      <rect width="205" height="60" rx="11" fill="#2d202d" stroke="#704052"/>
+      <text x="18" y="29" class="stat-num">12</text><text x="18" y="46" class="stat-label">PIXEL-BUFFER LAYERS</text>
+    </g>
+    <g transform="translate(1296,0)">
+      <rect width="205" height="60" rx="11" fill="#12233a" stroke="#29425f"/>
+      <text x="18" y="29" class="stat-num">45</text><text x="18" y="46" class="stat-label">OWN PROPS PER PIXEL BUFFER</text>
+    </g>
+    <g transform="translate(1512,0)">
+      <rect width="204" height="60" rx="11" fill="#172a2b" stroke="#2d5d51"/>
+      <text x="18" y="29" class="stat-num">✓</text><text x="52" y="27" fill="#75e6ad" font-size="13" font-weight="750">All files parse</text>
+      <text x="18" y="46" class="stat-label">NODE --CHECK</text>
+    </g>
+  </g>
+
+  <!-- Architecture panel -->
+  <g transform="translate(42,177)">
+    <rect width="1012" height="645" rx="16" class="panel" filter="url(#shadow)"/>
+    <text x="22" y="32" class="panel-title">Architecture &amp; health map</text>
+    <text x="22" y="50" class="panel-subtitle">Inheritance is the main integration surface; red borders mark confirmed contract or correctness failures.</text>
+
+    <g transform="translate(22,66)">
+      <rect width="450" height="41" rx="9" fill="#203654" stroke="#57c9f1"/>
+      <text x="14" y="17" class="node-title mono">gfx-core.js → Pixel_Buffer</text>
+      <text x="14" y="32" class="node-note">Main facade exports PB, painter, kernels, ta_math, Rectangle</text>
+      <rect x="371" y="10" width="65" height="20" rx="10" fill="#56d4ff"/>
+      <text x="403" y="24" text-anchor="middle" class="priority">PUBLIC</text>
+    </g>
+
+    <!-- Pixel buffer inheritance chain -->
+    <g transform="translate(22,119)">
+      <text x="0" y="0" fill="#8094ae" font-size="9" font-weight="750" letter-spacing="1">PIXEL BUFFER INHERITANCE</text>
+      <g transform="translate(0,12)">
+        <rect width="450" height="38" rx="8" fill="url(#blueNode)" stroke="#ff6175" stroke-width="1.6"/>
+        <text x="12" y="16" class="node-title">L0 · Core_Inner_Structures</text><text x="12" y="30" class="node-note">storage, size, bipp, padding, DataView</text>
+        <text x="438" y="23" text-anchor="end" class="risk">P0 INVARIANTS</text>
+      </g>
+      <path d="M225 50 V58" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,60)">
+        <rect width="450" height="38" rx="8" fill="url(#blueNode)" stroke="#ffbd61"/>
+        <text x="12" y="16" class="node-title">L1 · Core_Get_Set_Pixels</text><text x="12" y="30" class="node-note">1 / 8 / 24 / 32bipp random access</text>
+        <text x="438" y="23" text-anchor="end" class="warn">NO BOUNDS CONTRACT</text>
+      </g>
+      <path d="M225 98 V106" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,108)">
+        <rect width="450" height="38" rx="8" fill="url(#blueNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L1.1 · Core_Draw_Lines</text><text x="12" y="30" class="node-note">horizontal spans and Bresenham-style paths</text>
+        <text x="438" y="23" text-anchor="end" class="risk">1BPP LAYOUT SPLIT</text>
+      </g>
+      <path d="M225 146 V154" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,156)">
+        <rect width="450" height="38" rx="8" fill="url(#blueNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L1.2 · Core_Draw_Polygons</text><text x="12" y="30" class="node-note">scanline fill integration</text>
+        <text x="438" y="23" text-anchor="end" class="risk">CLIPPING / AET</text>
+      </g>
+      <path d="M225 194 V202" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,204)">
+        <rect width="450" height="38" rx="8" fill="url(#blueNode)" stroke="#ffbd61"/>
+        <text x="12" y="16" class="node-title">L1.5 · Core_Masks</text><text x="12" y="30" class="node-note">mask iteration, apply and packed-bit copy</text>
+        <text x="438" y="23" text-anchor="end" class="warn">PARTIAL / DRIFT</text>
+      </g>
+      <path d="M225 242 V250" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,252)">
+        <rect width="450" height="38" rx="8" fill="url(#violetNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L2 · Core_Reference_Implementations</text><text x="12" y="30" class="node-note">iteration, windows, conversions, clone</text>
+        <text x="438" y="23" text-anchor="end" class="risk">SHADOW STATE</text>
+      </g>
+      <path d="M225 290 V298" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,300)">
+        <rect width="450" height="38" rx="8" fill="url(#violetNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L3 · Pixel_Buffer_Core</text><text x="12" y="30" class="node-note">duplicates L2; resize, convolution, fill</text>
+        <text x="438" y="23" text-anchor="end" class="risk">WINDOWS BROKEN</text>
+      </g>
+      <path d="M225 338 V346" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,348)">
+        <rect width="450" height="38" rx="8" fill="url(#violetNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L4 · Advanced_TypedArray_Properties</text><text x="12" y="30" class="node-note">scratch arrays and colorspace tuple</text>
+        <text x="438" y="23" text-anchor="end" class="risk">GETTERS FAIL</text>
+      </g>
+      <path d="M225 386 V394" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,396)">
+        <rect width="450" height="38" rx="8" fill="url(#violetNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L5 · Idiomatic_Enh</text><text x="12" y="30" class="node-note">count, blur, position iteration</text>
+        <text x="438" y="23" text-anchor="end" class="risk">STALE METHOD CALLS</text>
+      </g>
+      <path d="M225 434 V442" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,444)">
+        <rect width="450" height="38" rx="8" fill="url(#violetNode)" stroke="#ff6175"/>
+        <text x="12" y="16" class="node-title">L6 · Perf_Focus_Enh</text><text x="12" y="30" class="node-note">flood fill, bit words, color operations</text>
+        <text x="438" y="23" text-anchor="end" class="risk">FLOOD CONNECTIVITY</text>
+      </g>
+      <path d="M225 482 V490" stroke="#57708e" marker-end="url(#arrow)"/>
+      <g transform="translate(0,492)">
+        <rect width="450" height="38" rx="8" fill="#3b284d" stroke="#ff6175" stroke-width="1.6"/>
+        <text x="12" y="16" class="node-title">L7 → L8 · Specialised_Enh → export alias</text><text x="12" y="30" class="node-note">source windows, thresholds, spans, placement</text>
+        <text x="438" y="23" text-anchor="end" class="risk">BROAD UNSTABLE API</text>
+      </g>
+    </g>
+
+    <!-- Support graph -->
+    <g transform="translate(507,66)">
+      <text x="0" y="0" fill="#8094ae" font-size="9" font-weight="750" letter-spacing="1">SUPPORTING CLASS / DATA FLOW</text>
+      <g transform="translate(0,13)">
+        <rect width="225" height="54" rx="9" fill="#173249" stroke="#4aaed0"/>
+        <text x="12" y="19" class="node-title">Pixel_Buffer_Painter</text><text x="12" y="35" class="node-note">rect → ta_math.write</text><text x="12" y="47" class="node-note">per-call row allocation</text>
+      </g>
+      <g transform="translate(245,13)">
+        <rect width="225" height="54" rx="9" fill="#372735" stroke="#ff6175"/>
+        <text x="12" y="19" class="node-title">Float32Convolution</text><text x="12" y="35" class="node-note">kernel class cannot load</text><text x="12" y="47" class="risk">obext factory mismatch</text>
+      </g>
+
+      <g transform="translate(0,89)">
+        <rect width="470" height="119" rx="11" fill="#142840" stroke="#37567a"/>
+        <text x="14" y="21" class="node-title">Geometry / raster pipeline</text>
+        <rect x="14" y="36" width="76" height="26" rx="7" fill="#1c3b56"/><text x="52" y="53" text-anchor="middle" class="node-note">Shape</text>
+        <path d="M91 49 H112" stroke="#57708e" marker-end="url(#arrow)"/>
+        <rect x="114" y="30" width="91" height="26" rx="7" fill="#1c3b56"/><text x="159" y="47" text-anchor="middle" class="node-note">Rectangle</text>
+        <rect x="114" y="63" width="91" height="26" rx="7" fill="#2d294d"/><text x="159" y="80" text-anchor="middle" class="node-note">Polygon</text>
+        <path d="M206 76 H226" stroke="#57708e" marker-end="url(#arrow)"/>
+        <rect x="228" y="63" width="96" height="26" rx="7" fill="#2d294d"/><text x="276" y="80" text-anchor="middle" class="node-note">Edge table</text>
+        <path d="M325 76 H345" stroke="#ff6b7d" marker-end="url(#arrowHot)"/>
+        <rect x="347" y="58" width="109" height="36" rx="7" fill="#3a2635" stroke="#ff6175"/><text x="401" y="74" text-anchor="middle" class="node-note">ScanlineProcessor</text><text x="401" y="87" text-anchor="middle" class="risk">unclipped / mutable</text>
+        <text x="14" y="107" class="tiny">Float32 intercept drift · top-entry polygons skipped · repeated pass changes output · outline/fill semantics conflated</text>
+      </g>
+
+      <g transform="translate(0,222)">
+        <rect width="470" height="111" rx="11" fill="#142840" stroke="#37567a"/>
+        <text x="14" y="21" class="node-title">Typed-array math</text>
+        <g transform="translate(14,35)">
+          <rect width="74" height="26" rx="7" fill="#1a3851"/><text x="37" y="17" text-anchor="middle" class="node-note">read</text>
+          <rect x="82" width="74" height="26" rx="7" fill="#1a3851"/><text x="119" y="17" text-anchor="middle" class="node-note">write</text>
+          <rect x="164" width="74" height="26" rx="7" fill="#1a3851"/><text x="201" y="17" text-anchor="middle" class="node-note">copy</text>
+          <rect x="246" width="88" height="26" rx="7" fill="#3a2635" stroke="#ff6175"/><text x="290" y="17" text-anchor="middle" class="node-note">transform</text>
+          <rect x="342" width="100" height="26" rx="7" fill="#3a2635" stroke="#ff6175"/><text x="392" y="17" text-anchor="middle" class="node-note">bitwise / draw</text>
+        </g>
+        <text x="14" y="78" class="tiny">Direct-memory design is valuable; active resize has wrong samples, overflow, saturation and NYI ratio branches.</text>
+        <text x="14" y="94" class="tiny">Subview offsets and bits-per-row are dropped in several bit helpers; read_px is not exported.</text>
+      </g>
+
+      <g transform="translate(0,347)">
+        <rect width="470" height="118" rx="11" fill="#142840" stroke="#37567a"/>
+        <text x="14" y="21" class="node-title">Standalone / experimental classes</text>
+        <g transform="translate(14,35)">
+          <rect width="134" height="31" rx="7" fill="#25304c" stroke="#ffbd61"/><text x="67" y="19" text-anchor="middle" class="node-note">Pixel_Pos_List</text>
+          <rect x="144" width="97" height="31" rx="7" fill="#3a2635" stroke="#ff6175"/><text x="192" y="19" text-anchor="middle" class="node-note">Palette</text>
+          <rect x="251" width="190" height="31" rx="7" fill="#3a2635" stroke="#ff6175"/><text x="346" y="19" text-anchor="middle" class="node-note">Virtual_Float_Pixel</text>
+        </g>
+        <text x="14" y="84" class="tiny">PPL: sort breaks above 255; fix() retains consumed prefix; iterator copies/allocation per item.</text>
+        <text x="14" y="100" class="tiny">Palette ignores valid arrays. Virtual pixel iteration is mostly NYI and is not used by active resize.</text>
+      </g>
+
+      <g transform="translate(0,480)">
+        <rect width="470" height="80" rx="11" fill="#35252e" stroke="#ff6175"/>
+        <text x="14" y="21" class="node-title">Disconnected representation prototypes</text>
+        <text x="14" y="40" class="node-note mono">Other_Representation → 1bpp → Wrapping_Scanlines</text>
+        <text x="14" y="57" class="node-note mono">YRows_XSpans · Dynamic_XSpans</text>
+        <text x="456" y="22" text-anchor="end" class="risk">EXPERIMENTAL</text>
+        <text x="14" y="71" class="tiny">missing super(), lost writes, default-color bug, empty/unexported class</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Findings panel -->
+  <g transform="translate(1074,177)">
+    <rect width="684" height="645" rx="16" class="panel" filter="url(#shadow)"/>
+    <text x="22" y="32" class="panel-title">Confirmed findings · ordered by impact</text>
+    <text x="22" y="50" class="panel-subtitle">Each card represents a separately reproduced failure, not a speculative concern.</text>
+
+    <g transform="translate(22,67)">
+      <rect width="640" height="65" rx="10" fill="#33232d" stroke="#ff6175"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ff6175"/><text x="31" y="27" text-anchor="middle" class="priority">P0</text>
+      <text x="60" y="25" class="finding-title">Storage contract is internally inconsistent</text>
+      <text x="60" y="42" class="finding-copy">Tight 1bpp get/set conflicts with byte-row line/mask paths; total capacity is padded,</text>
+      <text x="60" y="56" class="finding-copy">then treated as logical pixels. Buffer views lose offset/length; bipp mutation is non-atomic.</text>
+    </g>
+    <g transform="translate(22,141)">
+      <rect width="640" height="65" rx="10" fill="#33232d" stroke="#ff6175"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ff6175"/><text x="31" y="27" text-anchor="middle" class="priority">P0</text>
+      <text x="60" y="25" class="finding-title">Windowing and object convolution cannot execute</text>
+      <text x="60" y="42" class="finding-copy">Undeclared pb_source throws during construction; inherited movement uses shadow arrays;</text>
+      <text x="60" y="56" class="finding-copy">source/pos are never initialized. new_convolved depends on every broken link.</text>
+    </g>
+    <g transform="translate(22,215)">
+      <rect width="640" height="65" rx="10" fill="#33232d" stroke="#ff6175"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ff6175"/><text x="31" y="27" text-anchor="middle" class="priority">P0</text>
+      <text x="60" y="25" class="finding-title">Raster writes are not clipped</text>
+      <text x="60" y="42" class="finding-copy">Negative/right-overflow polygon spans alias adjacent rows; wide spans throw. Polygons</text>
+      <text x="60" y="56" class="finding-copy">entering from above disappear because the active-edge table starts only on exact y1.</text>
+    </g>
+    <g transform="translate(22,289)">
+      <rect width="640" height="65" rx="10" fill="#33232d" stroke="#ff6175"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ff6175"/><text x="31" y="27" text-anchor="middle" class="priority">P0</text>
+      <text x="60" y="25" class="finding-title">Flood fill crosses disconnected regions</text>
+      <text x="60" y="42" class="finding-copy">8/24/32bipp queues continue after exhaustion and read zero entries as (0,0), filling</text>
+      <text x="60" y="56" class="finding-copy">an unrelated origin component. The 1bipp path reserves 16 MiB even for one pixel.</text>
+    </g>
+    <g transform="translate(22,363)">
+      <rect width="640" height="65" rx="10" fill="#2e2925" stroke="#ffbd61"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ffbd61"/><text x="31" y="27" text-anchor="middle" class="priority">P1</text>
+      <text x="60" y="25" class="finding-title">Public methods drifted away from their implementation</text>
+      <text x="60" y="42" class="finding-copy">crop, uncrop, count_colors, list paint/copy call undefined *_pixel_ta APIs;</text>
+      <text x="60" y="56" class="finding-copy">legacy callback signatures silently break inversion, threshold, masks and border paint.</text>
+    </g>
+    <g transform="translate(22,437)">
+      <rect width="640" height="65" rx="10" fill="#2e2925" stroke="#ffbd61"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ffbd61"/><text x="31" y="27" text-anchor="middle" class="priority">P1</text>
+      <text x="60" y="25" class="finding-title">Active resize and convolution borders are incorrect</text>
+      <text x="60" y="42" class="finding-copy">Representative cases return black, saturate constants to 255, overflow after x=32767,</text>
+      <text x="60" y="56" class="finding-copy">or throw NYI. Convolution's x-loop includes the left padding and misses right interior.</text>
+    </g>
+    <g transform="translate(22,511)">
+      <rect width="640" height="65" rx="10" fill="#2e2925" stroke="#ffbd61"/>
+      <rect x="14" y="13" width="34" height="20" rx="10" fill="#ffbd61"/><text x="31" y="27" text-anchor="middle" class="priority">P1</text>
+      <text x="60" y="25" class="finding-title">Precision, ownership and idempotence are undefined</text>
+      <text x="60" y="42" class="finding-copy">Float32 edge increments produce off-by-one spans; processors mutate canonical edges;</text>
+      <text x="60" y="56" class="finding-copy">Polygon and virtual-pixel getters expose mutable arrays while derived caches stay stale.</text>
+    </g>
+    <g transform="translate(22,585)">
+      <rect width="640" height="38" rx="10" fill="#34252c" stroke="#ff6175"/>
+      <text x="14" y="24" class="risk">LOAD BLOCKER</text>
+      <text x="98" y="24" class="finding-copy mono">require('./core/convolution')</text>
+      <text x="315" y="24" class="finding-copy">throws: installed obext export is not callable</text>
+    </g>
+  </g>
+
+  <!-- Bottom performance panel -->
+  <g transform="translate(42,842)">
+    <rect width="555" height="392" rx="16" class="panel" filter="url(#shadow)"/>
+    <text x="22" y="32" class="panel-title">Directional hot-path profile</text>
+    <text x="22" y="50" class="panel-subtitle">Local Node v20.19.5 medians; lower is better. Ratios are diagnostic, not release benchmarks.</text>
+
+    <g transform="translate(22,74)">
+      <text x="0" y="0" class="muted mono">512×512 RGB scan · 262,144 pixels</text>
+      <g transform="translate(0,16)">
+        <text x="0" y="17" class="body">direct typed-array loop</text><rect x="188" y="4" width="6" height="18" rx="3" fill="#6ee7a8"/><text x="210" y="18" class="good">1.0× · 0.400 ms</text>
+      </g>
+      <g transform="translate(0,48)">
+        <text x="0" y="17" class="body mono">each_pixel</text><rect x="188" y="4" width="154" height="18" rx="4" fill="#ffbd61" opacity=".85"/><text x="354" y="18" class="warn">25.7× · 10.272 ms</text>
+      </g>
+      <g transform="translate(0,80)">
+        <text x="0" y="17" class="body mono">get_pixel</text><rect x="188" y="4" width="300" height="18" rx="4" fill="#ff6175" opacity=".88"/><text x="354" y="43" class="risk">75.7× · 30.296 ms</text>
+      </g>
+    </g>
+
+    <line x1="22" y1="201" x2="533" y2="201" stroke="#263a55"/>
+    <g transform="translate(22,224)">
+      <g>
+        <rect width="245" height="69" rx="10" fill="#17293f" stroke="#3a5270"/>
+        <text x="14" y="22" class="node-title">RGB whole-buffer fill</text>
+        <text x="14" y="43" fill="#ffbd61" font-size="19" font-weight="800">6.2× slower</text>
+        <text x="14" y="59" class="tiny">loops 3× logical bytes, writes past end</text>
+      </g>
+      <g transform="translate(266,0)">
+        <rect width="245" height="69" rx="10" fill="#17293f" stroke="#3a5270"/>
+        <text x="14" y="22" class="node-title">Pixel_Pos_List iteration</text>
+        <text x="14" y="43" fill="#ff6175" font-size="19" font-weight="800">51.1× slower</text>
+        <text x="14" y="59" class="tiny">vs raw backing TA; allocates per item</text>
+      </g>
+    </g>
+    <g transform="translate(22,311)">
+      <text x="0" y="0" class="muted" font-weight="700">Main causes</text>
+      <text x="0" y="19" class="body">• RGB/RGBA getters allocate via slice() per access</text>
+      <text x="0" y="36" class="body">• 12-layer construction installs descriptors, closures, painter and DataView</text>
+      <text x="0" y="53" class="body">• Per-row/per-pixel temporaries and disabled fast paths amplify GC and dispatch</text>
+    </g>
+  </g>
+
+  <!-- Bottom verification panel -->
+  <g transform="translate(617,842)">
+    <rect width="465" height="392" rx="16" class="panel" filter="url(#shadow)"/>
+    <text x="22" y="32" class="panel-title">Verification &amp; confidence</text>
+    <text x="22" y="50" class="panel-subtitle">What currently proves behavior—and what does not.</text>
+    <g transform="translate(22,75)">
+      <rect width="421" height="64" rx="10" fill="#33232d" stroke="#ff6175"/>
+      <text x="15" y="23" class="finding-title">npm test exits 1</text>
+      <text x="15" y="42" class="finding-copy">47 cases pass · 3 fail · runner still prints “All tests passed”</text>
+      <text x="15" y="56" class="tiny">Its “Total: 2” counts files, not cases.</text>
+    </g>
+    <g transform="translate(22,152)">
+      <rect width="421" height="64" rx="10" fill="#2e2925" stroke="#ffbd61"/>
+      <text x="15" y="23" class="finding-title">V8 function-entry coverage: 121 / 493</text>
+      <text x="15" y="42" class="finding-copy">24.5% among 34 loaded core scripts; 13 core scripts never load.</text>
+      <text x="15" y="56" class="tiny">Only 16 current cases touch Pixel_Buffer.</text>
+    </g>
+    <g transform="translate(22,229)">
+      <text x="0" y="0" class="muted" font-weight="700">Highest-value missing matrices</text>
+      <text x="0" y="21" class="body">• all bipps × widths 1–17 × tail-bit boundaries</text>
+      <text x="0" y="40" class="body">• clipped/offscreen lines, polygons, masks and painter</text>
+      <text x="0" y="59" class="body">• flood connectivity; repeated edge/processor reuse</text>
+      <text x="0" y="78" class="body">• Buffer/subarray offsets, short storage, dimension limits</text>
+      <text x="0" y="97" class="body">• resize/convolution constant-field and oracle tests</text>
+      <text x="0" y="116" class="body">• malformed/negative/fractional geometry and ownership</text>
+    </g>
+    <g transform="translate(22,362)">
+      <circle cx="7" cy="-4" r="5" fill="#75e6ad"/><text x="20" y="0" class="good">Syntax validation passed for every JS file.</text>
+    </g>
+  </g>
+
+  <!-- Bottom roadmap panel -->
+  <g transform="translate(1102,842)">
+    <rect width="656" height="392" rx="16" class="panel" filter="url(#shadow)"/>
+    <text x="22" y="32" class="panel-title">Improvement roadmap</text>
+    <text x="22" y="50" class="panel-subtitle">Sequence correctness contracts before performance tuning.</text>
+    <rect x="22" y="76" width="612" height="6" rx="3" fill="url(#road)"/>
+
+    <g transform="translate(22,102)">
+      <circle cx="22" cy="18" r="18" fill="#ff6175"/><text x="22" y="22" text-anchor="middle" class="priority">P0</text>
+      <text x="54" y="12" class="finding-title">One storage &amp; coordinate contract</text>
+      <text x="54" y="29" class="finding-copy">logical length, capacity, stride, MSB bit order, tail mask, finite dimensions,</text>
+      <text x="54" y="43" class="finding-copy">typed-array view validation, immutable metadata, checked public boundaries</text>
+    </g>
+    <g transform="translate(22,165)">
+      <circle cx="22" cy="18" r="18" fill="#ff9b57"/><text x="22" y="22" text-anchor="middle" class="priority">P1</text>
+      <text x="54" y="12" class="finding-title">Restore correctness and one API vocabulary</text>
+      <text x="54" y="29" class="finding-copy">fix flood/window/resize/clipping; settle (pos,color) vs index kernels;</text>
+      <text x="54" y="43" class="finding-copy">immutable Float64 edge geometry + resettable render state; remove stale calls</text>
+    </g>
+    <g transform="translate(22,228)">
+      <circle cx="22" cy="18" r="18" fill="#56d4ff"/><text x="22" y="22" text-anchor="middle" class="priority">P2</text>
+      <text x="54" y="12" class="finding-title">Consolidate and optimize proven kernels</text>
+      <text x="54" y="29" class="finding-copy">flatten duplicate layers or compose modules; direct row/span loops, reusable workspaces,</text>
+      <text x="54" y="43" class="finding-copy">out-parameters instead of slice(), queue sized to image, correct 4/8-byte gates</text>
+    </g>
+    <g transform="translate(22,291)">
+      <circle cx="22" cy="18" r="18" fill="#6ee7a8"/><text x="22" y="22" text-anchor="middle" class="priority">P3</text>
+      <text x="54" y="12" class="finding-title">Make quality measurable</text>
+      <text x="54" y="29" class="finding-copy">node:test runner; golden + property/differential suites; fuzz malformed inputs;</text>
+      <text x="54" y="43" class="finding-copy">benchmark harness with correctness checks and CI regression thresholds</text>
+    </g>
+    <g transform="translate(22,354)">
+      <rect width="612" height="23" rx="11" fill="#172a2b" stroke="#2d5d51"/>
+      <text x="306" y="16" text-anchor="middle" class="good">Finish Palette / representations / Virtual_Float_Pixel—or label and exclude them as experimental.</text>
+    </g>
+  </g>
+
+  <text x="42" y="1262" fill="#61758f" font-size="9">Review artifact: docs/svg/11-deep-functional-performance-review.svg · Existing worktree changes were preserved.</text>
+  <text x="1758" y="1262" text-anchor="end" fill="#61758f" font-size="9">Red = confirmed correctness blocker · amber = high-risk drift/performance · green = validated strength</text>
+</svg>

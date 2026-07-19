@@ -58,6 +58,24 @@ const testPixelPosList = () => {
         );
     });
 
+    runTest('Sorting is numeric across 16-bit byte boundaries', () => {
+        const ppl = new Pixel_Pos_List();
+        ppl.add([65535, 1]);
+        ppl.add([256, 2]);
+        ppl.add([255, 9]);
+        ppl.add([256, 1]);
+        ppl.add([257, 0]);
+
+        ppl.sort();
+        assert.deepStrictEqual(ppl.toArray(), [
+            [255, 9],
+            [256, 1],
+            [256, 2],
+            [257, 0],
+            [65535, 1]
+        ]);
+    });
+
     // Test 2: Bounds calculation
     runTest('Bounds calculation', () => {
         const ppl2 = new Pixel_Pos_List();
@@ -403,6 +421,20 @@ const testPixelPosList = () => {
         
         // Check the last pixel (should be 5000)
         assert.strictEqual(pixels[pixels.length-1][0], 5000, 'Last pixel should be [5000,5000]');
+    });
+
+    runTest('Full-buffer compaction keeps the public typed array synchronized', () => {
+        const ppl = new Pixel_Pos_List();
+        for (let i = 0; i < 1024; i++) ppl.add([i, i]);
+        for (let i = 0; i < 512; i++) ppl.shift();
+
+        const storageBeforeCompaction = ppl.ta;
+        ppl.add([5000, 6000]);
+
+        assert.notStrictEqual(ppl.ta, storageBeforeCompaction);
+        assert.deepStrictEqual([...ppl.ta.subarray(0, 2)], [512, 512]);
+        assert.deepStrictEqual([...ppl.ta.subarray(1024, 1026)], [5000, 6000]);
+        assert.deepStrictEqual(ppl.toArray().at(-1), [5000, 6000]);
     });
     
     // Test 15: Iterator protocol

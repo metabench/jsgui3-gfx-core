@@ -1,14 +1,13 @@
 const Pixel_Buffer_Perf_Focus_Enh = require('./pixel-buffer-6-perf-focus-enh');
-let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp,
-
-    get_ta_bits_that_differ_from_previous_as_1s, each_1_index
-
-
+const {unsafeGetPixel1bipp, unsafeSetPixel8bipp} = require('./pixel-buffer-pixel-access');
+const {
+    get_ta_bits_that_differ_from_previous_as_1s,
+    each_1_index
 } = require('./ta-math');
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
-        const bounds_within_source = new Int16Array(4);
+        const bounds_within_source = new Float64Array(4);
         Object.defineProperty(this, 'bounds_within_source', {
             get() {
                 const size = this.size;
@@ -25,7 +24,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             enumerable: true,
             configurable: false
         });
-        const size_bounds = new Int16Array(4);
+        const size_bounds = new Float64Array(4);
         Object.defineProperty(this, 'size_bounds', {
             get() {
                 const size = this.size;
@@ -38,32 +37,96 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             enumerable: true,
             configurable: false
         });
-        let pb_source;
-        Object.defineProperty(this, 'source', {
-            get() { return pb_source; },
-            set(value) {
-                pb_source = value;
-            },
-            enumerable: true,
+        Object.defineProperty(this, '_source_overlap_bounds', {
+            value: new Float64Array(4),
+            enumerable: false,
             configurable: false
         });
+
+        // Direct construction with any source alias behaves the same as
+        // source.new_window(...): the window is populated before it is returned.
+        if (this.source) this.copy_from_source();
     }
     copy_from_source() {
         const bipp = this.bipp;
         const pb_source = this.source;
+        if (!pb_source) {
+            throw new Error('copy_from_source requires a Pixel Buffer source');
+        }
+        if (pb_source.bipp !== bipp) {
+            throw new TypeError(
+                `Cannot copy ${pb_source.bipp}bipp source into ${bipp}bipp window`
+            );
+        }
+
         const ta_source = pb_source.ta;
         const ta = this.ta;
-        const my_bounds = this.bounds_within_source;
-        const source_size_bounds = pb_source.size_bounds;
+        const pos_x = this.pos[0];
+        const pos_y = this.pos[1];
+        const window_width = this.size[0];
+        const window_height = this.size[1];
+        const source_width = pb_source.size[0];
+        const source_height = pb_source.size[1];
+        const source_x0 = Math.max(0, pos_x);
+        const source_y0 = Math.max(0, pos_y);
+        const source_x1 = Math.min(source_width, pos_x + window_width);
+        const source_y1 = Math.min(source_height, pos_y + window_height);
+        const has_overlap = source_x0 < source_x1 && source_y0 < source_y1;
+
         if (bipp === 1) {
-            console.trace();
-            throw 'NYI';
+            // Starting from zero makes clipped areas, row padding and tail bits
+            // deterministic while allowing the inner loop to write only set bits.
+            ta.fill(0);
+            if (!has_overlap) return this;
+
+            const source_stride = pb_source.bytes_per_row;
+            const target_stride = this.bytes_per_row;
+            const target_x0 = source_x0 - pos_x;
+            const target_y0 = source_y0 - pos_y;
+            const copy_width = source_x1 - source_x0;
+            const copy_height = source_y1 - source_y0;
+
+            for (let row = 0; row < copy_height; row++) {
+                const source_row = (source_y0 + row) * source_stride;
+                const target_row = (target_y0 + row) * target_stride;
+                for (let column = 0; column < copy_width; column++) {
+                    const source_x = source_x0 + column;
+                    const source_mask = 128 >> (source_x & 7);
+                    if ((ta_source[source_row + Math.floor(source_x / 8)] & source_mask) !== 0) {
+                        const target_x = target_x0 + column;
+                        ta[target_row + Math.floor(target_x / 8)] |= 128 >> (target_x & 7);
+                    }
+                }
+            }
         } else if (bipp === 8 || bipp === 24 || bipp === 32) {
-            dest_aligned_copy_rect_1to4bypp(ta_source, ta, pb_source.bytes_per_row, this.bytes_per_pixel, ta_math.overlapping_bounds(my_bounds, source_size_bounds));
+            const fully_covered = source_x0 === pos_x &&
+                source_y0 === pos_y &&
+                source_x1 === pos_x + window_width &&
+                source_y1 === pos_y + window_height;
+            if (!fully_covered) ta.fill(0);
+            if (!has_overlap) return this;
+
+            const bytes_per_pixel = this.bytes_per_pixel;
+            const source_stride = pb_source.bytes_per_row;
+            const target_stride = this.bytes_per_row;
+            const target_x0 = source_x0 - pos_x;
+            const target_y0 = source_y0 - pos_y;
+            const bytes_per_copy_row = (source_x1 - source_x0) * bytes_per_pixel;
+            let source_byte = source_y0 * source_stride + source_x0 * bytes_per_pixel;
+            let target_byte = target_y0 * target_stride + target_x0 * bytes_per_pixel;
+
+            for (let source_y = source_y0; source_y < source_y1; source_y++) {
+                ta.set(
+                    ta_source.subarray(source_byte, source_byte + bytes_per_copy_row),
+                    target_byte
+                );
+                source_byte += source_stride;
+                target_byte += target_stride;
+            }
         } else {
-            console.trace();
-            throw 'stop';
+            throw new TypeError(`Unsupported window format: ${bipp}bipp`);
         }
+        return this;
     }
     threshold_gs(value) {
         let res = this.clone();
@@ -79,9 +142,9 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             */
             this.each_pixel((pos, color) => {
                 if (color >= value) {
-                    res.set_pixel(pos[0], pos[1], 255);
+                    unsafeSetPixel8bipp(res, pos, 255);
                 } else {
-                    res.set_pixel(pos[0], pos[1], 0);
+                    unsafeSetPixel8bipp(res, pos, 0);
                 }
             });
         }
@@ -94,28 +157,29 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         ta_32_scratch[2] = this.size[0] - padding;
         ta_32_scratch[3] = this.size[1] - padding;
         ta_32_scratch[7] = this.size[0];
+        ta_32_scratch[8] = this.bytes_per_row;
         const bpp = this.bits_per_pixel;
         if (bpp === 32) {
             ((cb) => {
                 for (ta_32_scratch[5] = padding; ta_32_scratch[5] < ta_32_scratch[3]; ta_32_scratch[5]++) {
-                    for (ta_32_scratch[4] = 0; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
-                        cb((ta_32_scratch[5] * ta_32_scratch[7] + ta_32_scratch[4]) * ta_32_scratch[0]);
+                    for (ta_32_scratch[4] = padding; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
+                        cb(ta_32_scratch[5] * ta_32_scratch[8] + ta_32_scratch[4] * ta_32_scratch[0]);
                     }
                 }
             })(cb);
         } else if (bpp === 24) {
             ((cb) => {
                 for (ta_32_scratch[5] = padding; ta_32_scratch[5] < ta_32_scratch[3]; ta_32_scratch[5]++) {
-                    for (ta_32_scratch[4] = 0; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
-                        cb((ta_32_scratch[5] * ta_32_scratch[7] + ta_32_scratch[4]) * ta_32_scratch[0]);
+                    for (ta_32_scratch[4] = padding; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
+                        cb(ta_32_scratch[5] * ta_32_scratch[8] + ta_32_scratch[4] * ta_32_scratch[0]);
                     }
                 }
             })(cb);
         } else if (bpp === 8) {
             ((cb) => {
                 for (ta_32_scratch[5] = padding; ta_32_scratch[5] < ta_32_scratch[3]; ta_32_scratch[5]++) {
-                    for (ta_32_scratch[4] = 0; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
-                        cb((ta_32_scratch[5] * ta_32_scratch[7] + ta_32_scratch[4]) * ta_32_scratch[0]);
+                    for (ta_32_scratch[4] = padding; ta_32_scratch[4] < ta_32_scratch[2]; ta_32_scratch[4]++) {
+                        cb(ta_32_scratch[5] * ta_32_scratch[8] + ta_32_scratch[4] * ta_32_scratch[0]);
                     }
                 }
             })(cb);
@@ -124,37 +188,41 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             throw 'NYI';
         }
     }
-    new_window(options) {
-        options.window_to = this;
-        const res = new this.constructor(options);
-        res.copy_from_source();
-        return res;
+    new_window(options = {}) {
+        if (!options || typeof options !== 'object') {
+            throw new TypeError('new_window options must be an object');
+        }
+        return new this.constructor({...options, window_to: this});
     }
     new_centered_window(size_or_options) {
-        console.trace();
-        throw 'NYI';
-        const t1 = tf(size_or_options);
-        console.log('t1', t1);
-        let size;
-        if (t1 === 'a') {
-            if (size_or_options.length === 2) {
-                size = new Int16Array([size_or_options, size_or_options]);
-            } else {
-                console.log('size_or_options', size_or_options);
-                console.trace();
-                throw 'Size array expected length: 2';
-            }
-        } else if (t1 === 'n') {
-            size = new Int16Array([size_or_options, size_or_options]);
+        let options;
+        if (Number.isSafeInteger(size_or_options)) {
+            options = {size: [size_or_options, size_or_options]};
+        } else if (
+            Array.isArray(size_or_options) ||
+            (ArrayBuffer.isView(size_or_options) && !(size_or_options instanceof DataView))
+        ) {
+            options = {size: [size_or_options[0], size_or_options[1]]};
+        } else if (size_or_options && typeof size_or_options === 'object') {
+            options = {...size_or_options};
         } else {
-            console.trace();
-            throw 'NYI';
+            throw new TypeError('new_centered_window expects a size or options object');
         }
-        const res_pb = new this.constructor({
-            size: size,
-            bits_per_pixel: this.bits_per_pixel,
-            window_to: this
-        });
+
+        if (!options.size || options.size.length !== 2) {
+            throw new TypeError('new_centered_window requires a two-element size');
+        }
+        if (options.pos === undefined) {
+            const center = options.pos_center || [
+                Math.floor(this.size[0] / 2),
+                Math.floor(this.size[1] / 2)
+            ];
+            options.pos = [
+                center[0] - Math.floor(options.size[0] / 2),
+                center[1] - Math.floor(options.size[1] / 2)
+            ];
+        }
+        return this.new_window(options);
     }
     fill_solid_rect_by_bounds() {
         const bounds = this.ta_bounds;
@@ -181,9 +249,12 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     }
     calc_source_target_valid_bounds_overlap() {
         const source = this.source;
+        if (!source) {
+            throw new Error('calc_source_target_valid_bounds_overlap requires a source');
+        }
         const my_bounds = this.bounds_within_source;
         const source_size_bounds = source.size_bounds;
-        const res = this.ta_bounds_scratch;
+        const res = this._source_overlap_bounds;
         if (my_bounds[0] < source_size_bounds[0]) {
             res[0] = source_size_bounds[0];
         } else {
@@ -204,95 +275,15 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         } else {
             res[3] = my_bounds[3];
         }
+        if (res[2] < res[0]) res[2] = res[0];
+        if (res[3] < res[1]) res[3] = res[1];
         return res;
     }
     copy_rect_by_bounds_to_24bipp(ta_bounds, pb_target) {
-        console.trace();
-        throw 'NYI';
-        const pos = this.ta_pos_scratch;
-        const rect_size = this.ta_size_scratch;
-        rect_size[0] = ta_bounds[2] - ta_bounds[0];
-        rect_size[1] = ta_bounds[3] - ta_bounds[1];
-        console.log('rect_size', rect_size);
-        const ta_pointers = this.ta_pointers_scratch;
-        const ta_target_pointers = pb_target.ta_pointers_scratch;
-        console.log('ta_pointers', ta_pointers);
-        console.log('ta_target_pointers', ta_target_pointers);
-        console.log('pos', pos);
-        console.log('ta_bounds', ta_bounds);
-        const ta = this.ta;
-        const ta_target = pb_target.ta;
-        console.log('pb_target.pos', pb_target.pos);
-        const ta_safe_bounds_limits = this.ta_bounds_scratch;
-        ta_safe_bounds_limits[0] = 0;
-        ta_safe_bounds_limits[1] = 0;
-        ta_safe_bounds_limits[2] = this.size[0];
-        ta_safe_bounds_limits[3] = this.size[1];
-        const ta_safe_adjusted_bounds = this.ta_bounds2_scratch;
-        const ta_bounds_adjustments = this.ta_bounds3_scratch;
-        const ta_bounds_byte_offsets = this.ta_bounds3_scratch;
-        if (ta_bounds[0] >= ta_safe_bounds_limits[0]) {
-            ta_safe_adjusted_bounds[0] = ta_bounds[0];
-            ta_bounds_adjustments[0] = 0;
-        } else {
-            ta_bounds_adjustments[0] = ta_safe_bounds_limits[0] - ta_bounds[0];
-            ta_safe_adjusted_bounds[0] = ta_safe_bounds_limits[0];
+        if (this.bipp !== 24) {
+            throw new TypeError('copy_rect_by_bounds_to_24bipp requires a 24bipp source');
         }
-        if (ta_bounds[1] >= ta_safe_bounds_limits[1]) {
-            ta_safe_adjusted_bounds[1] = ta_bounds[1];
-            ta_bounds_adjustments[1] = 0;
-        } else {
-            ta_bounds_adjustments[1] = ta_safe_bounds_limits[1] - ta_bounds[1];
-            ta_safe_adjusted_bounds[1] = ta_safe_bounds_limits[1];
-        }
-        if (ta_bounds[2] <= ta_safe_bounds_limits[2]) {
-            ta_safe_adjusted_bounds[2] = ta_bounds[2];
-            ta_bounds_adjustments[2] = 0;
-        } else {
-            ta_bounds_adjustments[2] = ta_safe_bounds_limits[2] - ta_bounds[2];
-            ta_safe_adjusted_bounds[2] = ta_safe_bounds_limits[2];
-        }
-        if (ta_bounds[3] <= ta_safe_bounds_limits[3]) {
-            ta_safe_adjusted_bounds[3] = ta_bounds[3];
-            ta_bounds_adjustments[3] = 0;
-        } else {
-            ta_bounds_adjustments[3] = ta_safe_bounds_limits[3] - ta_bounds[3];
-            ta_safe_adjusted_bounds[3] = ta_safe_bounds_limits[3];
-        }
-        console.log('ta_safe_adjusted_bounds', ta_safe_adjusted_bounds);
-        console.log('ta_bounds_adjustments', ta_bounds_adjustments);
-        console.log('this.bytes_per_row', this.bytes_per_row);
-        const source_bytes_per_row = this.bytes_per_row;
-        const bypp = this.bypp;
-        const adjusted_safe_bounds_source_read_byte_offsets = this.ta_offsets_scratch;
-        adjusted_safe_bounds_source_read_byte_offsets[0] = ta_bounds_adjustments[0] * bypp;
-        adjusted_safe_bounds_source_read_byte_offsets[1] = ta_bounds_adjustments[1] * source_bytes_per_row;
-        adjusted_safe_bounds_source_read_byte_offsets[2] = ta_bounds_adjustments[2] * bypp;
-        adjusted_safe_bounds_source_read_byte_offsets[3] = ta_bounds_adjustments[3] * source_bytes_per_row;
-        console.log('adjusted_safe_bounds_source_read_byte_offsets', adjusted_safe_bounds_source_read_byte_offsets);
-        const adjusted_safe_bounds_target_write_byte_offsets = pb_target.ta_offsets_scratch;
-        const ta_pp_source_read = this.ta_pointerpair_scratch;
-        const ta_pp_target_write = pb_target.ta_pointerpair_scratch;
-        const bytes_per_row_of_safe_bounds = (ta_safe_adjusted_bounds[2] - ta_safe_adjusted_bounds[0]) * bypp;
-        console.log('bytes_per_row_of_safe_bounds', bytes_per_row_of_safe_bounds);
-        ta_pp_source_read[0] = adjusted_safe_bounds_source_read_byte_offsets[0] + adjusted_safe_bounds_source_read_byte_offsets[1];
-        ta_pp_source_read[1] = ta_pp_source_read[0] + bytes_per_row_of_safe_bounds;
-        ta_pp_target_write[0] = 0; // no, it's the left indent of the safe bounds.
-        ta_pp_target_write[1] = ta_pp_target_write[0] + bytes_per_row_of_safe_bounds;
-        console.log('ta_pp_source_read', ta_pp_source_read);
-        console.log('ta_pp_target_write', ta_pp_target_write);
-        console.log('pb_target.bytes_per_row', pb_target.bytes_per_row);
-        const num_rows_to_copy = ta_safe_adjusted_bounds[3] - ta_safe_adjusted_bounds[1];
-        console.log('num_rows_to_copy', num_rows_to_copy);
-        for (let c = 0; c < num_rows_to_copy; c++) {
-            const sa_source_row = ta.subarray(ta_pp_source_read[0], ta_pp_source_read[1]);
-            console.log('sa_source_row', sa_source_row);
-        }
-        for (pos[1] = ta_bounds[1]; pos[1] < ta_bounds[3]; pos[1]++) {
-        }
-        if (rect_size[0] === pb_target.size[0] && rect_size[1] === pb_target.size[1]) {
-            console.log('rect_size matches target size.')
-        }
+        return super.copy_rect_by_bounds_to(ta_bounds, pb_target);
     }
 
 
@@ -362,7 +353,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         ta_pos[1] = y;
         for (let x = 0; x < width; x++) {
             ta_pos[0] = x;
-            current_color = this.get_pixel_1bipp(ta_pos);
+            current_color = unsafeGetPixel1bipp(this, ta_pos);
             if (current_color === 1) {
                 if (current_color === last_color) {
                     if (res === 0) {
@@ -388,7 +379,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         ta_pos[1] = y;
         for (let x = 0; x < width; x++) {
             ta_pos[0] = x;
-            current_color = this.get_pixel_1bipp(ta_pos);
+            current_color = unsafeGetPixel1bipp(this, ta_pos);
             if (current_color === 0) {
                 if (current_color === last_color) {
                     if (res.length === 0) {
@@ -419,7 +410,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             let last_color = 0;
             let current_color;
             const x_start = 0;
-            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let idx_bit_overall = (y * this.bytes_per_row * 8 + x_start) | 0, idx_bit_within_byte = 0 | 0;
             let arr_last;
             let num_bits_remaining = width;
             let x = 0; // an x local value is fine - will update it as necessary
@@ -1038,7 +1029,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         ta_pos[1] = y;
         for (let x = 0; x < width; x++) {
             ta_pos[0] = x;
-            current_color = this.get_pixel_1bipp(ta_pos);
+            current_color = unsafeGetPixel1bipp(this, ta_pos);
             if (current_color === 0) {
                 if (current_color === last_color) {
                     if (res.length === 0) {
@@ -1068,7 +1059,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
         ta_pos[1] = y;
         for (let x = 0; x < width; x++) {
             ta_pos[0] = x;
-            current_color = this.get_pixel_1bipp(ta_pos);
+            current_color = unsafeGetPixel1bipp(this, ta_pos);
             if (current_color === 1) {
                 if (current_color === last_color) {
                     if (res.length === 0) {
@@ -1120,7 +1111,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             ta_pos[1] = y;
             for (let x = 0; x < width; x++) {
                 ta_pos[0] = x;
-                current_color = this.get_pixel_1bipp(ta_pos);
+            current_color = unsafeGetPixel1bipp(this, ta_pos);
                 if (current_color === 1) {
                     if (current_color === last_color) {
                         if (res.length === 0) {
@@ -1149,7 +1140,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             let last_color = 1; // Try keeping it for the moment.
             let current_color;
             const x_start = 0;
-            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let idx_bit_overall = (y * this.bytes_per_row * 8 + x_start) | 0, idx_bit_within_byte = 0 | 0;
             let arr_last;
             let num_bits_remaining = width;
             let x = 0; // an x local value is fine - will update it as necessary
@@ -1251,7 +1242,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             let last_color = 1; // Try keeping it for the moment.
             let current_color;
             const x_start = 0;
-            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let idx_bit_overall = (y * this.bytes_per_row * 8 + x_start) | 0, idx_bit_within_byte = 0 | 0;
             let arr_last;
             let num_bits_remaining = width;
             let x = 0; // an x local value is fine - will update it as necessary
@@ -1327,7 +1318,7 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             let last_color = 1; // Try keeping it for the moment.
             let current_color;
             const x_start = 0;
-            let idx_bit_overall = ((y * this.size[0]) + x_start) | 0, idx_bit_within_byte = 0 | 0;
+            let idx_bit_overall = (y * this.bytes_per_row * 8 + x_start) | 0, idx_bit_within_byte = 0 | 0;
             let arr_last;
             let num_bits_remaining = width;
             let x = 0; // an x local value is fine - will update it as necessary

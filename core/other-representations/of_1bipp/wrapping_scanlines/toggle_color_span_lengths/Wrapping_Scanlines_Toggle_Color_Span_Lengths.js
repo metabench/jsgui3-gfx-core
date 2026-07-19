@@ -5,6 +5,26 @@ class Wrapping_Scanlines_Toggle_Color_Span_Lengths extends Other_Representation_
 
     constructor(spec = {}) {
 
+        const is_pixel_buffer = spec && typeof spec === 'object' &&
+            Number.isInteger(spec.bits_per_pixel) && ArrayBuffer.isView(spec.ta);
+        const options = is_pixel_buffer ? {source: spec} : spec;
+        if (!options || typeof options !== 'object') {
+            throw new TypeError('Wrapping scanline options must be an object');
+        }
+
+        super(options);
+
+        const source = options.source || options.pb || options.pixel_buffer;
+        if (source !== undefined && !this.pb_invariants_check(source)) {
+            throw new TypeError('Wrapping scanlines require a 1bipp Pixel Buffer');
+        }
+        Object.defineProperty(this, 'source', {
+            value: source,
+            enumerable: true,
+            writable: false,
+            configurable: false
+        });
+
 
         // So, be able to accept a Pixel_Buffer as the spec.
 
@@ -33,10 +53,6 @@ class Wrapping_Scanlines_Toggle_Color_Span_Lengths extends Other_Representation_
 
 
         // Maybe do lazy calculation.
-
-
-
-
 
     }
 

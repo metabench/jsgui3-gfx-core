@@ -3,7 +3,7 @@ const TA_Table_8_Columns = require('./TA_Table_8_Columns');
 
 class Polygon_Edges extends TA_Table_8_Columns {
     constructor(polygon) {
-        const ptap = polygon.ta_points;
+        const ptap = polygon._get_ta_points();
         const num_points = ptap.length >> 1; // Divide length by 2 to get number of points
 
         let num_edges = 0;
@@ -26,7 +26,7 @@ class Polygon_Edges extends TA_Table_8_Columns {
     }
 
     populate_edges(polygon) {
-        const ptap = polygon.ta_points;
+        const ptap = polygon._get_ta_points();
         const num_points = ptap.length >> 1;
         const {sorted_indices} = this;
 

@@ -2,12 +2,17 @@
 
 
 class Other_Representation_Buffer {
-    constructor(spec = {
-        
-    }) {
-        spec.invariants = spec.invariants || [];
+    constructor(spec = {}) {
+        if (!spec || typeof spec !== 'object') {
+            throw new TypeError('Other representation options must be an object');
+        }
+        if (spec.invariants !== undefined && !Array.isArray(spec.invariants)) {
+            throw new TypeError('invariants must be an array');
+        }
 
-        this.invariants = spec.invariants;
+        // Own the list rather than retaining (and allowing subclasses to
+        // mutate) a caller-owned array.
+        this.invariants = Object.freeze([...(spec.invariants || [])]);
 
     }
 
@@ -18,7 +23,11 @@ class Other_Representation_Buffer {
         const {invariants} = this;
         let res = true;
         for (const inv of invariants) {
-            if (inv.test_pb(pb)) {
+            const test = typeof inv === 'function' ? inv : inv && inv.test_pb;
+            if (typeof test !== 'function') {
+                throw new TypeError('Each invariant must be a function or expose test_pb(pb)');
+            }
+            if (test.call(inv, pb)) {
 
             } else {
                 res = false;

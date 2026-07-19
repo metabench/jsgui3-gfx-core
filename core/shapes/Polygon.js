@@ -25,20 +25,96 @@ const {draw_polygon_outline_to_ta_1bipp,
     calc_polygon_stroke_points_x_y} = require('../ta-math');
 
 
-const is_integer_typed_array = (obj) => {
-    if (ArrayBuffer.isView(obj)) {
-        return (
-            obj instanceof Int8Array ||
-            obj instanceof Uint8Array ||
-            obj instanceof Int16Array ||
-            obj instanceof Uint16Array ||
-            obj instanceof Int32Array ||
-            obj instanceof Uint32Array ||
-            obj instanceof BigInt64Array ||
-            obj instanceof BigUint64Array
-        );
+const is_numeric_typed_array = obj =>
+    ArrayBuffer.isView(obj) &&
+    !(obj instanceof DataView) &&
+    !(obj instanceof BigInt64Array) &&
+    !(obj instanceof BigUint64Array);
+
+const coordinate_array = values => {
+    let min = Infinity, max = -Infinity;
+    let all_integers = true;
+
+    for (let i = 0; i < values.length; i++) {
+        const value = values[i];
+        if (typeof value !== 'number' || !Number.isFinite(value)) {
+            throw new TypeError('Polygon coordinates must be finite numbers');
+        }
+        if (Number.isInteger(value)) {
+            if (!Number.isSafeInteger(value)) {
+                throw new RangeError('Polygon integer coordinates must be safe integers');
+            }
+        } else {
+            all_integers = false;
+        }
+        if (value < min) min = value;
+        if (value > max) max = value;
     }
-    return false;
+
+    if (all_integers && min >= 0 && max <= 0xFFFFFFFF) {
+        return new Uint32Array(values);
+    }
+    if (all_integers && min >= -0x80000000 && max <= 0x7FFFFFFF) {
+        return new Int32Array(values);
+    }
+    return new Float64Array(values);
+};
+
+const normalize_array_points = spec => {
+    if (spec.length === 0) throw new RangeError('Polygon requires at least three points');
+
+    const first = spec[0];
+    if (Array.isArray(first) || ArrayBuffer.isView(first)) {
+        if (spec.length < 3) throw new RangeError('Polygon requires at least three points');
+        let min = Infinity, max = -Infinity;
+        let all_integers = true;
+        for (const point of spec) {
+            if (point == null || point.length !== 2) {
+                throw new TypeError('Polygon points must be [x, y] pairs');
+            }
+            const x = point[0], y = point[1];
+            if (typeof x !== 'number' || !Number.isFinite(x) ||
+                typeof y !== 'number' || !Number.isFinite(y)) {
+                throw new TypeError('Polygon coordinates must be finite numbers');
+            }
+            if (Number.isInteger(x)) {
+                if (!Number.isSafeInteger(x)) {
+                    throw new RangeError('Polygon integer coordinates must be safe integers');
+                }
+            } else {
+                all_integers = false;
+            }
+            if (Number.isInteger(y)) {
+                if (!Number.isSafeInteger(y)) {
+                    throw new RangeError('Polygon integer coordinates must be safe integers');
+                }
+            } else {
+                all_integers = false;
+            }
+            if (x < min) min = x;
+            if (y < min) min = y;
+            if (x > max) max = x;
+            if (y > max) max = y;
+        }
+
+        const CoordinateArray = all_integers && min >= 0 && max <= 0xFFFFFFFF
+            ? Uint32Array
+            : (all_integers && min >= -0x80000000 && max <= 0x7FFFFFFF
+                ? Int32Array
+                : Float64Array);
+        const result = new CoordinateArray(spec.length * 2);
+        let write = 0;
+        for (const point of spec) {
+            result[write++] = point[0];
+            result[write++] = point[1];
+        }
+        return result;
+    }
+
+    if ((spec.length & 1) !== 0 || spec.length < 6) {
+        throw new RangeError('Polygon requires at least three [x, y] pairs');
+    }
+    return coordinate_array(spec);
 };
 
 
@@ -67,36 +143,16 @@ class Polygon extends Shape {
         //   A typed array that expresses the x on spans may be most useful.
 
         if (is_array(spec)) {
-            // Should be an array of pairs.
-
-            const l = spec.length;
-            const num_points = l;
-            // Determine what data structure to use for the ta points. Could use 16 bit numbers, maybe even 8 bit....
-            //   8 bit would be fine (or best) for the smallest polygons. 
-            //   Or go strait ahead and use 32 bit??
-
-            // May want to downshift it?
-            //   Not to start with.
-            const ta_points = new Uint32Array(num_points << 1);
-            let i = 0;
-
-            // May as well determine the bounding box here? Maybe not?
-
-            for (const [x, y] of spec) {
-                ta_points[i++] = x;
-                ta_points[i++] = y;
-            }
-
-            this.ta_points = ta_points;
+            this._ta_points = normalize_array_points(spec);
         } else {
-
-            //console.log('spec', spec);
-
-            if (is_integer_typed_array(spec)) {
-                this.ta_points = spec;
+            if (is_numeric_typed_array(spec)) {
+                if ((spec.length & 1) !== 0 || spec.length < 6) {
+                    throw new RangeError('Polygon requires at least three [x, y] pairs');
+                }
+                // coordinate_array validates and takes ownership of a copy.
+                this._ta_points = coordinate_array(spec);
             } else {
-                console.trace();
-                throw 'NYI';
+                throw new TypeError('Polygon expects an array or numeric typed array');
             }
         }
     }
@@ -106,7 +162,7 @@ class Polygon extends Shape {
 
     get ta_bounding_box() {
         if (!this._ta_bounding_box) {
-            const {ta_points} = this, l = ta_points.length;
+            const ta_points = this._ta_points, l = ta_points.length;
             let min_x = Infinity, min_y = Infinity, max_x = -Infinity, max_y = -Infinity;
 
             let i = 0;
@@ -121,10 +177,11 @@ class Polygon extends Shape {
                 max_y = Math.max(max_y, y);
             }
 
-            return this._ta_bounding_box = new Uint32Array([min_x, min_y, max_x, max_y]);
-        } else {
-            return this._ta_bounding_box;
+            this._ta_bounding_box = coordinate_array([min_x, min_y, max_x, max_y]);
         }
+        // Do not expose the mutable typed-array cache: corrupting a returned
+        // bounding box must not change future geometry or downshift results.
+        return this._ta_bounding_box.slice();
     }
     
     get ta_xylc_x_spans() {
@@ -138,20 +195,19 @@ class Polygon extends Shape {
 
         const offset = this.ta_bounding_box;
 
-        const draw_size = [tabb[2], tabb[3]];
+        // Bounding-box maxima are inclusive pixel coordinates.
+        const draw_size = [tabb[2] + 1, tabb[3] + 1];
         const [w, h] = draw_size;
 
         const draw_size_num_pixels = draw_size[0] * draw_size[1];
 
         // Then see about getting it into an 8 bit aligned ta.
-        const r_from_8 = draw_size_num_pixels % 8;
-        const has_remainder_byte = r_from_8 !== 0;
-        const ta_draw_num_bytes = (draw_size_num_pixels >>> 3) + (has_remainder_byte ? 1 : 0);
+        const ta_draw_num_bytes = Math.ceil(draw_size_num_pixels / 8);
         const ta_draw = new Uint8Array(ta_draw_num_bytes);
 
         // Then draw the downshifted polygon to that ta....
 
-        draw_polygon_outline_to_ta_1bipp(ta_draw, draw_size[0], downshifted.ta_points);
+        draw_polygon_outline_to_ta_1bipp(ta_draw, draw_size[0], downshifted._get_ta_points());
         const ta_x_span_toggles = get_ta_bits_that_differ_from_previous_as_1s(ta_draw, draw_size[0]);
 
 
@@ -490,22 +546,34 @@ class Polygon extends Shape {
 
     set offset(value) {
         if (!this._offset) {
-            this._offset = new Uint32Array(2);
+            this._offset = new Float64Array(2);
         }
         if (is_array(value)) {
+            if (value.length !== 2 || !Number.isFinite(value[0]) || !Number.isFinite(value[1])) {
+                throw new TypeError('Polygon offset must be a finite [x, y] pair');
+            }
             this._offset[0] = value[0];
             this._offset[1] = value[1];
         } else {
-            console.trace();
-            throw 'NYI';
+            throw new TypeError('Polygon offset must be a finite [x, y] pair');
         }
+    }
+
+    get ta_points() {
+        return this._ta_points.slice();
+    }
+
+    // Internal rasterizers need zero-copy, read-only access. Public callers
+    // receive an owned snapshot from ta_points.
+    _get_ta_points() {
+        return this._ta_points;
     }
 
     get offset() {
         if (!this._offset) {
-            this._offset = new Uint32Array(2);
+            this._offset = new Float64Array(2);
         }
-        return this._offset;
+        return this._offset.slice();
     }
 
     downshifted() {
@@ -515,16 +583,16 @@ class Polygon extends Shape {
         const [x, y] = this.ta_bounding_box;
         const dx = -x, dy = -y;
 
-        const {ta_points} = this, l = ta_points.length;
+        const ta_points = this._ta_points, l = ta_points.length;
 
-        const ta_downshifted_points = new Uint32Array(l);
+        const downshifted_points = new Array(l);
         let i = 0;
         while (i < l) {
-            ta_downshifted_points[i] = ta_points[i++] + dx;
-            ta_downshifted_points[i] = ta_points[i++] + dy;
+            downshifted_points[i] = ta_points[i++] + dx;
+            downshifted_points[i] = ta_points[i++] + dy;
         }
 
-        const res = new Polygon(ta_downshifted_points);
+        const res = new Polygon(downshifted_points);
         res.offset = [x, y];
         return res;
 

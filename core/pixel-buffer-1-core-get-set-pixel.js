@@ -16,6 +16,27 @@ const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write')
 const Pixel_Buffer_Painter = require('./pixel-buffer-painter');
 let ta_math = require('./ta-math')
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
+const pixelAccess = require('./pixel-buffer-pixel-access');
+const {
+    assertPixelPosition,
+    assertPixelIndex,
+    unsafeSetPixel1bipp,
+    unsafeSetPixel8bipp,
+    unsafeSetPixel24bipp,
+    unsafeSetPixel32bipp,
+    unsafeSetPixelByIndex1bipp,
+    unsafeSetPixelByIndex8bipp,
+    unsafeSetPixelByIndex24bipp,
+    unsafeSetPixelByIndex32bipp,
+    unsafeGetPixelByIndex1bipp,
+    unsafeGetPixelByIndex8bipp,
+    unsafeGetPixelByIndex24bipp,
+    unsafeGetPixelByIndex32bipp,
+    unsafeGetPixel1bipp,
+    unsafeGetPixel8bipp,
+    unsafeGetPixel24bipp,
+    unsafeGetPixel32bipp
+} = pixelAccess;
 
 // Core structures first?
 
@@ -29,7 +50,9 @@ class Pixel_Buffer_Core_Get_Set_Pixels extends Pixel_Buffer_Core_Inner_Structure
             spec = {
                 bits_per_pixel: spec.bits_per_pixel,
                 size: spec.size,
-                ta: spec.ta
+                rowStrideBytes: spec.bytes_per_row,
+                rowAlignmentBytes: spec.layout.rowAlignmentBytes,
+                ta: spec.storage
             }
         }
 
@@ -38,102 +61,88 @@ class Pixel_Buffer_Core_Get_Set_Pixels extends Pixel_Buffer_Core_Inner_Structure
     }
     
     'get_pixel_byte_bit_1bipp'(pos) {
-        /*
-        */
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        return {byte, bit};
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixelByteBit1bipp(this, pos);
     }
     'get_pixel_byte_bit_BE_1bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        return {byte, bit};
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixelByteBit1bipp(this, pos);
     }
     set_pixel_on_1bipp_by_pixel_index(pixel_index) {
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+        pixelAccess.assertPixelIndex(this, pixel_index);
+        return pixelAccess.unsafeSetPixelOn1bippByIndex(this, pixel_index);
     }
 
     'set_pixel_on_1bipp_xy'(x, y) {
-        const pixel_index = y * this.size[0] + x;
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+        pixelAccess.assertPixelXY(this, x, y);
+        return pixelAccess.unsafeSetPixelOn1bippXY(this, x, y);
     }
 
     'set_pixel_on_1bipp'(pos) {
-        const pixel_index = pos[1] * this.size[0] + pos[0];
-        this.ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixelOn1bipp(this, pos);
     }
     set_pixel_off_1bipp_by_pixel_index(pixel_index) {
-        this.ta[pixel_index >> 3] &= (~(128 >> (pixel_index & 0b111))) & 255;
+        pixelAccess.assertPixelIndex(this, pixel_index);
+        return pixelAccess.unsafeSetPixelOff1bippByIndex(this, pixel_index);
     }
     'set_pixel_off_1bipp'(pos) {
-        const pixel_idx = pos[1] * this.size[0] + pos[0];
-        this.ta[pixel_idx >> 3] &= (~(128 >> (pixel_idx & 0b111))) & 255;
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixelOff1bipp(this, pos);
     }
     'set_pixel_1bipp'(pos, color) {
-        const idx_bit = (pos[1] * this.size[0]) + pos[0];
-        const byte = idx_bit >> 3;
-        const bit = (idx_bit & 0b111);
-        if (color === 1) {
-            this.ta[byte] |= (128 >> bit);
-        } else {
-            this.ta[byte] &= (~(128 >> bit)) & 255;
-        }
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixel1bipp(this, pos, color);
+    }
+    'set_pixel_by_idx_1bipp'(idx, color) {
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeSetPixelByIndex1bipp(this, idx, color);
     }
     'set_pixel_8bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        this.ta[idx] = color;
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixel8bipp(this, pos, color);
     }
     'set_pixel_24bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        let byte = idx * 3;
-        this.ta[byte++] = color[0];
-        this.ta[byte++] = color[1];
-        this.ta[byte] = color[2];
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixel24bipp(this, pos, color);
     }
     'set_pixel_32bipp'(pos, color) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        let byte = idx * 4;
-        this.ta[byte++] = color[0];
-        this.ta[byte++] = color[1];
-        this.ta[byte++] = color[2];
-        this.ta[byte] = color[3];
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeSetPixel32bipp(this, pos, color);
     }
     'set_pixel_by_idx_8bipp'(idx, color) {
-        const byte = idx;
-        this.ta[byte] = color;
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeSetPixelByIndex8bipp(this, idx, color);
     }
     'set_pixel_by_idx_24bipp'(idx, color) {
-        const byte = idx * 3;
-        this.ta[byte] = color[0];
-        this.ta[byte + 1] = color[1];
-        this.ta[byte + 2] = color[2];
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeSetPixelByIndex24bipp(this, idx, color);
     }
     'set_pixel_by_idx_32bipp'(idx, color) {
-        const byte = idx * 4;
-        this.ta[byte] = color[0];
-        this.ta[byte + 1] = color[1];
-        this.ta[byte + 2] = color[2];
-        this.ta[byte + 3] = color[3];
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeSetPixelByIndex32bipp(this, idx, color);
     }
     'set_pixel_by_idx'(idx, color) {
         const a = arguments;
         const l = a.length;
         const bipp = this.bipp;
         if (bipp === 1) {
-            return this.set_pixel_by_idx_1bipp(a[0], a[1]);
+            assertPixelIndex(this, a[0]);
+            return unsafeSetPixelByIndex1bipp(this, a[0], a[1]);
         } else if (bipp === 8) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_8bipp(a[0], a[1]));
+                assertPixelIndex(this, a[0]);
+                return unsafeSetPixelByIndex8bipp(this, a[0], a[1]);
             }
         } else if (bipp === 24) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_24bipp(a[0], a[1]));
+                assertPixelIndex(this, a[0]);
+                return unsafeSetPixelByIndex24bipp(this, a[0], a[1]);
             }
         } else if (bipp === 32) {
             if (l === 2) {
-                return(this.set_pixel_by_idx_32bipp(a[0], a[1]));
+                assertPixelIndex(this, a[0]);
+                return unsafeSetPixelByIndex32bipp(this, a[0], a[1]);
             }
         }
     }
@@ -142,18 +151,22 @@ class Pixel_Buffer_Core_Get_Set_Pixels extends Pixel_Buffer_Core_Inner_Structure
         const l = a.length;
         const bipp = this.bipp;
         if (bipp === 1) {
-            return(this.set_pixel_1bipp(a[0], a[1]));
+            assertPixelPosition(this, pos);
+            return unsafeSetPixel1bipp(this, pos, color);
         } else if (bipp === 8) {
             if (l === 2) {
-                return(this.set_pixel_8bipp(a[0], a[1]));
+                assertPixelPosition(this, pos);
+                return unsafeSetPixel8bipp(this, pos, color);
             }
         } else if (bipp === 24) {
             if (l === 2) {
-                return(this.set_pixel_24bipp(a[0], a[1]));
+                assertPixelPosition(this, pos);
+                return unsafeSetPixel24bipp(this, pos, color);
             }
         } else if (bipp === 32) {
             if (l === 2) {
-                return(this.set_pixel_32bipp(a[0], a[1]));
+                assertPixelPosition(this, pos);
+                return unsafeSetPixel32bipp(this, pos, color);
             }
         } else {
             console.trace();
@@ -161,72 +174,63 @@ class Pixel_Buffer_Core_Get_Set_Pixels extends Pixel_Buffer_Core_Inner_Structure
         }
     }
     'get_pixel_by_idx_1bipp'(idx) {
-        /*
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        */
-        const byte = idx >> 3;
-        const bit = (idx & 0b111);
-        const pow = 128 >> bit;
-        return ((this.ta[byte] & pow) === pow) ? 1 : 0;
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeGetPixelByIndex1bipp(this, idx);
     }
     'get_pixel_by_idx_8bipp'(idx) {
-        const byte = idx;
-        return this.ta[byte];
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeGetPixelByIndex8bipp(this, idx);
     }
     'get_pixel_by_idx_24bipp'(idx) {
-        const byte = idx * 3;
-        return this.ta.slice(byte, byte + 3);
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeGetPixelByIndex24bipp(this, idx);
     }
     'get_pixel_by_idx_32bipp'(idx) {
-        const byte = idx * 4;
-        return this.ta.slice(byte, byte + 4);
+        pixelAccess.assertPixelIndex(this, idx);
+        return pixelAccess.unsafeGetPixelByIndex32bipp(this, idx);
     }
     'get_pixel_by_idx'(idx) {
         const bipp = this.bits_per_pixel;
+        assertPixelIndex(this, idx);
         if (bipp === 1) {
-            return this.get_pixel_by_idx_1bipp(idx);
+            return unsafeGetPixelByIndex1bipp(this, idx);
         } else if (bipp === 8) {
-            return this.get_pixel_by_idx_8bipp(idx);
+            return unsafeGetPixelByIndex8bipp(this, idx);
         } else if (bipp === 24) {
-            return this.get_pixel_by_idx_24bipp(idx);
+            return unsafeGetPixelByIndex24bipp(this, idx);
         } else if (bipp === 32) {
-            return this.get_pixel_by_idx_32bipp(idx);
+            return unsafeGetPixelByIndex32bipp(this, idx);
         } else {
             throw 'Unsupported bipp'
         }
     }
     'get_pixel_1bipp'(pos) {
-        const idx = (pos[1] * this.size[0]) + pos[0];
-        const byte = idx >> 3;
-        return ((this.ta[byte] & 128 >> (idx & 0b111)) !== 0) ? 1 : 0;
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixel1bipp(this, pos);
     }
     'get_pixel_8bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx;
-        return this.ta[byte];
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixel8bipp(this, pos);
     }
     'get_pixel_24bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx * 3;
-        return this.ta.slice(byte, byte + 3);
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixel24bipp(this, pos);
     }
     'get_pixel_32bipp'(pos) {
-        const idx = pos[1] * this.size[0] + pos[0];
-        const byte = idx * 4;
-        return this.ta.slice(byte, byte + 4);
+        pixelAccess.assertPixelPosition(this, pos);
+        return pixelAccess.unsafeGetPixel32bipp(this, pos);
     }
     'get_pixel'(pos) {
         const bipp = this.bits_per_pixel;
+        assertPixelPosition(this, pos);
         if (bipp === 1) {
-            return this.get_pixel_1bipp(pos);
+            return unsafeGetPixel1bipp(this, pos);
         } else if (bipp === 8) {
-            return this.get_pixel_8bipp(pos);
+            return unsafeGetPixel8bipp(this, pos);
         } else if (bipp === 24) {
-            return this.get_pixel_24bipp(pos);
+            return unsafeGetPixel24bipp(this, pos);
         } else if (bipp === 32) {
-            return this.get_pixel_32bipp(pos);
+            return unsafeGetPixel32bipp(this, pos);
         } else {
             console.trace();
             throw 'bits per pixels error';

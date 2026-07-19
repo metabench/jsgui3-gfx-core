@@ -13,8 +13,75 @@ const Pixel_Pos_List = require('./pixel-pos-list');
 const oext = require('obext');
 const {ro, prop} = oext;
 const Typed_Array_Binary_Read_Write = require('./Typed_Array_Binary_Read_Write');
+const {
+    createPixelBufferStorage,
+    canonicalizePixelBufferStorage
+} = require('./pixel-buffer-layout');
 let ta_math = require('./ta-math')
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
+
+const readAliasedSpecValue = (spec, names) => {
+    let value;
+    let valueName;
+
+    for (const name of names) {
+        if (spec[name] !== undefined) {
+            if (valueName !== undefined && spec[name] !== value) {
+                throw new TypeError(
+                    `Conflicting ${valueName} and ${name} values in Pixel Buffer specification`
+                );
+            }
+            value = spec[name];
+            valueName = name;
+        }
+    }
+
+    return value;
+};
+
+const BITS_PER_PIXEL_SPEC_NAMES = ['bits_per_pixel', 'bitsPerPixel', 'bipp'];
+const BYTES_PER_PIXEL_SPEC_NAMES = ['bytes_per_pixel', 'bytesPerPixel', 'bypp'];
+const ROW_STRIDE_SPEC_NAMES = ['rowStrideBytes', 'row_stride_bytes', 'bytes_per_row', 'bypr'];
+const ROW_ALIGNMENT_SPEC_NAMES = ['rowAlignmentBytes', 'row_alignment_bytes'];
+const SOURCE_SPEC_NAMES = ['window_to', 'source', 'window_to_source'];
+
+const isCoordinateArray = value => (
+    Array.isArray(value) ||
+    (ArrayBuffer.isView(value) && !(value instanceof DataView))
+);
+
+const validateCoordinateArray = (value, expectedLength, name) => {
+    if (!isCoordinateArray(value) || value.length !== expectedLength) {
+        throw new TypeError(`${name} must be a ${expectedLength}-element array or typed array`);
+    }
+
+    for (let index = 0; index < expectedLength; index++) {
+        if (!Number.isSafeInteger(value[index])) {
+            throw new TypeError(`${name}[${index}] must be a safe integer`);
+        }
+    }
+};
+
+const setCoordinates = (target, value, name) => {
+    validateCoordinateArray(value, target.length, name);
+    target.set(value);
+};
+
+const validatePixelBufferSource = (value, expectedBitsPerPixel) => {
+    if (value === undefined || value === null) return undefined;
+    if (!(value instanceof Pixel_Buffer_Core_Inner_Structures)) {
+        throw new TypeError('Pixel Buffer source must be another Pixel Buffer');
+    }
+    if (
+        expectedBitsPerPixel !== undefined &&
+        value.bits_per_pixel !== expectedBitsPerPixel
+    ) {
+        throw new TypeError(
+            `Pixel Buffer source is ${value.bits_per_pixel}bipp; expected ${expectedBitsPerPixel}bipp`
+        );
+    }
+    return value;
+};
 
 // Core structures first?
 
@@ -24,121 +91,163 @@ let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_
 
 class Pixel_Buffer_Core_Inner_Structures {
     constructor(spec) {
+        if (spec instanceof Pixel_Pos_List) {
+            throw new Error('Pixel_Pos_List construction is not implemented');
+        }
+
         if (spec instanceof Pixel_Buffer_Core_Inner_Structures) {
             spec = {
                 bits_per_pixel: spec.bits_per_pixel,
                 size: spec.size,
-                ta: spec.ta
+                rowStrideBytes: spec.bytes_per_row,
+                rowAlignmentBytes: spec.layout.rowAlignmentBytes,
+                ta: spec.storage
+            };
+        }
+
+        if (!spec || typeof spec !== 'object') {
+            throw new TypeError('A Pixel Buffer specification object is required');
+        }
+
+        if (!spec.size || spec.size.length !== 2) {
+            throw new TypeError('Expected a size [width, height] property in the Pixel Buffer specification');
+        }
+
+        const source = validatePixelBufferSource(
+            readAliasedSpecValue(spec, SOURCE_SPEC_NAMES)
+        );
+        const requestedBitsPerPixel = readAliasedSpecValue(
+            spec,
+            BITS_PER_PIXEL_SPEC_NAMES
+        );
+        if (
+            source &&
+            requestedBitsPerPixel !== undefined &&
+            requestedBitsPerPixel !== source.bits_per_pixel
+        ) {
+            throw new TypeError(
+                `bits_per_pixel contradicts the ${source.bits_per_pixel}bipp source`
+            );
+        }
+        let bitsPerPixel = source
+            ? source.bits_per_pixel
+            : requestedBitsPerPixel;
+        const requestedBytesPerPixel = readAliasedSpecValue(
+            spec,
+            BYTES_PER_PIXEL_SPEC_NAMES
+        );
+
+        if (bitsPerPixel === undefined) {
+            bitsPerPixel = requestedBytesPerPixel === undefined
+                ? 32
+                : requestedBytesPerPixel * 8;
+        } else if (requestedBytesPerPixel !== undefined) {
+            const compatible = bitsPerPixel === 1
+                ? requestedBytesPerPixel === 0 || requestedBytesPerPixel === 0.125
+                : requestedBytesPerPixel * 8 === bitsPerPixel;
+            if (!compatible) {
+                throw new TypeError('bytes_per_pixel contradicts bits_per_pixel');
             }
         }
-        if (spec.window_to) {
-            spec.bits_per_pixel = spec.window_to.bits_per_pixel;
+
+        const rowStrideBytes = readAliasedSpecValue(
+            spec,
+            ROW_STRIDE_SPEC_NAMES
+        );
+        const rowAlignmentBytes = readAliasedSpecValue(
+            spec,
+            ROW_ALIGNMENT_SPEC_NAMES
+        );
+        if (spec.ta !== undefined && spec.buffer !== undefined && spec.ta !== spec.buffer) {
+            throw new TypeError('Conflicting ta and buffer storage views in Pixel Buffer specification');
         }
-        const pos = new Int16Array(2);
-        const size = new Int16Array(2);
-        let ta; // flexible, can be redefined? Can still make read-only in userland.
-        ro(this, 'ta', () => {
-            return ta;
+        const suppliedStorage = spec.ta !== undefined ? spec.ta : spec.buffer;
+        const storageResult = createPixelBufferStorage({
+            width: spec.size[0],
+            height: spec.size[1],
+            bitsPerPixel,
+            rowStrideBytes,
+            rowAlignmentBytes
+        }, suppliedStorage);
+        const {layout, storage, ta} = storageResult;
+        const size = Object.freeze([layout.width, layout.height]);
+
+        // Float64Array preserves every safe-integer coordinate. Pixel positions
+        // can be negative or lie outside the image when this buffer is a window,
+        // so dimensions alone cannot safely determine a narrower representation.
+        const pos = new Float64Array(2);
+
+        Object.defineProperties(this, {
+            layout: {value: layout, enumerable: true},
+            ta: {value: ta, enumerable: true},
+            buffer: {value: ta, enumerable: true},
+            storage: {value: storage, enumerable: true},
+            bits_per_pixel: {value: layout.bitsPerPixel, enumerable: true},
+            bipp: {value: layout.bitsPerPixel, enumerable: true},
+            bytes_per_pixel: {value: layout.bytesPerPixel, enumerable: true},
+            bypp: {value: layout.bytesPerPixel, enumerable: true},
+            bytes_per_row: {value: layout.rowStrideBytes, enumerable: true},
+            bypr: {value: layout.rowStrideBytes, enumerable: true},
+            bits_per_row: {value: layout.rowDataBits, enumerable: true}
         });
-        ro(this, 'buffer', () => {
-            return ta;
-        });
-        const ta_bpp = new Uint8Array(2);
-        ta_bpp[1] = 8; // byte to bit multiplier. will stay as 8.
-        const _24bipp_to_8bipp = () => {
-            const old_ta = ta;
-            const new_ta = ta = new Uint8Array(this.num_px);
-            const l_read = old_ta.length;
-            let iby_read = 0, iby_write = 0;
-            while (iby_read < l_read) {
-                new_ta[iby_write++] = Math.round((old_ta[iby_read++] + old_ta[iby_read++] + old_ta[iby_read++]) / 3);
-            }
-        }
-        const _change_bipp_inner_update = (old_bipp, new_bipp) => {
-            if (old_bipp === 24) {
-                if (new_bipp === 8) {
-                    _24bipp_to_8bipp();
-                } else {
-                    console.trace();
-                    throw 'NYI';
-                }
-            } else {
-                console.trace();
-                throw 'NYI';
-            }
-        }
-        const def_bipp = {
-            get() { return ta_bpp[0]; },
-            set(value) { 
-                console.log('value', value);
-                const old_bipp = ta_bpp[0];
-                ta_bpp[0] = value;
-                _change_bipp_inner_update(old_bipp, ta_bpp[0]);
-            },
-            enumerable: true,
-            configurable: false
-        }
-        Object.defineProperty(this, 'bits_per_pixel', def_bipp);
-        Object.defineProperty(this, 'bipp', def_bipp);
-        const def_bypp = {
-            get() { return ta_bpp[0] / 8; },
-            set(value) { 
-                const old_bipp = ta_bpp[0];
-                ta_bpp[0] = value * 8;
-                _change_bipp_inner_update(old_bipp, ta_bpp[0]);
-            },
-            enumerable: true,
-            configurable: false
-        }
-        Object.defineProperty(this, 'bytes_per_pixel', def_bypp);
-        Object.defineProperty(this, 'bypp', def_bypp);
-        const def_bypr = {
-            get() {
-                return size[0] * ta_bpp[0] / 8;
-            }
-        }
-        Object.defineProperty(this, 'bytes_per_row', def_bypr);
-        Object.defineProperty(this, 'bypr', def_bypr);
+
         Object.defineProperty(this, 'pos', {
             get() { return pos; },
             set(value) {
-                if (value instanceof Int16Array) {
-                    if (value.length === 2) {
-                        pos[0] = value[0];
-                        pos[1] = value[1];
-                    }
-                }
+                setCoordinates(pos, value, 'pos');
             },
             enumerable: true,
             configurable: false
         });
-        const pos_bounds = new Int16Array(4);
-        const pos_center = new Int16Array(2);
-        const edge_offsets_from_center = new Int16Array(4);
-        ro(this, 'pos_center', () => pos_center);
-        ro(this, 'edge_offsets_from_center', () => edge_offsets_from_center);
+        const pos_bounds = new Float64Array(4);
+        const pos_center = new Float64Array(2);
+        const edge_offsets_from_center = new Float64Array(4);
+        let has_pos_bounds = false;
+
+        Object.defineProperty(this, 'pos_center', {
+            get() {
+                pos_center[0] = pos[0] + Math.floor(size[0] / 2);
+                pos_center[1] = pos[1] + Math.floor(size[1] / 2);
+                return pos_center;
+            },
+            set(value) {
+                validateCoordinateArray(value, 2, 'pos_center');
+                const next_x = value[0] - Math.floor(size[0] / 2);
+                const next_y = value[1] - Math.floor(size[1] / 2);
+                if (!Number.isSafeInteger(next_x) || !Number.isSafeInteger(next_y)) {
+                    throw new RangeError('pos_center places the window outside the safe-integer coordinate range');
+                }
+                pos[0] = next_x;
+                pos[1] = next_y;
+            },
+            enumerable: true,
+            configurable: false
+        });
+        Object.defineProperty(this, 'edge_offsets_from_center', {
+            get() {
+                const center_x = Math.floor(size[0] / 2);
+                const center_y = Math.floor(size[1] / 2);
+                edge_offsets_from_center[0] = -center_x;
+                edge_offsets_from_center[1] = -center_y;
+                edge_offsets_from_center[2] = size[0] - center_x;
+                edge_offsets_from_center[3] = size[1] - center_y;
+                return edge_offsets_from_center;
+            },
+            enumerable: true,
+            configurable: false
+        });
         Object.defineProperty(this, 'pos_bounds', {
             get() {
                 return pos_bounds; 
             },
             set(value) {
-                const tv = tf(value);
-                if (tv === 'a') {
-                    if (value.length === 4) {
-                        pos_bounds.set(value);
-                    } else {
-                        throw 'Expected Array with .length 4, value.length: ' + value.length;
-                    }
-                } else {
-                    console.trace();
-                    console.log('pos_bounds set tv', tv);
-                    throw 'Expected Array';
-                }
+                setCoordinates(pos_bounds, value, 'pos_bounds');
+                has_pos_bounds = true;
             },
             enumerable: true,
             configurable: false
         });
-        const minus_pos = new Int16Array(2);
+        const minus_pos = new Float64Array(2);
         Object.defineProperty(this, 'minus_pos', {
             get() {
                 if (pos) {
@@ -152,134 +261,78 @@ class Pixel_Buffer_Core_Inner_Structures {
         });
         Object.defineProperty(this, 'size', {
             get() { return size; },
-            set(value) {
-                if (value instanceof Int16Array) {
-                    if (value.length === 2) {
-                        size[0] = value[0];
-                        size[1] = value[1];
-                    }
-                } else {
-                    console.trace();
-                    throw 'NYI';
-                }
+            set() {
+                throw new TypeError('Pixel Buffer size is immutable; create a new buffer instead');
             },
             enumerable: true,
             configurable: false
         });
-        if (spec instanceof Pixel_Pos_List) {
-            throw 'NYI - change to 1bipp';
-            const ppl = spec;
-            const bounds = ppl.bounds;
-            const ppl_size = new Uint16Array(2);
-            ppl_size[0] = bounds[2] - bounds[0];
-            ppl_size[1] = bounds[3] - bounds[1];
-            this.bits_per_pixel = 8;
-            const bpp = this.bytes_per_pixel = 1;
-            this.size = new Uint16Array([ppl_size[0] + 4, ppl_size[1] + 4]);
-            this.pos = new Int16Array([bounds[0], bounds[1]]);
-            const bpr = this.bytes_per_row = bpp * this.size[0];
-            const buf = this.ta = this.buffer = new Uint8ClampedArray(this.size[0] * this.size[1]);
-            const l = buf.length;
-            for (var c = 0; c < l; c++) buf[c] = 255;
-            ppl.each_pixel(pixel_pos => {
-                buf[(bpr * (pixel_pos[1] - bounds[1])) + (pixel_pos[0] - bounds[0])] = 0;
-            });
-        } else {
-            if (spec.buffer) {
-                if (spec.buffer instanceof Buffer) {
-                    ta = new Uint8ClampedArray(spec.buffer.buffer);
-                } else {
-                    ta = spec.buffer;
-                }
-            }
-            if (spec.ta) {
-                ta = spec.ta;
-            }
-            if (spec.size) {
-                size[0] = spec.size[0];
-                size[1] = spec.size[1];
-            } else {
-                throw 'Expected: size [x, y] property in the Pixel_Buffer_Core specification';
-            }
-            if (spec.bytes_per_pixel && !spec.bits_per_pixel) spec.bits_per_pixel = spec.bytes_per_pixel * 8;
-            spec.bits_per_pixel = spec.bits_per_pixel || 32;
-            if (spec.bits_per_pixel) {
-                if (spec.bits_per_pixel != 1 && spec.bits_per_pixel != 8 && spec.bits_per_pixel != 24 && spec.bits_per_pixel != 32) {
-                    console.log('spec.bits_per_pixel', spec.bits_per_pixel);
-                    console.trace();
-                    throw 'Invalid bits_per_pixel value of ' + spec.bits_per_pixel + ', must be 8, 24 or 32, default is 32.';
-                } else {
-                    // bits per row...
 
-
-                    //   but there could be some kind of round to 64 bit row alignment for 1bipp.
-
-                    
-
-
-                    ta_bpp[0] = spec.bits_per_pixel;
-                }
-            }
-            /*
-            const bytes_per_pixel = this.bytes_per_pixel = this.bits_per_pixel / 8;
-            this.bytes_per_row = bytes_per_pixel * this.size[0];
-            */
-
-            let auto_adjust_ta_length_to_multiple_of_8 = true;
-            //    if it would be tiny anyway, don't.
-
-
-
-            if (size && !this.buffer) {
-                //ta = new Uint8ClampedArray(Math.ceil((ta_bpp[0] / 8) * this.size[0] * this.size[1]));
-
-                this.bits_per_row = size[0] * this.bits_per_pixel;
-
-                let proposed_ta_length = Math.ceil((ta_bpp[0] / 8) * (size[0] * size[1]));
-
-                if (auto_adjust_ta_length_to_multiple_of_8) {
-                    const r8 = proposed_ta_length % 8;
-                    if (r8 > 0) {
-                        proposed_ta_length += (8 - r8);
-                    }
-                }
-                
-                ta = new Uint8Array(proposed_ta_length);
-            }
-            if (spec.color) {
-                this.color_whole(spec.color);
-            }
-        }
-        ro(this, 'meta', () => {
-            return {
-                size: this.size,
-                bits_per_pixel: this.bits_per_pixel,
-                bytes_per_pixel: this.bytes_per_pixel,
-                bytes_per_row: this.bytes_per_row
-            }
+        const meta = Object.freeze({
+            size,
+            bits_per_pixel: layout.bitsPerPixel,
+            bytes_per_pixel: layout.bytesPerPixel,
+            bytes_per_row: layout.rowStrideBytes,
+            layout
         });
-        if (spec.window_to || spec.source || spec.window_to_source) {
-            pb_source = spec.window_to || spec.source || spec.window_to_source;
-            const log_info = () => {
-                console.log('Pixel_Buffer_Core (or subclass) needs to act as a window to another Pixel Buffer.')
-                console.log('pb_source', pb_source);
-                console.log('pb_source.size', pb_source.size);
-                console.log('spec.pos', spec.pos);
-                console.log('spec.pos_center', spec.pos_center);
-                console.log('this.pos', this.pos);
-                console.log('this.pos_my_center_within_source', this.pos_my_center_within_source);
-                console.log('spec', spec);
+        Object.defineProperty(this, 'meta', {
+            value: meta,
+            enumerable: true
+        });
+
+        let pb_source = source;
+        Object.defineProperty(this, 'source', {
+            get() { return pb_source; },
+            set(value) {
+                pb_source = validatePixelBufferSource(value, layout.bitsPerPixel);
+            },
+            enumerable: true,
+            configurable: false
+        });
+
+        if (spec.pos !== undefined) {
+            this.pos = spec.pos;
+        }
+        if (spec.pos_center !== undefined) {
+            if (spec.pos !== undefined) {
+                validateCoordinateArray(spec.pos_center, 2, 'pos_center');
+                const expected_x = pos[0] + Math.floor(size[0] / 2);
+                const expected_y = pos[1] + Math.floor(size[1] / 2);
+                if (
+                    spec.pos_center[0] !== expected_x ||
+                    spec.pos_center[1] !== expected_y
+                ) {
+                    throw new TypeError('pos and pos_center specify different window positions');
+                }
+            } else {
+                this.pos_center = spec.pos_center;
             }
         }
+
+        if (spec.color !== undefined) {
+            this.color_whole(spec.color);
+        }
+
+        // Supplied buffers remain shared and mutable. Normalizing their unused
+        // row bytes here establishes the layout invariant once, outside hot paths.
+        canonicalizePixelBufferStorage(ta, layout);
+
         if (spec.pos_bounds) {
             this.pos_bounds = spec.pos_bounds;
         }
         this.move = ta_2d_vector => {
-            pos[0] += ta_2d_vector[0];
-            pos[1] += ta_2d_vector[1];
+            validateCoordinateArray(ta_2d_vector, 2, 'move vector');
+            const next_x = pos[0] + ta_2d_vector[0];
+            const next_y = pos[1] + ta_2d_vector[1];
+            if (!Number.isSafeInteger(next_x) || !Number.isSafeInteger(next_y)) {
+                throw new RangeError('move would exceed the safe-integer coordinate range');
+            }
+            pos[0] = next_x;
+            pos[1] = next_y;
             if (this.source) {
                 this.copy_from_source();
             }
+            return pos;
         }
         this.each_pos_within_bounds = (callback) => {
             const has_source = !!this.source;
@@ -291,12 +344,29 @@ class Pixel_Buffer_Core_Inner_Structures {
             }
         }
         this.move_next_px = () => {
-            const source_size = this.source.size;
-            if (pos[0] + size[0] < source_size[0]) {
+            let left = 0;
+            let top = 0;
+            let right;
+            let bottom;
+
+            if (has_pos_bounds) {
+                left = pos_bounds[0];
+                top = pos_bounds[1];
+                right = pos_bounds[2];
+                bottom = pos_bounds[3];
+            } else {
+                if (!this.source) {
+                    throw new Error('move_next_px requires a source or pos_bounds');
+                }
+                right = this.source.size[0] - size[0] + 1;
+                bottom = this.source.size[1] - size[1] + 1;
+            }
+
+            if (pos[0] + 1 < right) {
                 pos[0]++;
             } else {
-                if (pos[1] + size[1] < source_size[1]) {
-                    pos[0] = 0;
+                if (pos[1] + 1 < bottom) {
+                    pos[0] = left;
                     pos[1]++;
                 } else {
                     return false;
@@ -308,12 +378,7 @@ class Pixel_Buffer_Core_Inner_Structures {
             return pos;
         }
         
-        /*
-        ro(this, 'bytes_per_row', () => {
-            return this.size[0] * this.bytes_per_pixel;
-        });
-        */
-        this.tabrw = new Typed_Array_Binary_Read_Write(ta);
+        this.tabrw = new Typed_Array_Binary_Read_Write(ta, layout.bitOrder);
         this.dv = this.tabrw.dv;
     }
     

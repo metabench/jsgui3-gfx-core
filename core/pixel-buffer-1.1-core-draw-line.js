@@ -127,6 +127,82 @@ let ta_math = require('./ta-math')
 let {resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp} = ta_math;
 
 const Pixel_Buffer_Core_Get_Set_Pixels = require('./pixel-buffer-1-core-get-set-pixel');
+const {
+    unsafeSetPixel,
+    unsafeSetPixel1bipp
+} = require('./pixel-buffer-pixel-access');
+
+// Clip only when an endpoint is outside. The overwhelmingly common in-bounds
+// path in draw_line keeps its existing Bresenham loop unchanged.
+const clip_line_to_bitmap = (x0, y0, x1, y1, width, height) => {
+    if (!Number.isFinite(x0) || !Number.isFinite(y0) ||
+        !Number.isFinite(x1) || !Number.isFinite(y1) ||
+        width <= 0 || height <= 0) {
+        return null;
+    }
+
+    const max_x = width - 1;
+    const max_y = height - 1;
+    const LEFT = 1, RIGHT = 2, TOP = 4, BOTTOM = 8;
+    const outcode = (x, y) =>
+        (x < 0 ? LEFT : (x > max_x ? RIGHT : 0)) |
+        (y < 0 ? TOP : (y > max_y ? BOTTOM : 0));
+
+    let code0 = outcode(x0, y0);
+    let code1 = outcode(x1, y1);
+
+    while (true) {
+        if ((code0 | code1) === 0) {
+            return [
+                Math.max(0, Math.min(max_x, Math.round(x0))),
+                Math.max(0, Math.min(max_y, Math.round(y0))),
+                Math.max(0, Math.min(max_x, Math.round(x1))),
+                Math.max(0, Math.min(max_y, Math.round(y1)))
+            ];
+        }
+        if ((code0 & code1) !== 0) return null;
+
+        const code = code0 || code1;
+        let x, y;
+        if (code & TOP) {
+            x = x0 + (x1 - x0) * (-y0) / (y1 - y0);
+            y = 0;
+        } else if (code & BOTTOM) {
+            x = x0 + (x1 - x0) * (max_y - y0) / (y1 - y0);
+            y = max_y;
+        } else if (code & RIGHT) {
+            y = y0 + (y1 - y0) * (max_x - x0) / (x1 - x0);
+            x = max_x;
+        } else {
+            y = y0 + (y1 - y0) * (-x0) / (x1 - x0);
+            x = 0;
+        }
+
+        if (code === code0) {
+            x0 = x;
+            y0 = y;
+            code0 = outcode(x0, y0);
+        } else {
+            x1 = x;
+            y1 = y;
+            code1 = outcode(x1, y1);
+        }
+    }
+};
+
+const normalize_line_coordinates = (x0, y0, x1, y1) => {
+    if (!Number.isFinite(x0) || !Number.isFinite(y0) ||
+        !Number.isFinite(x1) || !Number.isFinite(y1)) {
+        throw new TypeError('Line coordinates must be finite numbers');
+    }
+    if ((Number.isInteger(x0) && !Number.isSafeInteger(x0)) ||
+        (Number.isInteger(y0) && !Number.isSafeInteger(y0)) ||
+        (Number.isInteger(x1) && !Number.isSafeInteger(x1)) ||
+        (Number.isInteger(y1) && !Number.isSafeInteger(y1))) {
+        throw new RangeError('Line integer coordinates must be safe integers');
+    }
+    return [Math.trunc(x0), Math.trunc(y0), Math.trunc(x1), Math.trunc(y1)];
+};
 
 class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     constructor(spec) {
@@ -139,6 +215,41 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     }
 
     'draw_line'(pos1, pos2, color) {
+
+        // Keep the common one-pixel operation at least as cheap as entering
+        // Bresenham. Non-finite/fractional values deliberately miss this guard
+        // and go through the validating slow path below.
+        const single_x = pos1[0], single_y = pos1[1];
+        if (single_x === pos2[0] && single_y === pos2[1] &&
+            (single_x | 0) === single_x && (single_y | 0) === single_y) {
+            const single_size = this.size;
+            if ((single_x >>> 0) >= single_size[0] ||
+                (single_y >>> 0) >= single_size[1]) {
+                return;
+            }
+            const bipp = this.bits_per_pixel;
+            const row = single_y * this.bytes_per_row;
+            if (bipp === 1) {
+                const byte = row + (single_x >> 3);
+                const mask = 128 >> (single_x & 7);
+                if (color) this.ta[byte] |= mask;
+                else this.ta[byte] &= ~mask;
+            } else if (bipp === 8) {
+                this.ta[row + single_x] = color;
+            } else if (bipp === 24) {
+                const byte = row + single_x * 3;
+                this.ta[byte] = color[0];
+                this.ta[byte + 1] = color[1];
+                this.ta[byte + 2] = color[2];
+            } else if (bipp === 32) {
+                const byte = row + single_x * 4;
+                this.ta[byte] = color[0];
+                this.ta[byte + 1] = color[1];
+                this.ta[byte + 2] = color[2];
+                this.ta[byte + 3] = color[3];
+            }
+            return;
+        }
 
         // options would help....
         //  or it could just be color here.
@@ -165,6 +276,32 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
             let x1 = pos2[0];
             let y1 = pos2[1];
 
+            if ((x0 | 0) !== x0 || (y0 | 0) !== y0 ||
+                (x1 | 0) !== x1 || (y1 | 0) !== y1) {
+                [x0, y0, x1, y1] = normalize_line_coordinates(x0, y0, x1, y1);
+            }
+
+            const [width, height] = this.size;
+            if (x0 < 0 || x0 >= width || y0 < 0 || y0 >= height ||
+                x1 < 0 || x1 >= width || y1 < 0 || y1 >= height) {
+                const clipped = clip_line_to_bitmap(x0, y0, x1, y1, width, height);
+                if (clipped === null) return;
+                [x0, y0, x1, y1] = clipped;
+            }
+
+            if (x0 === x1 && y0 === y1) {
+                unsafeSetPixel1bipp(this, [x0, y0], color);
+                return;
+            }
+            if (y0 === y1) {
+                return this.draw_horizontal_line_y_x1_x2(
+                    y0,
+                    x0 < x1 ? x0 : x1,
+                    x0 < x1 ? x1 : x0,
+                    color
+                );
+            }
+
             let dx = Math.abs(x1 - x0);
             let dy = Math.abs(y1 - y0);
             let sx = (x0 < x1) ? 1 : -1;
@@ -173,7 +310,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
 
             while (true) {
                 //console.log('[x0, y0]', [x0, y0]);
-                this.set_pixel_1bipp([x0, y0], color);
+                unsafeSetPixel1bipp(this, [x0, y0], color);
 
                 if (x0 === x1 && y0 === y1) {
                     break;
@@ -199,6 +336,32 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
             let x1 = pos2[0];
             let y1 = pos2[1];
 
+            if ((x0 | 0) !== x0 || (y0 | 0) !== y0 ||
+                (x1 | 0) !== x1 || (y1 | 0) !== y1) {
+                [x0, y0, x1, y1] = normalize_line_coordinates(x0, y0, x1, y1);
+            }
+
+            const [width, height] = this.size;
+            if (x0 < 0 || x0 >= width || y0 < 0 || y0 >= height ||
+                x1 < 0 || x1 >= width || y1 < 0 || y1 >= height) {
+                const clipped = clip_line_to_bitmap(x0, y0, x1, y1, width, height);
+                if (clipped === null) return;
+                [x0, y0, x1, y1] = clipped;
+            }
+
+            if (x0 === x1 && y0 === y1) {
+                unsafeSetPixel(this, [x0, y0], color);
+                return;
+            }
+            if (y0 === y1) {
+                return this.draw_horizontal_line_y_x1_x2(
+                    y0,
+                    x0 < x1 ? x0 : x1,
+                    x0 < x1 ? x1 : x0,
+                    color
+                );
+            }
+
             let dx = Math.abs(x1 - x0);
             let dy = Math.abs(y1 - y0);
             let sx = (x0 < x1) ? 1 : -1;
@@ -206,7 +369,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
             let err = dx - dy;
 
             while (true) {
-                this.set_pixel([x0, y0], color);
+                unsafeSetPixel(this, [x0, y0], color);
 
                 if (x0 === x1 && y0 === y1) {
                     break;
@@ -233,8 +396,36 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     draw_line_1bipp(ta_pixel_pair, color) {
         const { ta } = this;  // Extract the typed array (ta) from the pixel buffer object
 
-        let [x0, y0, x1, y1] = ta_pixel_pair,     // Extract x0, y0, x1, y1 from ta_pixel_pair
-            bytes_per_row = this.bytes_per_row,   // Access bytes per row from the object
+        let [x0, y0, x1, y1] = ta_pixel_pair;     // Extract x0, y0, x1, y1 from ta_pixel_pair
+        if ((x0 | 0) !== x0 || (y0 | 0) !== y0 ||
+            (x1 | 0) !== x1 || (y1 | 0) !== y1) {
+            [x0, y0, x1, y1] = normalize_line_coordinates(x0, y0, x1, y1);
+        }
+        const [width, height] = this.size;
+        if (x0 < 0 || x0 >= width || y0 < 0 || y0 >= height ||
+            x1 < 0 || x1 >= width || y1 < 0 || y1 >= height) {
+            const clipped = clip_line_to_bitmap(x0, y0, x1, y1, width, height);
+            if (clipped === null) return;
+            [x0, y0, x1, y1] = clipped;
+        }
+
+        if (x0 === x1 && y0 === y1) {
+            const byte_index = (x0 >> 3) + (y0 * this.bytes_per_row);
+            const mask = 128 >> (x0 & 7);
+            if (color) ta[byte_index] |= mask;
+            else ta[byte_index] &= ~mask;
+            return;
+        }
+        if (y0 === y1) {
+            return this.draw_horizontal_line_y_x1_x2(
+                y0,
+                x0 < x1 ? x0 : x1,
+                x0 < x1 ? x1 : x0,
+                color
+            );
+        }
+
+        let bytes_per_row = this.bytes_per_row,   // Access bytes per row from the object
             dx = Math.abs(x1 - x0),               // Calculate dx
             dy = Math.abs(y1 - y0),               // Calculate dy
             sx = (x0 < x1) ? 1 : -1,              // Set step direction for x
@@ -260,37 +451,35 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
     }
 
     'draw_horizontal_line_off_1bipp_inclusive'([x1, x2], y) {
-        const {size, ta} = this;
+        const {ta} = this;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const number_of_pixels_to_draw = (x2 - x1) + 1;
+        const row_start = y * this.bytes_per_row;
         if (number_of_pixels_to_draw === 1) {
-            const pixel_index = (y * size[0]) + x1;
-            ta[pixel_index >> 3] &= (~(128 >> (pixel_index & 0b111))) & 255;
+            const byte = row_start + (x1 >> 3);
+            ta[byte] &= ~(128 >> (x1 & 7)) & 255;
         } else if (number_of_pixels_to_draw === 2) {
-            let pixel_index = (y * size[0]) + x1;
-            ta[pixel_index >> 3] &= (~(128 >> ((pixel_index & 0b111)))) & 255
-            pixel_index++;
-            ta[pixel_index >> 3] &= (~(128 >> ((pixel_index & 0b111)))) & 255
-            pixel_index++;
+            let byte = row_start + (x1 >> 3);
+            ta[byte] &= ~(128 >> (x1 & 7)) & 255;
+            x1++;
+            byte = row_start + (x1 >> 3);
+            ta[byte] &= ~(128 >> (x1 & 7)) & 255;
         } else {
-            const [w] = size;
-            const starting_pixel_index = ((y * w) + x1) | 0;
-            const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
-            const starting_byte_index = starting_pixel_index >> 3;
-            const starting_bit_within_byte_index = (starting_pixel_index & 7);
-            const ending_byte_index = ending_pixel_index >> 3;
-            const ending_bit_within_byte_index = (ending_pixel_index & 7);
+            const starting_byte_index = row_start + (x1 >> 3);
+            const starting_bit_within_byte_index = x1 & 7;
+            const ending_byte_index = row_start + (x2 >> 3);
+            const ending_bit_within_byte_index = x2 & 7;
             const bits_from_end_of_byte = 7 - ending_bit_within_byte_index;
-            const number_of_bytes_with_any_coverage = (ending_byte_index - starting_byte_index) + 1;
             if (starting_byte_index === ending_byte_index) {
                 ta[starting_byte_index] &= (~((((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)) >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
-            }  else if (number_of_bytes_with_any_coverage === 2) {
-                ta[starting_byte_index] &= (~(((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index))&255;
-                ta[ending_byte_index] &= (~((255 >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
             } else {
                 ta[starting_byte_index] &= (~((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)))&255;
-                for (let x = starting_byte_index + 1; x < ending_byte_index; x++) {
-                    ta[x] = 0;
-                }
+                ta.fill(0, starting_byte_index + 1, ending_byte_index);
                 ta[ending_byte_index] &= (~((255 >> bits_from_end_of_byte) << bits_from_end_of_byte))&255;
             }
         }
@@ -298,73 +487,70 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
 
 
     draw_x_span_on_1bipp(x, y, l) {
-        const x2 = x + l;
-
-        //console.log('[x, y, l]', [x, y, l]);
-
-        for (let ix = x; ix < x2; ix++) {
-            this.set_pixel_on_1bipp_xy(ix, y);
-
-        }
-
+        if (l <= 0) return;
+        return this.draw_horizontal_line_on_1bipp_inclusive([x, x + l - 1], y);
     }
 
     // May do more lower level / general purpose work on line drawing....
 
     'draw_horizontal_line_on_1bipp_inclusive'([x1, x2], y) {
-        const {size, ta} = this;
+        const {ta} = this;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const number_of_pixels_to_draw = (x2 - x1) + 1;
+        const row_start = y * this.bytes_per_row;
         if (number_of_pixels_to_draw === 1) {
-            const pixel_index = (y * size[0]) + x1;
-            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
+            ta[row_start + (x1 >> 3)] |= 128 >> (x1 & 7);
         } else if (number_of_pixels_to_draw === 2) {
-            let pixel_index = (y * size[0]) + x1;
-            // Seems possibly wrong op....
-            //   Maybe this would really be best doing the 16 bit way.
-            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
-            pixel_index++;
-            ta[pixel_index >> 3] |= (128 >> (pixel_index & 0b111));
-            pixel_index++;
+            ta[row_start + (x1 >> 3)] |= 128 >> (x1 & 7);
+            x1++;
+            ta[row_start + (x1 >> 3)] |= 128 >> (x1 & 7);
         } else {
-            const [w, h] = size;
-            const starting_pixel_index = ((y * w) + x1) | 0;
-            const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
-            //const ending_pixel_index = starting_pixel_index + (number_of_pixels_to_draw - 1);
-            const starting_byte_index = starting_pixel_index >> 3;
-            const starting_bit_within_byte_index = (starting_pixel_index & 7);
-            const ending_byte_index = ending_pixel_index >> 3;
-            const ending_bit_within_byte_index = (ending_pixel_index & 7);
+            const starting_byte_index = row_start + (x1 >> 3);
+            const starting_bit_within_byte_index = x1 & 7;
+            const ending_byte_index = row_start + (x2 >> 3);
+            const ending_bit_within_byte_index = x2 & 7;
             const bits_from_end_of_byte = 7 - ending_bit_within_byte_index;
             if (starting_byte_index === ending_byte_index) {
                 ta[starting_byte_index] |= (((((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index)) >> bits_from_end_of_byte) << bits_from_end_of_byte;
             } else {
                 ta[starting_byte_index] |= ((255 << starting_bit_within_byte_index) & 255) >> starting_bit_within_byte_index;
-                for (let x = starting_byte_index + 1; x < ending_byte_index; x++) {
-                    ta[x] = 255;
-                }
+                ta.fill(255, starting_byte_index + 1, ending_byte_index);
                 ta[ending_byte_index] |= (255 >> bits_from_end_of_byte) << bits_from_end_of_byte;
             }
         }
     }
     
     'draw_horizontal_line_8bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
+        let [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         //const [r, g, b] = color;
-        let w = start_pixel_idx;
+        let w = this.bytes_per_row * y + x1;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = color;
         }
     }
     'draw_horizontal_line_24bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
+        let [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         const [r, g, b] = color;
-        let w = start_pixel_idx * 3;
+        let w = this.bytes_per_row * y + x1 * 3;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = r;
             ta[w++] = g;
@@ -372,12 +558,16 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
         }
     }
     'draw_horizontal_line_32bipp'(xspan, y, color) {
-        const [x1, x2] = xspan;
+        let [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         const [r, g, b, a] = color;
-        let w = start_pixel_idx * 4;
+        let w = this.bytes_per_row * y + x1 * 4;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = r;
             ta[w++] = g;
@@ -425,13 +615,25 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
         }
     }
 
+    'draw_horizontal_line_on_1bipp_inclusive_y_x1_x2'(y, x1, x2) {
+        return this.draw_horizontal_line_on_1bipp_inclusive([x1, x2], y);
+    }
+
+    'draw_horizontal_line_off_1bipp_inclusive_y_x1_x2'(y, x1, x2) {
+        return this.draw_horizontal_line_off_1bipp_inclusive([x1, x2], y);
+    }
+
     'draw_horizontal_line_8bipp_y_x1_x2'(y, x1, x2, color) {
         //const [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         //const [r, g, b] = color;
-        let w = start_pixel_idx;
+        let w = this.bytes_per_row * y + x1;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = color;
         }
@@ -439,11 +641,15 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
 
     '_draw_horizontal_line_24bipp_y_x1_x2'(y, x1, x2, color) {
         //const [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         const [r, g, b] = color;
-        let w = start_pixel_idx * 3;
+        let w = this.bytes_per_row * y + x1 * 3;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = r;
             ta[w++] = g;
@@ -455,18 +661,19 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
         const { ta } = this;
         const [width, height] = this.size;
 
-        // Validate bounds
-        if (y < 0 || y >= height || x1 < 0 || x2 >= width || x1 > x2) {
-            throw new Error("Coordinates out of bounds");
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
         }
 
-        const start_pixel_idx = width * y + x1;
+        const start_byte_idx = this.bytes_per_row * y + x1 * 3;
         const [r, g, b] = color;
         const pixel_count = x2 - x1 + 1;
 
         if (pixel_count < 8) {
             // For small spans, use the original per-pixel method
-            let w = start_pixel_idx * 3;
+            let w = start_byte_idx;
             for (let x = x1; x <= x2; x++) {
                 ta[w++] = r;
                 ta[w++] = g;
@@ -488,7 +695,7 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
             }
         }
 
-        let w = start_pixel_idx * 3;
+        let w = start_byte_idx;
         const ppal = pre_populated_array.length;
         const chunk_size = ppal / 3; // Use the provided pre-populated array's actual size
         let remaining_pixels = pixel_count;
@@ -526,11 +733,15 @@ class Pixel_Buffer_Core_Draw_Lines extends Pixel_Buffer_Core_Get_Set_Pixels {
 
     'draw_horizontal_line_32bipp_y_x1_x2'(y, x1, x2, color) {
         //const [x1, x2] = xspan;
+        const width = this.size[0], height = this.size[1];
+        if (x1 < 0 || x2 >= width || y < 0 || y >= height || x1 > x2) {
+            if (y < 0 || y >= height || x1 > x2 || x2 < 0 || x1 >= width) return;
+            if (x1 < 0) x1 = 0;
+            if (x2 >= width) x2 = width - 1;
+        }
         const {ta} = this;
-        const [width] = this.size;
-        const start_pixel_idx = width * y + x1;
         const [r, g, b, a] = color;
-        let w = start_pixel_idx * 4;
+        let w = this.bytes_per_row * y + x1 * 4;
         for (let x = x1; x <= x2; x++) {
             ta[w++] = r;
             ta[w++] = g;

@@ -25,16 +25,11 @@ class Pixel_Buffer_Idiomatic_Enh extends Pixel_Buffer_Advanced_TypedArray_Proper
     }
 
     count_colors() {
-        const map_colors = {};
-        let res = 0;
-        this.each_pixel_ta((pos, color) => {
-            const colstr = color.toString();
-            if (!map_colors[colstr]) {
-                map_colors[colstr] = true;
-                res++;
-            }
+        const colors = new Set();
+        this.each_pixel((pos, color) => {
+            colors.add(color.toString());
         });
-        return res;
+        return colors.size;
     }
 
     
@@ -49,8 +44,6 @@ class Pixel_Buffer_Idiomatic_Enh extends Pixel_Buffer_Advanced_TypedArray_Proper
     count_pixels_with_color(color) {
         let res = 0;
         // could find out here what format the color is...
-
-        console.log('idiomatic count_pixels_with_color');
 
         const {bipp} = this;
 

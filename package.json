@@ -13,6 +13,8 @@
     },
     "version": "0.0.27",
     "scripts": {
-        "test": "node ./tests/run-tests.js"
+        "test": "node ./tests/run-tests.js",
+        "benchmark": "node ./benchmarks/pixel-buffer-benchmark.js",
+        "benchmark:json": "node ./benchmarks/pixel-buffer-benchmark.js --json --no-compare"
     }
 }

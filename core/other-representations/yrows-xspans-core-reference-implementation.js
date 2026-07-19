@@ -19,7 +19,18 @@
 
 const oext = require('obext');
 
-const {ro, prop} = oext;
+const {ro} = oext;
+
+const colors_are_equal = (left, right) => {
+    if (left === right) return true;
+    const left_is_array = Array.isArray(left) || ArrayBuffer.isView(left);
+    const right_is_array = Array.isArray(right) || ArrayBuffer.isView(right);
+    if (!left_is_array || !right_is_array || left.length !== right.length) return false;
+    for (let index = 0; index < left.length; index++) {
+        if (left[index] !== right[index]) return false;
+    }
+    return true;
+};
 
 
 // And each row has got various spans.
@@ -44,46 +55,33 @@ const {ro, prop} = oext;
 
 
 class YRows_XSpans_Core_Reference_Implementation {
-    constructor(spec) {
+    constructor(spec = {}) {
+        if (!spec || typeof spec !== 'object') {
+            throw new TypeError('YRows_XSpans options must be an object');
+        }
+        if (!spec.size || !Number.isSafeInteger(spec.size[0]) ||
+            !Number.isSafeInteger(spec.size[1]) || spec.size[0] < 0 || spec.size[1] < 0) {
+            throw new RangeError('size must contain two non-negative safe integers');
+        }
 
-        let size = new Uint16Array(2);
+        const size = new Float64Array([spec.size[0], spec.size[1]]);
 
         // A default_color property?
         // background_color perhaps.
         //  default makes more logical / programming sense.
 
-        let default_color;
+        const default_color = Object.prototype.hasOwnProperty.call(spec, 'default_color')
+            ? spec.default_color
+            : 0;
 
         ro(this, 'default_color', () => {
             return default_color;
         });
 
-        if (spec.size) {
-            size[0] = spec.size[0];
-            size[1] = spec.size[1];
-        }
+        ro(this, 'size', () => size.slice());
 
-        if (spec.default_color) {
-            default_color = spec.default_color;
-            
-        }
-
-        let rows;
-
-        if (size[1] > 0) {
-
-            //rows = new Array(size[1]);
-
-            rows = Array.from({ length: size[1] }, () => []);
-            // Seems best to init arrays in all of them to start with....
-
-
-            ro(this, 'rows', () => {
-                return rows;
-            });
-
-
-        }
+        const rows = Array.from({length: size[1]}, () => []);
+        ro(this, 'rows', () => rows);
 
 
 
@@ -100,129 +98,96 @@ class YRows_XSpans_Core_Reference_Implementation {
     //   consider 24 bit colors using 32 bit numbers.
 
 
-    set_pixel(pos, color) {
-        // Is it already that color?
-
-        const {default_color} = this;
-
-        // Easy to find the row.
-        const [x, y] = pos;
-
+    get_pixel(pos) {
+        const [x, y] = this._validate_pos(pos);
         const row = this.rows[y];
-
-        const colors_are_equal = (color1, color2) => {
-            return color1 == color2;
+        for (const span of row) {
+            if (x < span[0]) break;
+            if (x <= span[1]) return span[2];
         }
+        return this.default_color;
+    }
 
+    set_pixel(pos, color) {
+        const [x, y] = this._validate_pos(pos);
+        const row = this.rows[y];
+        let containing_index = -1;
 
-        if (row) {
-            if (row.length === 0) {
-                // or an equals function?
-
-                if (colors_are_equal(color, default_color)) {
-                    // nothing to do
-                } else {
-                    // Representing the pixel spans as inclusive of both x1 and x2 does make some sense when compairing overlaps.
-                    //  Maybe have different options for this even?
-                    //  How to represent the xspans.
-
-                    row.push([pos[0], pos[0], color]);
-                }
-
-                // maybe just == evaluation for the colors.
-                //if (color === de)
-
-            } else {
-
-
-                // May be best putting the logic within plenty of local functions that are clearly named here.
-
-                // scan row?
-                //  iterate through the row, looking for overlaps.
-                //   maybe identify that the position is n pixels before the start.
-                //    or n pixels after.
-                //    or within the xspan.
-
-                let pixels_left_of_xspan = -1, pixels_right_of_xspan = -1, is_within_xspan = false, is_before_xspan, is_after_xspan, 
-                    how_many_pixels_right_of_xspan_start = -1, how_many_pixels_left_of_xspan_end = -1, idx_xspan = 0;
-
-
-                let pixel_matches_xspan_color = false;
-                //  irrelevant in most cases anyway.
-                //   only relevent within / adjacent to xspans matching the pos.
-
-                let pixel_matches_default_color = colors_are_equal(color, default_color);
-
-                for (const xspan of row) {
-                    console.log('xspan', xspan);
-
-                    const [x1, x2, color] = xspan;
-
-
-                    if (x < x1) {
-                        is_before_xspan = true;
-                        pixels_left_of_xspan = x1 - x;
-                        pixels_right_of_xspan = -1;
-                        is_within_xspan = false;
-                        is_after_xspan = false;
-                        how_many_pixels_right_of_xspan_start = -1;
-                        how_many_pixels_left_of_xspan_end = x2 - x;
-                    } else if (x === x1) {
-                        // Pixel is at the start of the xspan.
-
-                    } else if (x < x2) {
-
-                    } else if (x === x2) {
-
-                    } else if (x > x2) {
-
-                    } else {
-                        throw 'stop';
-                    }
-
-
-                    idx_xspan++;
-                }
-
-
-
-
-                
-
-                // Check where it is, relative to other xspans in the row.
-
-                // 
-
-                // Is it within any?
-                //  Is that pixel already the set color?
-
-                // Is it adjacent to 1? on the left, or the right?
-                //  then is it the same color as the one it's adjacent to?
-                //  is it the same color as the background?
-                //   if so, nothing to do.
-
-                // Is it adjacent to 2?
-                //  should only be a single pixel then.
-                //  check if it's the same color as both of them. (if so, will join them together)
-
-
-
-
-                // Check if it's in empty space?
-                
-                // Check to see if there is an existing one to extend?
-                // Check to see if one needs to be split
-
-
+        for (let index = 0; index < row.length; index++) {
+            const span = row[index];
+            if (x < span[0]) break;
+            if (x <= span[1]) {
+                containing_index = index;
+                break;
             }
-        } else {
-            throw 'Row not found';
         }
 
+        const old_color = containing_index === -1
+            ? this.default_color
+            : row[containing_index][2];
+        if (colors_are_equal(old_color, color)) return false;
 
+        // Remove x from its current non-default span, splitting if needed.
+        if (containing_index !== -1) {
+            const span = row[containing_index];
+            const [left, right, span_color] = span;
+            if (left === right) {
+                row.splice(containing_index, 1);
+            } else if (x === left) {
+                span[0]++;
+            } else if (x === right) {
+                span[1]--;
+            } else {
+                span[1] = x - 1;
+                row.splice(containing_index + 1, 0, [x + 1, right, span_color]);
+            }
+        }
 
+        // Default pixels are represented by gaps between spans.
+        if (colors_are_equal(color, this.default_color)) return true;
 
+        let insertion_index = 0;
+        while (insertion_index < row.length && row[insertion_index][0] < x) {
+            insertion_index++;
+        }
+        const left_span = insertion_index > 0 ? row[insertion_index - 1] : undefined;
+        const right_span = row[insertion_index];
+        const joins_left = left_span && left_span[1] + 1 === x &&
+            colors_are_equal(left_span[2], color);
+        const joins_right = right_span && right_span[0] - 1 === x &&
+            colors_are_equal(right_span[2], color);
 
+        if (joins_left && joins_right) {
+            left_span[1] = right_span[1];
+            row.splice(insertion_index, 1);
+        } else if (joins_left) {
+            left_span[1] = x;
+        } else if (joins_right) {
+            right_span[0] = x;
+        } else {
+            row.splice(insertion_index, 0, [x, x, color]);
+        }
+
+        return true;
+    }
+
+    each_xspan(y, callback) {
+        if (!Number.isSafeInteger(y) || y < 0 || y >= this.size[1]) {
+            throw new RangeError('Row is outside the representation');
+        }
+        if (typeof callback !== 'function') throw new TypeError('callback must be a function');
+        for (const span of this.rows[y]) callback(span);
+    }
+
+    _validate_pos(pos) {
+        if (!pos || !Number.isSafeInteger(pos[0]) || !Number.isSafeInteger(pos[1])) {
+            throw new TypeError('Pixel position must contain two safe integers');
+        }
+        const x = pos[0], y = pos[1];
+        if (x < 0 || y < 0 || x >= this.size[0] || y >= this.size[1]) {
+            throw new RangeError('Pixel position is outside the representation');
+        }
+        return [x, y];
     }
 }
 

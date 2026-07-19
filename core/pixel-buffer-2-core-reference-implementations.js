@@ -127,6 +127,7 @@ let ta_math = require('./ta-math')
 let { resize_ta_colorspace, copy_rect_to_same_size_8bipp, copy_rect_to_same_size_24bipp, dest_aligned_copy_rect_1to4bypp } = ta_math;
 
 const Pixel_Buffer_Core_Masks = require('./pixel-buffer-1.5-core-mask');
+const {unsafeGetPixel1bipp} = require('./pixel-buffer-pixel-access');
 
 class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Masks {
     constructor(spec) {
@@ -134,55 +135,19 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             spec = {
                 bits_per_pixel: spec.bits_per_pixel,
                 size: spec.size,
-                ta: spec.ta
+                rowStrideBytes: spec.bytes_per_row,
+                rowAlignmentBytes: spec.layout.rowAlignmentBytes,
+                ta: spec.storage
             }
         }
         let silent_update_bits_per_pixel;
         let silent_update_bytes_per_pixel;
-        if (spec.window_to) {
-            spec.bits_per_pixel = spec.window_to.bits_per_pixel;
-        }
-        const pos = new Int16Array(2);
-        const size = new Int16Array(2);
         let ta; // flexible, can be redefined? Can still make read-only in userland.
 
         super(spec);
 
 
 
-        this.move = ta_2d_vector => {
-            pos[0] += ta_2d_vector[0];
-            pos[1] += ta_2d_vector[1];
-            if (this.source) {
-                this.copy_from_source();
-            }
-        }
-        this.each_pos_within_bounds = (callback) => {
-            const has_source = !!this.source;
-            for (pos[1] = pos_bounds[1]; pos[1] < pos_bounds[3]; pos[1]++) {
-                for (pos[0] = pos_bounds[0]; pos[0] < pos_bounds[2]; pos[0]++) {
-                    if (has_source) this.copy_from_source();
-                    callback();
-                }
-            }
-        }
-        this.move_next_px = () => {
-            const source_size = this.source.size;
-            if (pos[0] + size[0] < source_size[0]) {
-                pos[0]++;
-            } else {
-                if (pos[1] + size[1] < source_size[1]) {
-                    pos[0] = 0;
-                    pos[1]++;
-                } else {
-                    return false;
-                }
-            }
-            if (this.source) {
-                this.copy_from_source();
-            }
-            return pos;
-        }
         this.paint = new Pixel_Buffer_Painter({
             pb: this
         });
@@ -227,7 +192,7 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
                     //const px_color = (input_byte >> i_bit) & 1;
                     // not sure why this is not working right.
 
-                    const got_px_color = this.get_pixel_1bipp(ta_cb_pos);
+                    const got_px_color = unsafeGetPixel1bipp(this, ta_cb_pos);
 
 
                     callback(ta_cb_pos, got_px_color);
@@ -255,10 +220,18 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             // Nested for loops seems a bit simpler...
             //ta_pos_scratch[0] = 0;
             //ta_pos_scratch[1] = 0;
-            let pixel_idx = 0;
-            this.each_pixel_pos((pos, stop) => {
-                callback(pos, ta[pixel_idx++], stop);
-            });
+            const width = size[0];
+            if (this.bytes_per_row === width) {
+                let pixel_idx = 0;
+                this.each_pixel_pos((pos, stop) => {
+                    callback(pos, ta[pixel_idx++], stop);
+                });
+            } else {
+                const rowStrideBytes = this.bytes_per_row;
+                this.each_pixel_pos((pos, stop) => {
+                    callback(pos, ta[pos[1] * rowStrideBytes + pos[0]], stop);
+                });
+            }
             //
 
 
@@ -268,24 +241,49 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
             //  Though setting values would maybe / likely be quicker and mean less allocations.
 
             const { ta_24bit_color } = this;
-            let byte_idx = 0;
-            this.each_pixel_pos((pos, stop) => {
-                ta_24bit_color[0] = ta[byte_idx++];
-                ta_24bit_color[1] = ta[byte_idx++];
-                ta_24bit_color[2] = ta[byte_idx++];
-                callback(pos, ta_24bit_color, stop);
-            });
+            const width = size[0];
+            if (this.bytes_per_row === width * 3) {
+                let byte_idx = 0;
+                this.each_pixel_pos((pos, stop) => {
+                    ta_24bit_color[0] = ta[byte_idx++];
+                    ta_24bit_color[1] = ta[byte_idx++];
+                    ta_24bit_color[2] = ta[byte_idx++];
+                    callback(pos, ta_24bit_color, stop);
+                });
+            } else {
+                const rowStrideBytes = this.bytes_per_row;
+                this.each_pixel_pos((pos, stop) => {
+                    let byte_idx = pos[1] * rowStrideBytes + pos[0] * 3;
+                    ta_24bit_color[0] = ta[byte_idx++];
+                    ta_24bit_color[1] = ta[byte_idx++];
+                    ta_24bit_color[2] = ta[byte_idx];
+                    callback(pos, ta_24bit_color, stop);
+                });
+            }
 
         } else if (bipp === 32) {
             const { ta_32bit_color } = this;
-            let byte_idx = 0;
-            this.each_pixel_pos((pos, stop) => {
-                ta_32bit_color[0] = ta[byte_idx++];
-                ta_32bit_color[1] = ta[byte_idx++];
-                ta_32bit_color[2] = ta[byte_idx++];
-                ta_32bit_color[3] = ta[byte_idx++];
-                callback(pos, ta_32bit_color, stop);
-            });
+            const width = size[0];
+            if (this.bytes_per_row === width * 4) {
+                let byte_idx = 0;
+                this.each_pixel_pos((pos, stop) => {
+                    ta_32bit_color[0] = ta[byte_idx++];
+                    ta_32bit_color[1] = ta[byte_idx++];
+                    ta_32bit_color[2] = ta[byte_idx++];
+                    ta_32bit_color[3] = ta[byte_idx++];
+                    callback(pos, ta_32bit_color, stop);
+                });
+            } else {
+                const rowStrideBytes = this.bytes_per_row;
+                this.each_pixel_pos((pos, stop) => {
+                    let byte_idx = pos[1] * rowStrideBytes + pos[0] * 4;
+                    ta_32bit_color[0] = ta[byte_idx++];
+                    ta_32bit_color[1] = ta[byte_idx++];
+                    ta_32bit_color[2] = ta[byte_idx++];
+                    ta_32bit_color[3] = ta[byte_idx];
+                    callback(pos, ta_32bit_color, stop);
+                });
+            }
         }
 
         // Could advance through the positions?
@@ -381,62 +379,36 @@ class Pixel_Buffer_Core_Reference_Implementations extends Pixel_Buffer_Core_Mask
 
     // Could have a 'paint' file / module.
     'paint_solid_border'(thickness, color) {
+        if (!Number.isInteger(thickness) || thickness < 0) {
+            throw new RangeError('Border thickness must be a non-negative integer');
+        }
 
-        // separate methods for different bipps, this fn chooses one?
+        const res = this.clone();
+        if (thickness === 0) return res;
 
-        return this.process((me, res) => {
-            let x, y;
-            const [w, h] = this.size;
-            if (this.bytes_per_pixel === 4) {
-                // top two rows
-                for (y = 0; y < thickness; y++) {
-                    for (x = 0; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2], color[3]);
-                    }
-                }
-                for (y = h - thickness; y < h; y++) {
-                    for (x = 0; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2], color[3]);
-                    }
-                }
-                for (y = 0; y < h; y++) {
-                    for (x = 0; x < thickness; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2], color[3]);
-                    }
-                }
-                for (y = 0; y < h; y++) {
-                    for (x = w - thickness; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2], color[3]);
-                    }
-                }
-            } else if (this.bytes_per_pixel === 3) {
-                // top two rows
-                for (y = 0; y < thickness; y++) {
-                    for (x = 0; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2]);
-                    }
-                }
-                for (y = h - thickness; y < h; y++) {
-                    for (x = 0; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2]);
-                    }
-                }
-                for (y = 0; y < h; y++) {
-                    for (x = 0; x < thickness; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2]);
-                    }
-                }
-                for (y = 0; y < h; y++) {
-                    for (x = w - thickness; x < w; x++) {
-                        res.set_pixel(x, y, color[0], color[1], color[2]);
-                    }
-                }
-            } else {
-                console.trace();
-                throw 'NYI';
+        const [width, height] = this.size;
+        const topEnd = Math.min(thickness, height);
+        const bottomStart = Math.max(topEnd, height - thickness);
+        const fullRow = [0, width - 1];
+
+        for (let y = 0; y < topEnd; y++) {
+            res.draw_horizontal_line(fullRow, y, color);
+        }
+        for (let y = bottomStart; y < height; y++) {
+            res.draw_horizontal_line(fullRow, y, color);
+        }
+
+        const leftEnd = Math.min(thickness, width) - 1;
+        const rightStart = Math.max(thickness, width - thickness);
+        for (let y = topEnd; y < bottomStart; y++) {
+            if (leftEnd >= 0) {
+                res.draw_horizontal_line([0, leftEnd], y, color);
             }
-            return res;
-        })
+            if (rightStart < width) {
+                res.draw_horizontal_line([rightStart, width - 1], y, color);
+            }
+        }
+        return res;
     }
 
     new_convolved(convolution) {
