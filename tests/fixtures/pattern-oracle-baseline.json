@@ -1,0 +1,393 @@
+{
+ "note": "First-run oracle values: gfx-core fill_paint_op against sharp/librsvg at density 72. tests/raster-pattern-oracle.test.js fails if a template gets worse than this by more than MAE 0.002 or 2 pixels over 16 levels.",
+ "recorded": "2026-09-26T10:26:35.404Z",
+ "sharp": "0.34.5",
+ "librsvg": "2.61.2",
+ "node": "v25.2.1",
+ "sizes": {
+  "160": {
+   "two-point-knots": {
+    "mae": 0.267233,
+    "over16": 40,
+    "pct16": 0.085881,
+    "max": 22
+   },
+   "acute-rosettes": {
+    "mae": 0.319979,
+    "over16": 36,
+    "pct16": 0.077293,
+    "max": 34
+   },
+   "sandstone-marble": {
+    "mae": 0.313502,
+    "over16": 187,
+    "pct16": 0.401494,
+    "max": 49
+   },
+   "plotter-lines": {
+    "mae": 0.412831,
+    "over16": 200,
+    "pct16": 0.429406,
+    "max": 68
+   },
+   "tropic-twelve": {
+    "mae": 0.25934,
+    "over16": 9,
+    "pct16": 0.019323,
+    "max": 22
+   },
+   "star-and-cross": {
+    "mae": 0.155664,
+    "over16": 0,
+    "pct16": 0,
+    "max": 7
+   },
+   "acute-twelve": {
+    "mae": 0.273737,
+    "over16": 9,
+    "pct16": 0.035156,
+    "max": 37
+   },
+   "berry-twelve": {
+    "mae": 0.334818,
+    "over16": 38,
+    "pct16": 0.148438,
+    "max": 46
+   },
+   "blueprint-twelve": {
+    "mae": 0.349727,
+    "over16": 100,
+    "pct16": 0.390625,
+    "max": 60
+   }
+  },
+  "418": {
+   "star-hexagon": {
+    "mae": 0.081257,
+    "over16": 0,
+    "pct16": 0,
+    "max": 15
+   },
+   "straight-hexagrams": {
+    "mae": 0.114737,
+    "over16": 8,
+    "pct16": 0.002643,
+    "max": 37
+   },
+   "needle-stars": {
+    "mae": 0.083449,
+    "over16": 0,
+    "pct16": 0,
+    "max": 16
+   },
+   "gold-thread": {
+    "mae": 0.045922,
+    "over16": 20,
+    "pct16": 0.006609,
+    "max": 51
+   },
+   "marble-inlay": {
+    "mae": 0.114425,
+    "over16": 0,
+    "pct16": 0,
+    "max": 16
+   },
+   "iznik-garden": {
+    "mae": 0.127525,
+    "over16": 20,
+    "pct16": 0.006609,
+    "max": 35
+   },
+   "rose-lattice": {
+    "mae": 0.139759,
+    "over16": 18,
+    "pct16": 0.005948,
+    "max": 22
+   },
+   "carved-stucco": {
+    "mae": 0.086652,
+    "over16": 8,
+    "pct16": 0.002643,
+    "max": 17
+   },
+   "two-point-knots": {
+    "mae": 0.155064,
+    "over16": 0,
+    "pct16": 0,
+    "max": 16
+   },
+   "twelve-fold-rosettes": {
+    "mae": 0.12563,
+    "over16": 3,
+    "pct16": 0.000991,
+    "max": 17
+   },
+   "acute-rosettes": {
+    "mae": 0.216059,
+    "over16": 78,
+    "pct16": 0.025774,
+    "max": 44
+   },
+   "sandstone-marble": {
+    "mae": 0.161719,
+    "over16": 156,
+    "pct16": 0.051548,
+    "max": 59
+   },
+   "blueprint": {
+    "mae": 0.117668,
+    "over16": 136,
+    "pct16": 0.044939,
+    "max": 38
+   },
+   "plotter-lines": {
+    "mae": 0.16641,
+    "over16": 218,
+    "pct16": 0.072035,
+    "max": 59
+   },
+   "negative-space": {
+    "mae": 0.062512,
+    "over16": 0,
+    "pct16": 0,
+    "max": 15
+   },
+   "carnival-rosettes": {
+    "mae": 0.13505,
+    "over16": 16,
+    "pct16": 0.005287,
+    "max": 30
+   },
+   "primary-hexagrams": {
+    "mae": 0.144631,
+    "over16": 80,
+    "pct16": 0.026435,
+    "max": 68
+   },
+   "sunset-needles": {
+    "mae": 0.076991,
+    "over16": 0,
+    "pct16": 0,
+    "max": 16
+   },
+   "neon-weave": {
+    "mae": 0.08032,
+    "over16": 8,
+    "pct16": 0.002643,
+    "max": 29
+   },
+   "vermilion-cobalt": {
+    "mae": 0.098369,
+    "over16": 0,
+    "pct16": 0,
+    "max": 16
+   },
+   "lagoon-needles": {
+    "mae": 0.101223,
+    "over16": 47,
+    "pct16": 0.01553,
+    "max": 18
+   },
+   "citrus-lattice": {
+    "mae": 0.151955,
+    "over16": 30,
+    "pct16": 0.009913,
+    "max": 24
+   },
+   "peacock-rosettes": {
+    "mae": 0.120889,
+    "over16": 15,
+    "pct16": 0.004957,
+    "max": 23
+   },
+   "tropic-twelve": {
+    "mae": 0.163747,
+    "over16": 38,
+    "pct16": 0.012557,
+    "max": 37
+   },
+   "berry-knots": {
+    "mae": 0.092682,
+    "over16": 4,
+    "pct16": 0.001322,
+    "max": 17
+   },
+   "star-and-cross": {
+    "mae": 0.057195,
+    "over16": 0,
+    "pct16": 0,
+    "max": 7
+   },
+   "star-cross-square": {
+    "mae": 0.055798,
+    "over16": 8,
+    "pct16": 0.004579,
+    "max": 24
+   },
+   "eight-point-needles": {
+    "mae": 0.111767,
+    "over16": 9,
+    "pct16": 0.005151,
+    "max": 22
+   },
+   "octagram-inner-star": {
+    "mae": 0.136854,
+    "over16": 6,
+    "pct16": 0.003434,
+    "max": 27
+   },
+   "three-layer-octagram": {
+    "mae": 0.143991,
+    "over16": 0,
+    "pct16": 0,
+    "max": 15
+   },
+   "aqua-needles": {
+    "mae": 0.133311,
+    "over16": 18,
+    "pct16": 0.010302,
+    "max": 18
+   },
+   "straight-octagrams": {
+    "mae": 0.113829,
+    "over16": 8,
+    "pct16": 0.004579,
+    "max": 35
+   },
+   "sunset-octagrams": {
+    "mae": 0.116311,
+    "over16": 37,
+    "pct16": 0.021176,
+    "max": 46
+   },
+   "neon-octagrams": {
+    "mae": 0.10226,
+    "over16": 17,
+    "pct16": 0.00973,
+    "max": 30
+   },
+   "two-point-crosses": {
+    "mae": 0.096026,
+    "over16": 2,
+    "pct16": 0.001145,
+    "max": 18
+   },
+   "gold-octagrams": {
+    "mae": 0.074132,
+    "over16": 43,
+    "pct16": 0.02461,
+    "max": 41
+   },
+   "octagon-and-star": {
+    "mae": 0.047578,
+    "over16": 0,
+    "pct16": 0,
+    "max": 14
+   },
+   "cobalt-octagons": {
+    "mae": 0.057407,
+    "over16": 21,
+    "pct16": 0.012019,
+    "max": 18
+   },
+   "two-point-diamonds": {
+    "mae": 0.064174,
+    "over16": 0,
+    "pct16": 0,
+    "max": 14
+   },
+   "carved-squares": {
+    "mae": 0.037587,
+    "over16": 0,
+    "pct16": 0,
+    "max": 9
+   },
+   "twelve-on-squares": {
+    "mae": 0.108993,
+    "over16": 5,
+    "pct16": 0.002862,
+    "max": 18
+   },
+   "peacock-twelve": {
+    "mae": 0.120647,
+    "over16": 12,
+    "pct16": 0.006868,
+    "max": 28
+   },
+   "acute-twelve": {
+    "mae": 0.173958,
+    "over16": 57,
+    "pct16": 0.032623,
+    "max": 43
+   },
+   "berry-twelve": {
+    "mae": 0.144996,
+    "over16": 48,
+    "pct16": 0.027472,
+    "max": 53
+   },
+   "blueprint-twelve": {
+    "mae": 0.123,
+    "over16": 116,
+    "pct16": 0.06639,
+    "max": 66
+   }
+  },
+  "1000": {
+   "two-point-knots": {
+    "mae": 0.076771,
+    "over16": 33,
+    "pct16": 0.001905,
+    "max": 29
+   },
+   "acute-rosettes": {
+    "mae": 0.112573,
+    "over16": 54,
+    "pct16": 0.003118,
+    "max": 42
+   },
+   "sandstone-marble": {
+    "mae": 0.07849,
+    "over16": 216,
+    "pct16": 0.012471,
+    "max": 39
+   },
+   "plotter-lines": {
+    "mae": 0.078697,
+    "over16": 229,
+    "pct16": 0.013222,
+    "max": 66
+   },
+   "tropic-twelve": {
+    "mae": 0.080466,
+    "over16": 131,
+    "pct16": 0.007564,
+    "max": 44
+   },
+   "star-and-cross": {
+    "mae": 0.022691,
+    "over16": 3,
+    "pct16": 0.0003,
+    "max": 19
+   },
+   "acute-twelve": {
+    "mae": 0.086232,
+    "over16": 155,
+    "pct16": 0.0155,
+    "max": 45
+   },
+   "berry-twelve": {
+    "mae": 0.044063,
+    "over16": 63,
+    "pct16": 0.0063,
+    "max": 52
+   },
+   "blueprint-twelve": {
+    "mae": 0.054966,
+    "over16": 92,
+    "pct16": 0.0092,
+    "max": 48
+   }
+  }
+ }
+}

@@ -1,0 +1,2065 @@
+{
+ "format": "jsgui3-islamic-art/raster-fixtures",
+ "version": 1,
+ "generated": "2026-09-25T00:38:00.331Z",
+ "generator": "jsgui3-islamic-art tools/export-raster-fixtures.js",
+ "engine": {
+  "repo": "p6m-patterns",
+  "tag": "book-baseline-2026-09",
+  "commit": "b3895950bc3c1e2a8d0e5c4c2859e9f2b048fc59",
+  "files": [
+   {
+    "path": "src/core/vendor/p6m.js",
+    "source_path": "node/p6m.js",
+    "sha256": "0d5f83fbea65e18e4a927222348ae7ddf376c208dfb06f22252ffee9b761a2df"
+   },
+   {
+    "path": "src/core/vendor/p6m-shapes.js",
+    "source_path": "node/p6m-shapes.js",
+    "sha256": "e6be965da963b108d6de739a3189b00276f28ef7ad929f2ea1ccd9b57f86c0b1"
+   }
+  ]
+ },
+ "reference": "Each <id>@<target>.svg is P6M.svgRectTile for the same design and W x H as the scene beside it. Render it with sharp 0.34.5 (librsvg 2.61.2): sharp(Buffer.from(svg), { density: 72 }).removeAlpha().raw().",
+ "scene_format": {
+  "shape": "{ W, H, ground: [r,g,b], ops: [ { kind, color: [r,g,b], polygons: [[x,y,...], ...], strokes: [ { points: [x,y,...], closed, width, join: 'miter', miter_limit: 12, cap: 'butt' } ] } ] }",
+  "painter": "Fill the ground, then each op in order. Fill an op's polygons as ONE nonzero union and its strokes as one union, then composite source-over. Never merge or split ops: one op is one SVG element (rule P2), so conflation matches librsvg.",
+  "kinds": "face (one <polygon>), casing and band (the strand <path>s), line (mode lines), weave-casing and weave-band (the interlace over-pieces: 2-point butt-capped segments). An op may have no strokes when the SVG element has an empty d.",
+  "coordinates": "Device px, y down. x is the SVG's 2-decimal number; y is the SVG's 2-decimal number times the SVG's scale(1, ky), ky = fx(H / (W cellH), 9); p4m has ky = 1. Face polygons have non-negative signed area.",
+  "approximation": "The SVG applies scale(1, ky) to strokes too; the scene folds ky into y but keeps pens round. ky - 1 is 3.8e-6 (p6m @418), -2.9e-5 (@1000), -2.0e-4 (@160), 0 for p4m. Under librsvg, scene_to_svg(scene) against the .svg measures MAE <= 0.0018 at 418, <= 0.0045 at 1000 and <= 0.039 at 160 over all 45 templates (test/full/scene-pixels.test.js)."
+ },
+ "sizes": {
+  "policy": "P6M.tileSize(target, true, group). File names carry the target width; W and H below are the actual tile.",
+  "targets": {
+   "160": "the 9 of subset",
+   "418": "all 45 templates",
+   "1000": "the 9 of subset",
+   "418x2x1": "the 9 of subset, a 2 x 1 block of 418 tiles",
+   "418x1x2": "the 9 of subset, a 1 x 2 block of 418 tiles"
+  },
+  "blocks": "Entries with nx x ny other than 1 x 1 are blocks: the same design, style and tile W x H, drawn nx tiles across and ny down (svgRectTile's own nx, ny; the scene's W x H is W nx x H ny). W and H in the entry stay the tile's."
+ },
+ "junction_gate": {
+  "gate": "build plan §5.2: gfx-core against librsvg at 418 px, tile junctions <= 2 levels (prototype D: 2 [M]).",
+  "method": "Render the 1 x 1 tile and both blocks with the same back-end. Each half of a block must match the tile; the junction is the 2 columns (rows) either side of the join, compared with the tile's last 2 and first 2 columns (rows). This is seamStats in docs/research/2026-09-24/probes/gfx-core/bench.js.",
+  "tolerance_note": "Exact equality is not expected even from librsvg: the SVG's 2-decimal coordinates under scale(1, ky) leave 1-9 level residues at the join (docs/research/2026-09-24/reports/gfx-core.md). p4m has ky = 1."
+ },
+ "subset": [
+  {
+   "id": "acute-rosettes",
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "why": "p6m 4.6.12 interlace. The worst of all 45 for every prototype back-end (D MAE 0.224, the basis of the U2 gate; C4 0.913), and one of the four tightest weaves (weaveClearance 0.00026)."
+  },
+  {
+   "id": "tropic-twelve",
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "why": "p6m 3.12.12 interlace. The joint-most crossings of the p6m set (694, with blueprint) and the slowest D render (32.6 ms); weaveClearance 0.00026, the joint minimum."
+  },
+  {
+   "id": "two-point-knots",
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "why": "p6m 3.4.6.4 interlace with delta 0.36: two-point kites (role f0), and the most faces (513) and strands (130) of all 45, so the most ops."
+  },
+  {
+   "id": "sandstone-marble",
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "why": "p6m 4.6.12 bands. Worst bands case for pixels over 16 levels (D 0.087 %) and the slowest build()."
+  },
+  {
+   "id": "plotter-lines",
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "why": "p6m 4.6.12 lines with fill false, the only template with no faces. Worst of all 45 for pixels over 16 levels (D 0.091 %, the gate's basis)."
+  },
+  {
+   "id": "acute-twelve",
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "why": "p4m 3.4.3.12 interlace. Worst p4m case (D MAE 0.181), weaveClearance 0.00031."
+  },
+  {
+   "id": "berry-twelve",
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "why": "p4m 3.4.3.12 bands. Worst p4m bands case (D MAE 0.148)."
+  },
+  {
+   "id": "blueprint-twelve",
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "why": "p4m 3.4.3.12 lines. Most crossings of all 45 (708); worst p4m lines case (D 0.076 % over 16 levels)."
+  },
+  {
+   "id": "star-and-cross",
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "why": "p4m 4.8.8 interlace. The simplest design (16 faces, 24 crossings) and a sanity baseline, full of axis-aligned edges: where 4x4 supersampling failed (C4 1.42 % over 16 levels against D 0.011 %)."
+  }
+ ],
+ "subset_note": "Chosen to cover both groups (5 p6m, 4 p4m), all three modes (5 interlace, 2 bands, 2 lines), both kinds of motif (delta 0 and a two-point delta > 0), the only template without faces, and the worst prototype cases at 418 per group and mode; star-and-cross adds the simplest design as a baseline.",
+ "entries": [
+  {
+   "id": "star-hexagon",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 11,
+   "face_ops": 7,
+   "strokes": 28,
+   "scene": {
+    "file": "star-hexagon@418.scene.json",
+    "bytes": 6771,
+    "sha256": "ac5a2de13bd190ff214df2986641c2574dc5736aaa542e622519e793386eaf15"
+   },
+   "svg": {
+    "file": "star-hexagon@418.svg",
+    "bytes": 2832,
+    "sha256": "4f6b938f378eacc9968bbe16816baefcd78e1f9d1f8ae835a99dd445217000d2"
+   }
+  },
+  {
+   "id": "straight-hexagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 16,
+   "face_ops": 12,
+   "strokes": 60,
+   "scene": {
+    "file": "straight-hexagrams@418.scene.json",
+    "bytes": 12280,
+    "sha256": "a0a4e4990f84d1cc65a0e22fcd9de532349fbc3b6cdc6e7718c6f76b89e805c5"
+   },
+   "svg": {
+    "file": "straight-hexagrams@418.svg",
+    "bytes": 4397,
+    "sha256": "64dddb0f75ed3bece588ede8033b0931f117c1a917e6ea168441456c857b9a77"
+   }
+  },
+  {
+   "id": "needle-stars",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 11,
+   "face_ops": 7,
+   "strokes": 28,
+   "scene": {
+    "file": "needle-stars@418.scene.json",
+    "bytes": 6744,
+    "sha256": "a1b9d1de63c5a53783a0ca24bed0e5f50ca0d05ada63d97e576cdd581b8c9c6b"
+   },
+   "svg": {
+    "file": "needle-stars@418.svg",
+    "bytes": 2976,
+    "sha256": "fe04973b9ab9647c513e19ddb4d264cc7f4df57ba5a1dc13050f58544b0a78e4"
+   }
+  },
+  {
+   "id": "gold-thread",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "lines",
+   "ops": 8,
+   "face_ops": 7,
+   "strokes": 6,
+   "scene": {
+    "file": "gold-thread@418.scene.json",
+    "bytes": 3408,
+    "sha256": "b769ce46d4b5e958bf5e682ca16470d8df65706669160fcb84e808a1f1c2f5d8"
+   },
+   "svg": {
+    "file": "gold-thread@418.svg",
+    "bytes": 1838,
+    "sha256": "dde56110e7afea0919adc05dd7585f150319cd6d00d882f483da55fba4cd78b5"
+   }
+  },
+  {
+   "id": "marble-inlay",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.6.3.6",
+   "mode": "interlace",
+   "ops": 15,
+   "face_ops": 11,
+   "strokes": 42,
+   "scene": {
+    "file": "marble-inlay@418.scene.json",
+    "bytes": 8844,
+    "sha256": "29421595e214a94f1473a685a33cef8951b254510308e28c5ac65f2172e6aaf0"
+   },
+   "svg": {
+    "file": "marble-inlay@418.svg",
+    "bytes": 3512,
+    "sha256": "8ed41dbbbd776b87093cb6f36692fb4d5afb0a20715665753047f83992c0c089"
+   }
+  },
+  {
+   "id": "iznik-garden",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 23,
+   "face_ops": 19,
+   "strokes": 80,
+   "scene": {
+    "file": "iznik-garden@418.scene.json",
+    "bytes": 16972,
+    "sha256": "ed5de731bc4eb4773a2ad09e63a7607c1dcb243ae68257745a9dabcc96367cb1"
+   },
+   "svg": {
+    "file": "iznik-garden@418.svg",
+    "bytes": 6457,
+    "sha256": "114843d40465104e5ad8d2a44ddad6f7205843d7055bcb4f276d45864686b394"
+   }
+  },
+  {
+   "id": "rose-lattice",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 23,
+   "face_ops": 19,
+   "strokes": 80,
+   "scene": {
+    "file": "rose-lattice@418.scene.json",
+    "bytes": 18672,
+    "sha256": "26825e93d627b081ac3a493d31550b233d20643a2be2fc059aa66f5081f108d1"
+   },
+   "svg": {
+    "file": "rose-lattice@418.svg",
+    "bytes": 7257,
+    "sha256": "432c41ab0cdb1a2c45a070ac8d2040886e42da6f4665509d619f5fab3e1c145f"
+   }
+  },
+  {
+   "id": "carved-stucco",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "bands",
+   "ops": 25,
+   "face_ops": 23,
+   "strokes": 24,
+   "scene": {
+    "file": "carved-stucco@418.scene.json",
+    "bytes": 10539,
+    "sha256": "0627ee7554f24a605cdfc3bf90dcca689f70e8219900af6a76dab6a5e55f0827"
+   },
+   "svg": {
+    "file": "carved-stucco@418.svg",
+    "bytes": 5483,
+    "sha256": "c831e9db35a671b3c0be4df91ec3905043f698c85c3f65c4f1133b104568bbe9"
+   }
+  },
+  {
+   "id": "two-point-knots",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 87,
+   "face_ops": 83,
+   "strokes": 164,
+   "scene": {
+    "file": "two-point-knots@418.scene.json",
+    "bytes": 39307,
+    "sha256": "820e7bb50198ca232c4a01b4b8d26aab99cb5b68a1a31c87428c26ac17a93e6b"
+   },
+   "svg": {
+    "file": "two-point-knots@418.svg",
+    "bytes": 14802,
+    "sha256": "3307e3aebe5b64ec108fbfb3afe03995466b030c3a042460605e49e34902c615"
+   }
+  },
+  {
+   "id": "twelve-fold-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 244,
+   "scene": {
+    "file": "twelve-fold-rosettes@418.scene.json",
+    "bytes": 50297,
+    "sha256": "a17ad9cee3c46fa78f8a78da748836831d497d57a58a7b9c5978ca7677f676f4"
+   },
+   "svg": {
+    "file": "twelve-fold-rosettes@418.svg",
+    "bytes": 17604,
+    "sha256": "12eaee19fb34dbabf9b44d15ffbc931a4e250a8d0feb63ae53c670085db361e8"
+   }
+  },
+  {
+   "id": "acute-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 252,
+   "scene": {
+    "file": "acute-rosettes@418.scene.json",
+    "bytes": 50626,
+    "sha256": "0470f377c77c9180fed31ecfca589249e58ffcf0cb7157e82056a4a5295e5919"
+   },
+   "svg": {
+    "file": "acute-rosettes@418.svg",
+    "bytes": 17444,
+    "sha256": "821c03264d7a7dd506454245ccd5b67385e479d59ac3b0f8ffdded624239fcc3"
+   }
+  },
+  {
+   "id": "sandstone-marble",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "ops": 26,
+   "face_ops": 24,
+   "strokes": 32,
+   "scene": {
+    "file": "sandstone-marble@418.scene.json",
+    "bytes": 18708,
+    "sha256": "46b06bd755f1a035c7b114177ddedd81dffd459719674a97cae8c03dffc3b1b5"
+   },
+   "svg": {
+    "file": "sandstone-marble@418.svg",
+    "bytes": 9750,
+    "sha256": "d35ec2636bce6a35ae927304eb03cbf9f271ef54430a0664ed492cb2298671ef"
+   }
+  },
+  {
+   "id": "blueprint",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "lines",
+   "ops": 24,
+   "face_ops": 23,
+   "strokes": 22,
+   "scene": {
+    "file": "blueprint@418.scene.json",
+    "bytes": 14527,
+    "sha256": "e2044541c0aa4daaf25a1b6e5d36a121f5b22b99478823bd48bebcbe7503f83f"
+   },
+   "svg": {
+    "file": "blueprint@418.svg",
+    "bytes": 7450,
+    "sha256": "6faf37cbf523834aadda60439c9de4e0d3bf656bcdf3ec4f4a232daed3b6b119"
+   }
+  },
+  {
+   "id": "plotter-lines",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "ops": 1,
+   "face_ops": 0,
+   "strokes": 28,
+   "scene": {
+    "file": "plotter-lines@418.scene.json",
+    "bytes": 6265,
+    "sha256": "70ca839898a311af3d38373292607261597004af34f5625380092abbd58d5154"
+   },
+   "svg": {
+    "file": "plotter-lines@418.svg",
+    "bytes": 2582,
+    "sha256": "fa050f3e77f0cfa9fee0c7f89e66a07a1a980708e35a93f9225de677ea83f602"
+   }
+  },
+  {
+   "id": "negative-space",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.3.3.3.3.3",
+   "mode": "interlace",
+   "ops": 12,
+   "face_ops": 8,
+   "strokes": 28,
+   "scene": {
+    "file": "negative-space@418.scene.json",
+    "bytes": 5873,
+    "sha256": "469417fcea229612e20c5e53d866eda0e0d63b8331323170934ddb4e7eb156ee"
+   },
+   "svg": {
+    "file": "negative-space@418.svg",
+    "bytes": 2331,
+    "sha256": "7f826ef6ae8fa10efba51dc3be6d4e898dd568b2d0692fdc265ae3377ca6b80f"
+   }
+  },
+  {
+   "id": "carnival-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 244,
+   "scene": {
+    "file": "carnival-rosettes@418.scene.json",
+    "bytes": 50126,
+    "sha256": "481a719c38a99e67d41478dd8d65ecc0c75846772b87e24d4c1accc4427bbbe9"
+   },
+   "svg": {
+    "file": "carnival-rosettes@418.svg",
+    "bytes": 17438,
+    "sha256": "04f65fbe1e86c7958d59b59c3dd2a93d0997340e2a7cde563d73b7138c7c9230"
+   }
+  },
+  {
+   "id": "primary-hexagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "bands",
+   "ops": 14,
+   "face_ops": 12,
+   "strokes": 16,
+   "scene": {
+    "file": "primary-hexagrams@418.scene.json",
+    "bytes": 6250,
+    "sha256": "d2a0f69e1320089fdbd21351805a469f4c102a1620f62bceb39efe9cbb65efdd"
+   },
+   "svg": {
+    "file": "primary-hexagrams@418.svg",
+    "bytes": 3050,
+    "sha256": "58101ec6e6191643057bd83430ba5aa8ae26dfaa45490e762e075b850e6c3438"
+   }
+  },
+  {
+   "id": "sunset-needles",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 11,
+   "face_ops": 7,
+   "strokes": 28,
+   "scene": {
+    "file": "sunset-needles@418.scene.json",
+    "bytes": 6728,
+    "sha256": "3d3a1cbff90de80d89262fc85a668fac1ab9226db1686bdc5b47453f6de96abf"
+   },
+   "svg": {
+    "file": "sunset-needles@418.svg",
+    "bytes": 2976,
+    "sha256": "a84dd5ccacc7d4a51f03f2480013470cf7e87c645af18f114f23577477faa7dd"
+   }
+  },
+  {
+   "id": "neon-weave",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 16,
+   "face_ops": 12,
+   "strokes": 64,
+   "scene": {
+    "file": "neon-weave@418.scene.json",
+    "bytes": 13045,
+    "sha256": "d72aca15932d7cd80aee12ff5492b9b76859a8c86a9b1e4808fd6ba7b7bad15d"
+   },
+   "svg": {
+    "file": "neon-weave@418.svg",
+    "bytes": 4786,
+    "sha256": "bc7e20c3835fe6b532aa3bc49237c323a313a7edaafa1c510a335ee66a2d2cd0"
+   }
+  },
+  {
+   "id": "vermilion-cobalt",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.6.3.6",
+   "mode": "interlace",
+   "ops": 15,
+   "face_ops": 11,
+   "strokes": 42,
+   "scene": {
+    "file": "vermilion-cobalt@418.scene.json",
+    "bytes": 8851,
+    "sha256": "c28138eae48d743553a614249be873e91a2f75600cd32f4d55109025d4331cea"
+   },
+   "svg": {
+    "file": "vermilion-cobalt@418.svg",
+    "bytes": 3512,
+    "sha256": "3412b295be2c777e9ed66a365b373b9bdd8c468bedbaa009767dbcea87971d73"
+   }
+  },
+  {
+   "id": "lagoon-needles",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.6.3.6",
+   "mode": "interlace",
+   "ops": 15,
+   "face_ops": 11,
+   "strokes": 42,
+   "scene": {
+    "file": "lagoon-needles@418.scene.json",
+    "bytes": 9848,
+    "sha256": "890aa3c3859f786ba9f7c31f4823e2c0672936608c15717ea46439e0a9772cac"
+   },
+   "svg": {
+    "file": "lagoon-needles@418.svg",
+    "bytes": 4034,
+    "sha256": "ef9d8bd4f274ba099a1bf524020c0c200c76a31a3297bfc77c263261bc8c3a14"
+   }
+  },
+  {
+   "id": "citrus-lattice",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 23,
+   "face_ops": 19,
+   "strokes": 80,
+   "scene": {
+    "file": "citrus-lattice@418.scene.json",
+    "bytes": 18658,
+    "sha256": "8127b4f71e665accc3e5c9c34f314ea31d84aebd8244e3d7cc27525930659ce0"
+   },
+   "svg": {
+    "file": "citrus-lattice@418.svg",
+    "bytes": 7257,
+    "sha256": "a43d09bccfec10eb4e78c45d468de5fb503cd0352c947a1429026556dc1958c0"
+   }
+  },
+  {
+   "id": "peacock-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 244,
+   "scene": {
+    "file": "peacock-rosettes@418.scene.json",
+    "bytes": 50280,
+    "sha256": "9e8fd21851e597df26fb8dff17247c47994bfa245a0c0fcce64ea25c0d566531"
+   },
+   "svg": {
+    "file": "peacock-rosettes@418.svg",
+    "bytes": 17604,
+    "sha256": "b97f295823624fa9fb960dde8f429c9ebae31aeb5c75091ead0766a5a65cdf27"
+   }
+  },
+  {
+   "id": "tropic-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "ops": 27,
+   "face_ops": 23,
+   "strokes": 192,
+   "scene": {
+    "file": "tropic-twelve@418.scene.json",
+    "bytes": 38580,
+    "sha256": "297823054b168f5fe6fc33f8c2430bbfc8de2ed6bf47ece58c2392bc63621844"
+   },
+   "svg": {
+    "file": "tropic-twelve@418.svg",
+    "bytes": 13180,
+    "sha256": "9e655a892c8fdc03808084b14fe44f159f3964af55da855603d8c1218e7e4076"
+   }
+  },
+  {
+   "id": "berry-knots",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "6.6.6",
+   "mode": "interlace",
+   "ops": 25,
+   "face_ops": 21,
+   "strokes": 44,
+   "scene": {
+    "file": "berry-knots@418.scene.json",
+    "bytes": 11196,
+    "sha256": "208f70712229392ad1c5606b99643a89e7c9b8d92167269fddd48f6ee3626b26"
+   },
+   "svg": {
+    "file": "berry-knots@418.svg",
+    "bytes": 4710,
+    "sha256": "bf06c6a8037e42da7c042092ad67b1050e28329193e60b572bdb97f4ce1fad56"
+   }
+  },
+  {
+   "id": "star-and-cross",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 8,
+   "face_ops": 4,
+   "strokes": 16,
+   "scene": {
+    "file": "star-and-cross@418.scene.json",
+    "bytes": 3514,
+    "sha256": "66cc2032602fe1dfb33951148b5ad71b0ded5bbf5ad4c4f7b1913f42214723c1"
+   },
+   "svg": {
+    "file": "star-and-cross@418.svg",
+    "bytes": 2313,
+    "sha256": "fece9d7a5029fef8a10871aea2d8c9940b3e72e93dd00c84c0fb2b9361aa0276"
+   }
+  },
+  {
+   "id": "star-cross-square",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 9,
+   "face_ops": 5,
+   "strokes": 24,
+   "scene": {
+    "file": "star-cross-square@418.scene.json",
+    "bytes": 4495,
+    "sha256": "06dd531dbc2ea221e71b67b19c66e97e010bc9fe743347d366d73cc67592a025"
+   },
+   "svg": {
+    "file": "star-cross-square@418.svg",
+    "bytes": 2553,
+    "sha256": "305393ce715fca96630488be6be9e21100944cdb199dc37f035d38e1d4365dc6"
+   }
+  },
+  {
+   "id": "eight-point-needles",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 9,
+   "face_ops": 5,
+   "strokes": 24,
+   "scene": {
+    "file": "eight-point-needles@418.scene.json",
+    "bytes": 4511,
+    "sha256": "02783bd3f63fcf0787480633c17eb12f75750b218ab2e20e76cb90721d908898"
+   },
+   "svg": {
+    "file": "eight-point-needles@418.svg",
+    "bytes": 2577,
+    "sha256": "1332cfe97d1bb81946a8b9aa9b91e2086743ae517aa41b7e857e31d40a7b441b"
+   }
+  },
+  {
+   "id": "octagram-inner-star",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 13,
+   "face_ops": 9,
+   "strokes": 48,
+   "scene": {
+    "file": "octagram-inner-star@418.scene.json",
+    "bytes": 8327,
+    "sha256": "edbe2ab58cf1daaef1f908ff1ff879e40cf8bdbd7387d6faac2baae4f45e6f37"
+   },
+   "svg": {
+    "file": "octagram-inner-star@418.svg",
+    "bytes": 4214,
+    "sha256": "9a2d6fb35135f380f942eef7977acae1a5ad5e760f66eabfa778c33028a9c986"
+   }
+  },
+  {
+   "id": "three-layer-octagram",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 17,
+   "face_ops": 13,
+   "strokes": 88,
+   "scene": {
+    "file": "three-layer-octagram@418.scene.json",
+    "bytes": 13701,
+    "sha256": "c4620bbbd6023c231f8a318e7f8a8c8360bd75103b728ba818bdfa5c6f5c5f29"
+   },
+   "svg": {
+    "file": "three-layer-octagram@418.svg",
+    "bytes": 6061,
+    "sha256": "84f448431351aafbcd2d798cde8d8c674f31573aa4e2deebbf676f80033c0867"
+   }
+  },
+  {
+   "id": "aqua-needles",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 13,
+   "face_ops": 9,
+   "strokes": 64,
+   "scene": {
+    "file": "aqua-needles@418.scene.json",
+    "bytes": 9893,
+    "sha256": "a6e9997c9abd9f2876a9751b1e808aeaf43b91e85c33dcc12ee9db81e5dafc4d"
+   },
+   "svg": {
+    "file": "aqua-needles@418.svg",
+    "bytes": 4470,
+    "sha256": "7cffb3de31d1c83756842a59063c39aabc61074affdbe202a150261e3db752f5"
+   }
+  },
+  {
+   "id": "straight-octagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 13,
+   "face_ops": 9,
+   "strokes": 52,
+   "scene": {
+    "file": "straight-octagrams@418.scene.json",
+    "bytes": 8487,
+    "sha256": "080162afc03c1c0232831f309e38feb546a024a2dbb4cba7f21c5e64284c9449"
+   },
+   "svg": {
+    "file": "straight-octagrams@418.svg",
+    "bytes": 4018,
+    "sha256": "2040b373bd9a12c1e0a541db3ada7417cfd02d4668fa15058281257ba6085f6a"
+   }
+  },
+  {
+   "id": "sunset-octagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "bands",
+   "ops": 11,
+   "face_ops": 9,
+   "strokes": 16,
+   "scene": {
+    "file": "sunset-octagrams@418.scene.json",
+    "bytes": 4527,
+    "sha256": "f8e12645cff4500d10640a8111d2ac60396638c1ee10ddca867c521c3a93336f"
+   },
+   "svg": {
+    "file": "sunset-octagrams@418.svg",
+    "bytes": 3190,
+    "sha256": "e6460249d1636550f4d4e1eaf9266d1642823fbbf08a8ef399ddf3432e6b92c9"
+   }
+  },
+  {
+   "id": "neon-octagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 17,
+   "face_ops": 13,
+   "strokes": 96,
+   "scene": {
+    "file": "neon-octagrams@418.scene.json",
+    "bytes": 14726,
+    "sha256": "6ff6afe1985bd32f864b159c8a9f70db33d3211221537c5d7cd74ab5fa3821ca"
+   },
+   "svg": {
+    "file": "neon-octagrams@418.svg",
+    "bytes": 6495,
+    "sha256": "1e329bc26faf34351ca5cfc259d1f845a23a5c9955b9560af258d9305072b213"
+   }
+  },
+  {
+   "id": "two-point-crosses",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 25,
+   "face_ops": 21,
+   "strokes": 48,
+   "scene": {
+    "file": "two-point-crosses@418.scene.json",
+    "bytes": 9056,
+    "sha256": "6f8176d2e758b193db57c85907a477a093dbf19a67d905e6c9f21528d412de5c"
+   },
+   "svg": {
+    "file": "two-point-crosses@418.svg",
+    "bytes": 4619,
+    "sha256": "4b43d3613a201787812cde95233da00201a420dbe1eb0282bc480e13b3586ea7"
+   }
+  },
+  {
+   "id": "gold-octagrams",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "lines",
+   "ops": 14,
+   "face_ops": 13,
+   "strokes": 16,
+   "scene": {
+    "file": "gold-octagrams@418.scene.json",
+    "bytes": 5273,
+    "sha256": "6317193466e908602de745deb4bae5efa4e184038cbfc794dab9d613fe3db591"
+   },
+   "svg": {
+    "file": "gold-octagrams@418.svg",
+    "bytes": 3787,
+    "sha256": "6105c10ccd76c9ac2834ce92e420f5600e623aec6e77f44d8d601ee28d51413f"
+   }
+  },
+  {
+   "id": "octagon-and-star",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.4.4.4",
+   "mode": "bands",
+   "ops": 6,
+   "face_ops": 4,
+   "strokes": 8,
+   "scene": {
+    "file": "octagon-and-star@418.scene.json",
+    "bytes": 1773,
+    "sha256": "429e8017c8ce4385a8bdce8ad28c65ea9a383db0f597512ecc9864ea81b4ce6b"
+   },
+   "svg": {
+    "file": "octagon-and-star@418.svg",
+    "bytes": 1223,
+    "sha256": "393e728ca8809af5d4afa1636220c1ca557c10ee007d66155b62a9d882ec4d19"
+   }
+  },
+  {
+   "id": "cobalt-octagons",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.4.4.4",
+   "mode": "interlace",
+   "ops": 8,
+   "face_ops": 4,
+   "strokes": 16,
+   "scene": {
+    "file": "cobalt-octagons@418.scene.json",
+    "bytes": 2821,
+    "sha256": "f8bbe92784999b91b3cc03f45717893c25b819ba8efcdbe5ef732952373a4cd0"
+   },
+   "svg": {
+    "file": "cobalt-octagons@418.svg",
+    "bytes": 1603,
+    "sha256": "efaf535bce7e0385beceb1fe6b841f053a63244e996680a38b6daecc79b9baf5"
+   }
+  },
+  {
+   "id": "two-point-diamonds",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.4.4.4",
+   "mode": "interlace",
+   "ops": 16,
+   "face_ops": 12,
+   "strokes": 34,
+   "scene": {
+    "file": "two-point-diamonds@418.scene.json",
+    "bytes": 5606,
+    "sha256": "61a88f43f4618a35120cdd0bb070e9ae275c51fe8db1612b20dfb4af9dea0518"
+   },
+   "svg": {
+    "file": "two-point-diamonds@418.svg",
+    "bytes": 2599,
+    "sha256": "4b3cff014420000a0ff1f15d1f84c1f5e862d53d8c4fae26a9928935c2c7fd5a"
+   }
+  },
+  {
+   "id": "carved-squares",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.4.4.4",
+   "mode": "bands",
+   "ops": 6,
+   "face_ops": 4,
+   "strokes": 8,
+   "scene": {
+    "file": "carved-squares@418.scene.json",
+    "bytes": 1788,
+    "sha256": "1fa4a180a97a9bdc15f4bf7a5c46e7e97162fa3de1d59d154da0812c32674674"
+   },
+   "svg": {
+    "file": "carved-squares@418.svg",
+    "bytes": 1223,
+    "sha256": "849f6cf939cff394e025d81eca7fc2ee16d756f453f81c9ac42d32b60ad21d92"
+   }
+  },
+  {
+   "id": "twelve-on-squares",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 21,
+   "face_ops": 17,
+   "strokes": 112,
+   "scene": {
+    "file": "twelve-on-squares@418.scene.json",
+    "bytes": 18220,
+    "sha256": "71d1b41c95fb743315e74a6b19b90a2dcc3373fc93059396ca5758dbecf7f938"
+   },
+   "svg": {
+    "file": "twelve-on-squares@418.svg",
+    "bytes": 8405,
+    "sha256": "77d6233ce482dd41381e03bf9c16258624bdad974bd2fdf4f619cd24e90e5bad"
+   }
+  },
+  {
+   "id": "peacock-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 21,
+   "face_ops": 17,
+   "strokes": 112,
+   "scene": {
+    "file": "peacock-twelve@418.scene.json",
+    "bytes": 18643,
+    "sha256": "39597295b559bab342751fb8be3d4cc6867eab22e1e4e1aa000993c7aeb66ff5"
+   },
+   "svg": {
+    "file": "peacock-twelve@418.svg",
+    "bytes": 8919,
+    "sha256": "1546ca3de8859b896c6f975d2e381858d969d221f4a63fcb61a6dade65fcd937"
+   }
+  },
+  {
+   "id": "acute-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 21,
+   "face_ops": 17,
+   "strokes": 112,
+   "scene": {
+    "file": "acute-twelve@418.scene.json",
+    "bytes": 18250,
+    "sha256": "e20402d87c40ec4c7fd2c441065308c7f7f8b4e9b73eaa7c1ee0045abdef72dd"
+   },
+   "svg": {
+    "file": "acute-twelve@418.svg",
+    "bytes": 8527,
+    "sha256": "842baab90b79fc64f9892926df7f65b5b448f66f9298d839475e7ff9cbbe3227"
+   }
+  },
+  {
+   "id": "berry-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "ops": 15,
+   "face_ops": 13,
+   "strokes": 16,
+   "scene": {
+    "file": "berry-twelve@418.scene.json",
+    "bytes": 5889,
+    "sha256": "b15ff1e9445df27af000a2397c29bcdf90e3ec25716419aeddb247029ef6b1af"
+   },
+   "svg": {
+    "file": "berry-twelve@418.svg",
+    "bytes": 4448,
+    "sha256": "96dac69260401d40c4ab9094d52fcf21fc3f1860fcd3fe86b561ad4e55223c1b"
+   }
+  },
+  {
+   "id": "blueprint-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "ops": 22,
+   "face_ops": 21,
+   "strokes": 24,
+   "scene": {
+    "file": "blueprint-twelve@418.scene.json",
+    "bytes": 8973,
+    "sha256": "88acc3d807a54a0b923a29dc689cf229fe0bd1f905877edcd93a230cc9b24ce5"
+   },
+   "svg": {
+    "file": "blueprint-twelve@418.svg",
+    "bytes": 6614,
+    "sha256": "1c183802adc4abb92826769462089d6c5193fcc1ae2a35c0ce847e63dbf7a796"
+   }
+  },
+  {
+   "id": "acute-rosettes",
+   "target_w": 160,
+   "W": 164,
+   "H": 284,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 252,
+   "scene": {
+    "file": "acute-rosettes@160.scene.json",
+    "bytes": 51085,
+    "sha256": "c08e9f708565b023dda8cd6a8b54dcaf09d7c7f07f52c8d32840a507a13e6c90"
+   },
+   "svg": {
+    "file": "acute-rosettes@160.svg",
+    "bytes": 16878,
+    "sha256": "4c0b90c99513d3b2ad70ce9dc69d3b99302dd7be6980e071c0554a90a8914351"
+   }
+  },
+  {
+   "id": "tropic-twelve",
+   "target_w": 160,
+   "W": 164,
+   "H": 284,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "ops": 27,
+   "face_ops": 23,
+   "strokes": 192,
+   "scene": {
+    "file": "tropic-twelve@160.scene.json",
+    "bytes": 38854,
+    "sha256": "94fbd7f6e864c6a60247a33f4a927ae81ecf57afdef0f7797b8437917e74276f"
+   },
+   "svg": {
+    "file": "tropic-twelve@160.svg",
+    "bytes": 13293,
+    "sha256": "78de9136a42348655fc1e721bf807ca56563f39c656a777bb1fb698fb3b61f65"
+   }
+  },
+  {
+   "id": "two-point-knots",
+   "target_w": 160,
+   "W": 164,
+   "H": 284,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 87,
+   "face_ops": 83,
+   "strokes": 164,
+   "scene": {
+    "file": "two-point-knots@160.scene.json",
+    "bytes": 39536,
+    "sha256": "5374cb63cae4e2fdaddf24d3266dac8e4027dc5c09abe13d537eb4ba5822c785"
+   },
+   "svg": {
+    "file": "two-point-knots@160.svg",
+    "bytes": 14712,
+    "sha256": "57197489215379a63161a677f7c200178c56bf5ec27ef2c57c6755fb6b3ecd44"
+   }
+  },
+  {
+   "id": "sandstone-marble",
+   "target_w": 160,
+   "W": 164,
+   "H": 284,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "ops": 26,
+   "face_ops": 24,
+   "strokes": 32,
+   "scene": {
+    "file": "sandstone-marble@160.scene.json",
+    "bytes": 18661,
+    "sha256": "55969c8955271ed21a9503fb503287d1f39f5af0cf24c50c52829bbe94ed311e"
+   },
+   "svg": {
+    "file": "sandstone-marble@160.svg",
+    "bytes": 9443,
+    "sha256": "643411fd86440e4ad5b82fd9a4859f2d181d2bc604365ec64ee1131ddd8239f6"
+   }
+  },
+  {
+   "id": "plotter-lines",
+   "target_w": 160,
+   "W": 164,
+   "H": 284,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "ops": 1,
+   "face_ops": 0,
+   "strokes": 28,
+   "scene": {
+    "file": "plotter-lines@160.scene.json",
+    "bytes": 6359,
+    "sha256": "af0d58d734b128a17cee70bbda8196c38ff7f63b23c5782251657147af4c42ff"
+   },
+   "svg": {
+    "file": "plotter-lines@160.svg",
+    "bytes": 2514,
+    "sha256": "09b3a09c585267b78dfe97e22330f36c22cc40714cb738eec54a8c8a1d07d730"
+   }
+  },
+  {
+   "id": "acute-twelve",
+   "target_w": 160,
+   "W": 160,
+   "H": 160,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 21,
+   "face_ops": 17,
+   "strokes": 112,
+   "scene": {
+    "file": "acute-twelve@160.scene.json",
+    "bytes": 18282,
+    "sha256": "5ff5c903111ad7bc5f5e59c118c9e6017398b54b013ab9853208aec6902a538c"
+   },
+   "svg": {
+    "file": "acute-twelve@160.svg",
+    "bytes": 8613,
+    "sha256": "a20eb7eff347a8b590f5a8ba21235a90ce2c05da6c5ca0a25c66b8a8af09add2"
+   }
+  },
+  {
+   "id": "berry-twelve",
+   "target_w": 160,
+   "W": 160,
+   "H": 160,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "ops": 15,
+   "face_ops": 13,
+   "strokes": 16,
+   "scene": {
+    "file": "berry-twelve@160.scene.json",
+    "bytes": 5515,
+    "sha256": "7793cb2c2dece52122a71e6022fe418815093aecfdbc7acc70d76f78cf93a48e"
+   },
+   "svg": {
+    "file": "berry-twelve@160.svg",
+    "bytes": 4074,
+    "sha256": "98a2514db3863da12eeb87c7347e1bcd7e3566c85640ef6192bfe0d27086c4d8"
+   }
+  },
+  {
+   "id": "blueprint-twelve",
+   "target_w": 160,
+   "W": 160,
+   "H": 160,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "ops": 22,
+   "face_ops": 21,
+   "strokes": 24,
+   "scene": {
+    "file": "blueprint-twelve@160.scene.json",
+    "bytes": 9521,
+    "sha256": "6c2479a720bf81db973fadcd8411dd6e08bb5f472ab08c8c41f3884837ec9680"
+   },
+   "svg": {
+    "file": "blueprint-twelve@160.svg",
+    "bytes": 7162,
+    "sha256": "db63ee55b26c1d27fb9549d4dd709cead95ed8d05acc165133821cadd7488a7e"
+   }
+  },
+  {
+   "id": "star-and-cross",
+   "target_w": 160,
+   "W": 160,
+   "H": 160,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 8,
+   "face_ops": 4,
+   "strokes": 16,
+   "scene": {
+    "file": "star-and-cross@160.scene.json",
+    "bytes": 3422,
+    "sha256": "0e7d8ffbbcaa4effe9f6ad91376eb166fd325a999ccf01231cfb42a0e2001c87"
+   },
+   "svg": {
+    "file": "star-and-cross@160.svg",
+    "bytes": 2227,
+    "sha256": "e772c1694af6a0aa18128633a05696c9ec9afa6e9e44afbed10b4a159f11edf2"
+   }
+  },
+  {
+   "id": "acute-rosettes",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1732,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 33,
+   "face_ops": 29,
+   "strokes": 252,
+   "scene": {
+    "file": "acute-rosettes@1000.scene.json",
+    "bytes": 52354,
+    "sha256": "021a461c04bbf02b896adaa6c82d29057bcbc8a1cc87a33c5f334b589b548046"
+   },
+   "svg": {
+    "file": "acute-rosettes@1000.svg",
+    "bytes": 18651,
+    "sha256": "7d90faf7a65d0ffe21c92dad41a1d7e675c6c0b2eb933f75dd552ea79f7617a8"
+   }
+  },
+  {
+   "id": "tropic-twelve",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1732,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "ops": 27,
+   "face_ops": 23,
+   "strokes": 192,
+   "scene": {
+    "file": "tropic-twelve@1000.scene.json",
+    "bytes": 39894,
+    "sha256": "f8c20c96351db4b571ca405b38064df2b9bc46aeb5cbf55b3fc6d0a918383cf0"
+   },
+   "svg": {
+    "file": "tropic-twelve@1000.svg",
+    "bytes": 14410,
+    "sha256": "a19329ee35ee1911777517c28927358113ad5f37e5585ec548c8ab5c93efa625"
+   }
+  },
+  {
+   "id": "two-point-knots",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1732,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 87,
+   "face_ops": 83,
+   "strokes": 164,
+   "scene": {
+    "file": "two-point-knots@1000.scene.json",
+    "bytes": 40639,
+    "sha256": "aba702927c0a61e15bdea9389c59838d6416e4c3451496353fc947d0477aa64b"
+   },
+   "svg": {
+    "file": "two-point-knots@1000.svg",
+    "bytes": 16034,
+    "sha256": "6cd24726d2bc75283a752116af6e590e0c27f554b1e794a4bd7811fe87a982ca"
+   }
+  },
+  {
+   "id": "sandstone-marble",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1732,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "ops": 26,
+   "face_ops": 24,
+   "strokes": 32,
+   "scene": {
+    "file": "sandstone-marble@1000.scene.json",
+    "bytes": 19496,
+    "sha256": "c54b21ae590eb4ba63845379485e9b53f5a60095a2173ef819623c8701904875"
+   },
+   "svg": {
+    "file": "sandstone-marble@1000.svg",
+    "bytes": 10381,
+    "sha256": "6c2570f2a00b193bf72bfc4bc9ba11963bf46ef0e99206101f350dc3e5b7bb4d"
+   }
+  },
+  {
+   "id": "plotter-lines",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1732,
+   "nx": 1,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "ops": 1,
+   "face_ops": 0,
+   "strokes": 28,
+   "scene": {
+    "file": "plotter-lines@1000.scene.json",
+    "bytes": 6599,
+    "sha256": "556bc6ad58a466a33c8283ecc3ec563f54f435d81d9ea9ad5d612ac94da1e627"
+   },
+   "svg": {
+    "file": "plotter-lines@1000.svg",
+    "bytes": 2844,
+    "sha256": "1e208fcab8d2984cfd306ed3aff8a4bb0e2f82ec56b6b3294f31af507f186462"
+   }
+  },
+  {
+   "id": "acute-twelve",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1000,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 21,
+   "face_ops": 17,
+   "strokes": 112,
+   "scene": {
+    "file": "acute-twelve@1000.scene.json",
+    "bytes": 19044,
+    "sha256": "080d9cedefac318faa325b1b57504d6f1f5aaf6577f577a4e3f4dde17664eb31"
+   },
+   "svg": {
+    "file": "acute-twelve@1000.svg",
+    "bytes": 9433,
+    "sha256": "ec42ca8176bfda1db1613b834d4a6b7f7b57689b9118cc9d13adb056eedd47fd"
+   }
+  },
+  {
+   "id": "berry-twelve",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1000,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "ops": 15,
+   "face_ops": 13,
+   "strokes": 16,
+   "scene": {
+    "file": "berry-twelve@1000.scene.json",
+    "bytes": 5923,
+    "sha256": "6b133cbb341d3c257f28074580445c73e7134b05d001fb36a7db28a09d4b543a"
+   },
+   "svg": {
+    "file": "berry-twelve@1000.svg",
+    "bytes": 4493,
+    "sha256": "d228ff811ad3f603b3c98c4dd24669ff2788bf621113e31bb245f018fa89fe6b"
+   }
+  },
+  {
+   "id": "blueprint-twelve",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1000,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "ops": 22,
+   "face_ops": 21,
+   "strokes": 24,
+   "scene": {
+    "file": "blueprint-twelve@1000.scene.json",
+    "bytes": 10107,
+    "sha256": "8f1c84d219b12e03ed45aa78339fd6d3f5e2469464d209689b6c8e9f71c2c5e2"
+   },
+   "svg": {
+    "file": "blueprint-twelve@1000.svg",
+    "bytes": 7821,
+    "sha256": "173d56d00cc2eac412f42c5ad71d7bd36a92ebcc5fddf813a4b1ffc8b0379ab3"
+   }
+  },
+  {
+   "id": "star-and-cross",
+   "target_w": 1000,
+   "W": 1000,
+   "H": 1000,
+   "nx": 1,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 8,
+   "face_ops": 4,
+   "strokes": 16,
+   "scene": {
+    "file": "star-and-cross@1000.scene.json",
+    "bytes": 3572,
+    "sha256": "77262abb6fac5820971bedc3f7044403386830efcafa24f78250054cacc63678"
+   },
+   "svg": {
+    "file": "star-and-cross@1000.svg",
+    "bytes": 2387,
+    "sha256": "1e9c9dad5cd9e473dc84e3661e985c613f4b9dc495ae8047272566d77e33bad4"
+   }
+  },
+  {
+   "id": "acute-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 2,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 53,
+   "face_ops": 49,
+   "strokes": 452,
+   "scene": {
+    "file": "acute-rosettes@418x2x1.scene.json",
+    "bytes": 89026,
+    "sha256": "a26d74bcb0764a974176f853b64ac8a9a5e9317765ef5cb3633ef766ad801a68"
+   },
+   "svg": {
+    "file": "acute-rosettes@418x2x1.svg",
+    "bytes": 29980,
+    "sha256": "683038baf7e8243f15a0854a12dcf736681acf43fc3f2043d5654ec025286115"
+   }
+  },
+  {
+   "id": "tropic-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 2,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "ops": 40,
+   "face_ops": 36,
+   "strokes": 342,
+   "scene": {
+    "file": "tropic-twelve@418x2x1.scene.json",
+    "bytes": 66146,
+    "sha256": "a812a22979eff80b585de338cf21a9f1b1cce90fdf4df90b521251c73b83e3d3"
+   },
+   "svg": {
+    "file": "tropic-twelve@418x2x1.svg",
+    "bytes": 21782,
+    "sha256": "fefbe3f4a1d20654aaf2192d65d78e3f3a6aea2c2103e292b05045516551597a"
+   }
+  },
+  {
+   "id": "two-point-knots",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 2,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 153,
+   "face_ops": 149,
+   "strokes": 300,
+   "scene": {
+    "file": "two-point-knots@418x2x1.scene.json",
+    "bytes": 70850,
+    "sha256": "98ae395a2296d27f2235cd109d9d2045c00df7df0e50c4b6e8348f4a4bf9bcd2"
+   },
+   "svg": {
+    "file": "two-point-knots@418x2x1.svg",
+    "bytes": 26211,
+    "sha256": "a0cb3016608ca9b756f8411c29733f46b7be625b68224eabe1b437ee934fe23b"
+   }
+  },
+  {
+   "id": "sandstone-marble",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 2,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "ops": 43,
+   "face_ops": 41,
+   "strokes": 44,
+   "scene": {
+    "file": "sandstone-marble@418x2x1.scene.json",
+    "bytes": 30686,
+    "sha256": "1ffb80b812db389044d96308780d336cdce3d3045b555927d53efbbde6a4df0c"
+   },
+   "svg": {
+    "file": "sandstone-marble@418x2x1.svg",
+    "bytes": 16248,
+    "sha256": "64873213472c5d98d3541d3de44bd4283af324ee7e2598ec2a1054a1207ce106"
+   }
+  },
+  {
+   "id": "plotter-lines",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 2,
+   "ny": 1,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "ops": 1,
+   "face_ops": 0,
+   "strokes": 36,
+   "scene": {
+    "file": "plotter-lines@418x2x1.scene.json",
+    "bytes": 9187,
+    "sha256": "38e9fd5097dfad9fc5914bdeaaa88a7b63cc98c875fbd9c681e83f417e6945b8"
+   },
+   "svg": {
+    "file": "plotter-lines@418x2x1.svg",
+    "bytes": 3968,
+    "sha256": "c9ea8fdd4900d146bbc423bef0d592d153bed4661799d9c8ec0805d9b1eeaf98"
+   }
+  },
+  {
+   "id": "acute-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 2,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 32,
+   "face_ops": 28,
+   "strokes": 206,
+   "scene": {
+    "file": "acute-twelve@418x2x1.scene.json",
+    "bytes": 32228,
+    "sha256": "81e393bcedf6980c0c06b7b9df68f9ff462efcdd4f594fd0107e95dee820575d"
+   },
+   "svg": {
+    "file": "acute-twelve@418x2x1.svg",
+    "bytes": 14170,
+    "sha256": "ed19aa211e604c7fc93bd8b28e6ad9b228d559e9d0ac2fba0671140260548b1e"
+   }
+  },
+  {
+   "id": "berry-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 2,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "ops": 24,
+   "face_ops": 22,
+   "strokes": 24,
+   "scene": {
+    "file": "berry-twelve@418x2x1.scene.json",
+    "bytes": 9273,
+    "sha256": "0a9adbdef1d24d678a912f79fcb8fe0dd595321f28cc156e05ac73c8278cbc7d"
+   },
+   "svg": {
+    "file": "berry-twelve@418x2x1.svg",
+    "bytes": 6918,
+    "sha256": "56941d2bacc0a61c6565afd08282051a406cd168ab9fe4cb8e934ac351e066e4"
+   }
+  },
+  {
+   "id": "blueprint-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 2,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "ops": 35,
+   "face_ops": 34,
+   "strokes": 32,
+   "scene": {
+    "file": "blueprint-twelve@418x2x1.scene.json",
+    "bytes": 13496,
+    "sha256": "3641a2c9cb7b61e6acdaee15ebdf6539fac3d45a406494265b7d6b1971ae17de"
+   },
+   "svg": {
+    "file": "blueprint-twelve@418x2x1.svg",
+    "bytes": 10105,
+    "sha256": "562ee93a0c02dad8861701f06936edd3aec2ed97fd13f3eaa3b98f6b93084559"
+   }
+  },
+  {
+   "id": "star-and-cross",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 2,
+   "ny": 1,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 10,
+   "face_ops": 6,
+   "strokes": 26,
+   "scene": {
+    "file": "star-and-cross@418x2x1.scene.json",
+    "bytes": 5514,
+    "sha256": "e81bd95881ec9787919a19b9294ef9b44e3c45aa92ea89e24dea51b87aec642e"
+   },
+   "svg": {
+    "file": "star-and-cross@418x2x1.svg",
+    "bytes": 3416,
+    "sha256": "ce2a833d135a48ff3af4de6c4de15f2efeee2c0e4526acea9c3d7ba500fb5b1a"
+   }
+  },
+  {
+   "id": "acute-rosettes",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 2,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "interlace",
+   "ops": 55,
+   "face_ops": 51,
+   "strokes": 472,
+   "scene": {
+    "file": "acute-rosettes@418x1x2.scene.json",
+    "bytes": 93719,
+    "sha256": "fd545e220ef933c03423d8040dc86e36b0bcea48f70548edec852d57d5585067"
+   },
+   "svg": {
+    "file": "acute-rosettes@418x1x2.svg",
+    "bytes": 31949,
+    "sha256": "fb4e8fcbe5a9d0f84a9fc38b0d07f6ad0d80f3bd69d7b39c655529c9cc89d4b5"
+   }
+  },
+  {
+   "id": "tropic-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 2,
+   "group": "p6m",
+   "tiling": "3.12.12",
+   "mode": "interlace",
+   "ops": 44,
+   "face_ops": 40,
+   "strokes": 366,
+   "scene": {
+    "file": "tropic-twelve@418x1x2.scene.json",
+    "bytes": 71607,
+    "sha256": "36ceb81f6809807ca465c6fc72fc5e11c7b0e0de1a72d40bdb23616b392219ba"
+   },
+   "svg": {
+    "file": "tropic-twelve@418x1x2.svg",
+    "bytes": 23929,
+    "sha256": "3c031789af9abbf0f1221cc4cd8e4b259f7e04215bcef5b6b2d51bcf15275231"
+   }
+  },
+  {
+   "id": "two-point-knots",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 2,
+   "group": "p6m",
+   "tiling": "3.4.6.4",
+   "mode": "interlace",
+   "ops": 163,
+   "face_ops": 159,
+   "strokes": 312,
+   "scene": {
+    "file": "two-point-knots@418x1x2.scene.json",
+    "bytes": 75123,
+    "sha256": "5ff44552fb39bb1d24f3575a78ae35e8c0b660b1ef2576d429518742bff19660"
+   },
+   "svg": {
+    "file": "two-point-knots@418x1x2.svg",
+    "bytes": 28364,
+    "sha256": "2ecfaf6712030cf177d2abceb12861b1ec28ed812a0ada93f9e1df9f33e263ca"
+   }
+  },
+  {
+   "id": "sandstone-marble",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 2,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "bands",
+   "ops": 45,
+   "face_ops": 43,
+   "strokes": 52,
+   "scene": {
+    "file": "sandstone-marble@418x1x2.scene.json",
+    "bytes": 33250,
+    "sha256": "9f6a7b2f0fc851312ec006aa1f259cf5350a5e24091739dde5c9de83870f61e6"
+   },
+   "svg": {
+    "file": "sandstone-marble@418x1x2.svg",
+    "bytes": 17499,
+    "sha256": "1d8d77a60ec94a199c14d947efdad7b110b5441c126a11dc8e0e62a197c10759"
+   }
+  },
+  {
+   "id": "plotter-lines",
+   "target_w": 418,
+   "W": 418,
+   "H": 724,
+   "nx": 1,
+   "ny": 2,
+   "group": "p6m",
+   "tiling": "4.6.12",
+   "mode": "lines",
+   "ops": 1,
+   "face_ops": 0,
+   "strokes": 44,
+   "scene": {
+    "file": "plotter-lines@418x1x2.scene.json",
+    "bytes": 10616,
+    "sha256": "abba9f3b9193bf9f9d06cf58a9edcb519dcbbb79575452c2c500c3b827ea141c"
+   },
+   "svg": {
+    "file": "plotter-lines@418x1x2.svg",
+    "bytes": 4463,
+    "sha256": "eb2e8d9d856305a505372b4648e0392ec8a784837fc5a106e58e37275d363e03"
+   }
+  },
+  {
+   "id": "acute-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 2,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "interlace",
+   "ops": 32,
+   "face_ops": 28,
+   "strokes": 206,
+   "scene": {
+    "file": "acute-twelve@418x1x2.scene.json",
+    "bytes": 32228,
+    "sha256": "8aba1d5e5b2529450303bd2923085e098b6a0b9678b3672248c8229530d42a5f"
+   },
+   "svg": {
+    "file": "acute-twelve@418x1x2.svg",
+    "bytes": 14170,
+    "sha256": "1d6e8b7c8bf3f4bbe56d6e77aaf4007423d12d86055acf6441278b9f17d002f5"
+   }
+  },
+  {
+   "id": "berry-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 2,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "bands",
+   "ops": 24,
+   "face_ops": 22,
+   "strokes": 24,
+   "scene": {
+    "file": "berry-twelve@418x1x2.scene.json",
+    "bytes": 9273,
+    "sha256": "68b096464929de2d139d32c078226a50d5db1b3295dd3edb2e7423b67146453b"
+   },
+   "svg": {
+    "file": "berry-twelve@418x1x2.svg",
+    "bytes": 6918,
+    "sha256": "926ec7357113a2a07788a3586fd6b3e7c7fd7c0a9f291336dd84723939bcd827"
+   }
+  },
+  {
+   "id": "blueprint-twelve",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 2,
+   "group": "p4m",
+   "tiling": "3.4.3.12",
+   "mode": "lines",
+   "ops": 35,
+   "face_ops": 34,
+   "strokes": 32,
+   "scene": {
+    "file": "blueprint-twelve@418x1x2.scene.json",
+    "bytes": 13496,
+    "sha256": "8434297ecc251f16b2fc712a86880a6eb5f34ac959169ac57f0ffdac78de26a9"
+   },
+   "svg": {
+    "file": "blueprint-twelve@418x1x2.svg",
+    "bytes": 10105,
+    "sha256": "fcf23896c164a2784e3563cb8496cb227962c56190dadbe6a41c30b47c73778d"
+   }
+  },
+  {
+   "id": "star-and-cross",
+   "target_w": 418,
+   "W": 418,
+   "H": 418,
+   "nx": 1,
+   "ny": 2,
+   "group": "p4m",
+   "tiling": "4.8.8",
+   "mode": "interlace",
+   "ops": 10,
+   "face_ops": 6,
+   "strokes": 26,
+   "scene": {
+    "file": "star-and-cross@418x1x2.scene.json",
+    "bytes": 5514,
+    "sha256": "dc459482c5f4c9cb68f504861f6df44f2429a98087e23f8aa45f253a2b5a78a0"
+   },
+   "svg": {
+    "file": "star-and-cross@418x1x2.svg",
+    "bytes": 3416,
+    "sha256": "a3c21a2401f317d420fa6668e92570f7028ecf7f4e544d462a0418db1ee6a613"
+   }
+  }
+ ],
+ "totals": {
+  "files": 162,
+  "scene_bytes": 1711963,
+  "svg_bytes": 712101,
+  "bytes": 2424064
+ }
+}
