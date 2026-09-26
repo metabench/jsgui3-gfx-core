@@ -178,8 +178,9 @@ const flatten_pairs = polygon => {
 
 /*
  * Quantise every polygon into the shared scratch array. Returns
- * {starts, counts, n, bbox} where bbox is in subpixels, or null when no
- * polygon has three or more points.
+ * {starts, counts, bbox}: each polygon's first index into the array and its
+ * point count (polygons with fewer than three points are left out), and the
+ * bounding box in subpixels; or null when nothing has area.
  */
 const quantise = (polygons, ox, oy) => {
     const list = list_polygons(polygons);
