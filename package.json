@@ -6,6 +6,7 @@
         "core/",
         "docs/",
         "examples/",
+        "!examples/output/",
         "benchmarks/",
         "scripts/",
         "tests/",
@@ -28,6 +29,8 @@
         "benchmark": "node ./benchmarks/pixel-buffer-benchmark.js",
         "benchmark:json": "node ./benchmarks/pixel-buffer-benchmark.js --json --no-compare",
         "benchmark:raster": "node ./benchmarks/raster-benchmark.js",
-        "cross-runtime": "node ./scripts/cross-runtime-check.js"
+        "cross-runtime": "node ./scripts/cross-runtime-check.js",
+        "check-pack": "node ./scripts/check-pack.js",
+        "prepublishOnly": "node ./scripts/check-pack.js"
     }
 }
