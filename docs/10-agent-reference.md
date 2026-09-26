@@ -11,6 +11,11 @@ Pixel_Pos_List         — sparse pixel coordinate storage (Uint16Array backed)
 convolution_kernels    — predefined Float32Array/Int8Array kernels
 ta_math                — low-level typed array operations
 Rectangle / Rect       — rectangle geometry (extend, overlap, intersect)
+raster                 — { fill_polygons, fill_paint_op, fill_polygon_aliased } (pb first; also pb methods)
+stroke_polyline        — polyline -> outline polygons (pure geometry)
+encode_png             — PNG, sync, Node zlib -> Uint8Array
+encode_png_async       — PNG via CompressionStream (browser, Worker, Node) -> Promise<Uint8Array>
+Png_Row_Encoder        — streaming PNG: write_row / write_rows(pb) / end()
 ```
 
 ## Pixel_Buffer Construction
@@ -120,6 +125,19 @@ self_replace_color(target, replacement)
 split_rgb_channels() → [r_pb, g_pb, b_pb]
 ```
 
+### Vector rasterising (0.0.28; core/raster/, core/png-encoder.js)
+```
+fill_polygons(polygons, color, {clip, offset, blend})   AA fill, 8/24/32bpp; all polygons = one union
+    polygons: [[x0,y0,x1,y1,...], ...] px, y down; color [r,g,b(,a)] or grey at 8bpp
+    clip [x0,y0,x1,y1] (x1,y1 exclusive), offset [ox,oy] integers; blend 'over' | 'replace'
+    1/4096 px integer arithmetic: same bytes everywhere, bands/windows byte-identical
+fill_paint_op({color, polygons, strokes}, options)      strokes expanded, one union pass
+fill_polygon_aliased(polygon, color, {offset, clip})    pixel centres, non-zero, no outline, 1/8/24/32bpp
+place_image_from_pixel_buffer(src, pos, {blend: 'over'}) 32bpp source-over (default copy unchanged)
+stroke_polyline(points, {width, join: miter|bevel|round, miter_limit=4, cap: butt|square|round, closed})
+encode_png(pb, {dpi, srgb=true, filter='adaptive', level=6})   filter 'none' is smaller for flat art
+```
+
 ### Masks (1bipp)
 ```
 apply_mask(mask_pb, r, g, b, a)
@@ -185,6 +203,11 @@ shapes/TA_Table_8_Columns.js     typed array table for edge tracking
 32bipp: byte = (y * width + x) * 4
 bypr:   width * bypp  (bytes per row)
 ```
+
+## Tests
+
+`npm test` runs every `tests/*.test.js` (229 cases in 27 files at 0.0.28). A test file
+exports a function returning `{passed, failed}` or a Promise of it.
 
 ## Dependencies
 

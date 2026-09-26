@@ -45,6 +45,8 @@ const edges = grey.apply_square_convolution(
 | **Masking** | 1bipp masks for compositing and region operations |
 | **Typed Array Math** | Low-level bitwise, copy, fill, and transform operations |
 | **Shapes** | Rectangle and Polygon geometry classes |
+| **Vector rasterising** | Anti-aliased polygon fill (`fill_polygons`), polyline stroker (`stroke_polyline`), scene paint ops, hard-edged pick-buffer fill; byte-identical in Node, browsers and Workers (0.0.28) |
+| **PNG** | `encode_png` (Node), `encode_png_async` (CompressionStream), streaming `Png_Row_Encoder` (0.0.28) |
 
 ## Exports
 
@@ -55,9 +57,22 @@ const {
     Pixel_Pos_List,        // Sparse pixel coordinate storage
     convolution_kernels,   // Predefined convolution kernels
     ta_math,               // TypedArray math operations
-    Rectangle, Rect        // Rectangle geometry
+    Rectangle, Rect,       // Rectangle geometry
+    raster,                // { fill_polygons, fill_paint_op, fill_polygon_aliased }, also Pixel_Buffer methods
+    stroke_polyline,       // polyline -> outline polygons (miter/bevel/round, butt/square/round)
+    encode_png, encode_png_async, Png_Row_Encoder   // PNG encoders
 } = require('jsgui3-gfx-core');
 ```
+
+```js
+// Anti-aliased fill: all polygons of one call form one union.
+pb.fill_polygons([[10.5, 4.25, 60, 12, 30.75, 50]], [200, 80, 40], {blend: 'over'});
+// A scene paint op: strokes are expanded and filled with the polygons in one pass.
+pb.fill_paint_op({color: [20, 60, 140], polygons: [], strokes: [{points: [5, 5, 60, 20, 40, 55], width: 3, join: 'miter', miter_limit: 12, cap: 'butt'}]});
+const png = encode_png(pb, {dpi: 300});      // Uint8Array
+```
+
+See [RELEASE_NOTES_0.0.28.md](./RELEASE_NOTES_0.0.28.md) for the vector raster API and its measurements.
 
 ## Supported Bit Depths
 
@@ -122,8 +137,13 @@ Full documentation with SVG illustrations available in [`docs/`](./docs/):
 ## Testing
 
 ```bash
-npm test
+npm test                  # 229 cases in 27 files
+npm run benchmark:raster  # fill_paint_op and PNG timings on the pattern fixtures
+npm run cross-runtime     # Node vs Chromium main thread vs Worker (needs esbuild + playwright)
 ```
+
+The pattern oracle compares renders with sharp/librsvg (a devDependency) and
+is skipped with a message when sharp is not installed.
 
 ## License
 
