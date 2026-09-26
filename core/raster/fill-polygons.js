@@ -3,11 +3,11 @@
 /*
  * fill_polygons: exact-area anti-aliased polygon fill with integer arithmetic.
  *
- * Every coordinate is quantised once to 1/256 px (round half up). Each edge is
+ * Every coordinate is quantised once to 1/4096 px (round half up). Each edge is
  * cut at row and column boundaries; the crossing points are integer floor
  * divisions of differences, so they do not depend on where the edge sits on
  * the pixel grid. Each cell piece adds its signed trapezoid area (doubled, in
- * 1/65536 px units) to a Float64 accumulator holding exact integers. A row's
+ * 1/4096^2 px units) to a Float64 accumulator holding exact integers. A row's
  * prefix sum is the winding-weighted coverage of each pixel; the fill takes
  * min(1, |sum|). Polygons given in one call therefore form one union: shared
  * edges cancel exactly, overlaps clamp, and an oppositely wound ring cuts a
@@ -25,15 +25,41 @@
  * ACC_BUDGET cells. Strip height does not change any pixel.
  */
 
-const ONE = 256;               // subpixel units per pixel
-const TWO_ONE = 512;
-const FULL = 131072;           // accumulated units for a fully covered pixel (2 * 256 * 256)
+const ONE = 4096;              // subpixel units per pixel
+const TWO_ONE = 8192;
+const FULL = 33554432;         // accumulated units for a fully covered pixel (2 * 4096 * 4096)
+const HALF_FULL = 16777216;
 const ACC_BUDGET = 1 << 21;    // cells per strip (16 MiB of Float64)
 const SAFE = 4503599627370496; // 2^52: products below this are exact doubles
 
 let acc = new Float64Array(0);       // kept all-zero between calls
 let quantised = new Float64Array(0); // quantised coordinates, reused
 let acc_dirty = false;
+// Per strip row: the lowest and highest accumulator column written, so the
+// composite pass visits only the touched part of each row. Kept reset
+// (lo = NONE, hi = -1) between calls.
+const NONE = 0x7fffffff;
+let row_lo = new Int32Array(0).fill(NONE);
+let row_hi = new Int32Array(0).fill(-1);
+// One bit per accumulator column per strip row: set where a cell was
+// written. The composite pass jumps between set bits, so a stretch with no
+// edges costs one word test per 32 columns. Kept all-zero between calls.
+let touched = new Uint32Array(0);
+
+// Set bits c_lo..c_hi (inclusive) of row r.
+const mark = (bm, words, r, c_lo, c_hi) => {
+    const b = r * words;
+    const w0 = c_lo >> 5, w1 = c_hi >> 5;
+    if (w0 === w1) {
+        const n = c_hi - c_lo + 1;
+        bm[b + w0] |= (n === 32 ? -1 : ((1 << n) - 1)) << (c_lo & 31);
+        return;
+    }
+    bm[b + w0] |= -1 << (c_lo & 31);
+    for (let k = w0 + 1; k < w1; k++) bm[b + k] = -1;
+    const t = c_hi & 31;
+    bm[b + w1] |= t === 31 ? -1 : ((1 << (t + 1)) - 1);
+};
 
 // floor(n / d) for integers n, d with d > 0 and |n| <= 2^52.
 const floor_div = (n, d) => {
@@ -45,7 +71,8 @@ const floor_div = (n, d) => {
 };
 
 // floor(a * b / d) for integers, d > 0. Falls back to BigInt when a * b is
-// too large to be exact in a double (coordinates beyond about 2^17 px).
+// too large to be exact in a double (an edge longer than about 16384 px in
+// both x and y).
 const floor_mul_div = (a, b, d) => {
     const p = a * b;
     if (p < SAFE && p > -SAFE) return floor_div(p, d);
@@ -186,7 +213,7 @@ const quantise = (polygons, ox, oy) => {
                 !Number.isFinite(x) || !Number.isFinite(y)) {
                 throw new TypeError('Polygon coordinates must be finite numbers');
             }
-            // x * 256 is exact in binary floating point; Math.round is round half up.
+            // x * 4096 is exact in binary floating point; Math.round is round half up.
             const X = Math.round(x * ONE) + oxs;
             const Y = Math.round(y * ONE) + oys;
             q[k++] = X;
@@ -208,7 +235,7 @@ const quantise = (polygons, ox, oy) => {
 };
 
 /*
- * One edge piece inside one row: from (xa, ya) to (xb, yb), 0 <= ya < yb <= 256,
+ * One edge piece inside one row: from (xa, ya) to (xb, yb), 0 <= ya < yb <= ONE,
  * in subpixels relative to the window's left edge and the row's top. `cover`
  * sign is dir. Walks the columns it crosses; parts left of the window carry
  * their full cover into column 0 (exact for every pixel in the window), parts
@@ -313,7 +340,7 @@ const accumulate_row_piece = (a, base, w, xa, ya, xb, yb, dir) => {
  * The strip has `rows` rows of `w` pixels; the accumulator row stride is
  * `stride`.
  */
-const accumulate_edge = (a, stride, w, rows, x0, y0, x1, y1) => {
+const accumulate_edge = (a, stride, w, rows, lo, hi, bm, words, x0, y0, x1, y1) => {
     if (y0 === y1) return;
     let dir = 1;
     if (y0 > y1) {
@@ -339,6 +366,9 @@ const accumulate_edge = (a, stride, w, rows, x0, y0, x1, y1) => {
             const row_bottom = (r + 1) * ONE;
             const yb = y1 < row_bottom ? y1 : row_bottom;
             a[r * stride] += (yb - ya) * dir * TWO_ONE;
+            lo[r] = 0;
+            if (hi[r] < 0) hi[r] = 0;
+            bm[r * words] |= 1;
             ya = yb;
             r++;
         }
@@ -355,7 +385,17 @@ const accumulate_edge = (a, stride, w, rows, x0, y0, x1, y1) => {
             yb = row_bottom;
             xb = x0 + floor_mul_div(row_bottom - y0, dx, dy);
         }
-        accumulate_row_piece(a, r * stride, w, xa, ya - top, xb, yb - top, dir);
+        const mn = xa < xb ? xa : xb;
+        if (mn < wide) {
+            const mx = xa < xb ? xb : xa;
+            const c_lo = mn <= 0 ? 0 : Math.floor(mn / ONE);
+            // Pieces left of the window write column 0; right of it, column w at most.
+            const c_hi = mx <= 0 ? 0 : mx >= wide ? w : Math.floor(mx / ONE) + 1;
+            if (c_lo < lo[r]) lo[r] = c_lo;
+            if (c_hi > hi[r]) hi[r] = c_hi;
+            mark(bm, words, r, c_lo, c_hi);
+            accumulate_row_piece(a, r * stride, w, xa, ya - top, xb, yb - top, dir);
+        }
         xa = xb;
         ya = yb;
         r++;
@@ -369,87 +409,135 @@ const div255 = t => {
 };
 
 /*
- * Composite one strip's coverage into the buffer and clear the accumulator.
- * m is the 8-bit coverage mask: round(255 * min(1, |sum| / FULL)).
+ * Composite one strip's coverage into the buffer and clear the accumulator
+ * and the row ranges. m is the 8-bit coverage mask:
+ * round(255 * min(1, |sum| / FULL)). Only each row's touched columns are
+ * visited; if the running sum is still non-zero after them (geometry running
+ * past the window's right edge), the rest of the row gets that constant mask.
  */
-const composite_strip = (pb, a, stride, w, rows, wx0, wy0, rgba, blend) => {
+const composite_strip = (pb, a, stride, w, rows, lo, hi, bm, words, wx0, wy0, rgba, blend) => {
     const ta = pb.ta;
     const bpr = pb.bytes_per_row;
     const bipp = pb.bipp;
     const bypp = bipp >> 3;
     const c0 = rgba[0], c1 = rgba[1], c2 = rgba[2], ca = rgba[3];
     const replace = blend === 'replace';
-    for (let r = 0; r < rows; r++) {
-        const base = r * stride;
-        let o = (wy0 + r) * bpr + wx0 * bypp;
-        let s = 0;
-        for (let c = 0; c < w; c++, o += bypp) {
-            const v = a[base + c];
-            if (v !== 0) {
-                s += v;
-                a[base + c] = 0;
+    // Fully covered pixels of an opaque 'over' colour, or any 'replace'
+    // colour, are a plain store: written inline below.
+    const solid = replace || ca === 255;
+    const solid_alpha = replace ? ca : 255;
+
+    const put = (o, m) => {
+        if (bipp === 24) {
+            const k = replace || ca === 255 ? m : div255(m * ca);
+            if (k === 255) {
+                ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2;
+            } else if (k !== 0) {
+                const ik = 255 - k;
+                ta[o] = div255(c0 * k + ta[o] * ik);
+                ta[o + 1] = div255(c1 * k + ta[o + 1] * ik);
+                ta[o + 2] = div255(c2 * k + ta[o + 2] * ik);
             }
-            if (s === 0) continue;
-            const abs = s < 0 ? -s : s;
-            const m = abs >= FULL ? 255 : (abs * 255 + 65536) >> 17;
-            if (m === 0) continue;
-            if (bipp === 24) {
-                const k = replace || ca === 255 ? m : div255(m * ca);
-                if (k === 255) {
-                    ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2;
-                } else if (k !== 0) {
-                    const ik = 255 - k;
-                    ta[o] = div255(c0 * k + ta[o] * ik);
-                    ta[o + 1] = div255(c1 * k + ta[o + 1] * ik);
-                    ta[o + 2] = div255(c2 * k + ta[o + 2] * ik);
-                }
-            } else if (bipp === 32) {
-                if (replace) {
-                    if (m === 255) {
-                        ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2; ta[o + 3] = ca;
-                    } else {
-                        // Premultiplied interpolation between destination and colour.
-                        const da = ta[o + 3], im = 255 - m;
-                        const sw = ca * m, dw = da * im;          // alpha weights, x255
-                        const aw = sw + dw;
-                        ta[o + 3] = div255(aw);
-                        if (aw === 0) {
-                            ta[o] = 0; ta[o + 1] = 0; ta[o + 2] = 0;
-                        } else {
-                            ta[o] = Math.floor((2 * (c0 * sw + ta[o] * dw) + aw) / (2 * aw));
-                            ta[o + 1] = Math.floor((2 * (c1 * sw + ta[o + 1] * dw) + aw) / (2 * aw));
-                            ta[o + 2] = Math.floor((2 * (c2 * sw + ta[o + 2] * dw) + aw) / (2 * aw));
-                        }
-                    }
+        } else if (bipp === 32) {
+            if (replace) {
+                if (m === 255) {
+                    ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2; ta[o + 3] = ca;
                 } else {
-                    const k = ca === 255 ? m : div255(m * ca);
-                    if (k === 255) {
-                        ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2; ta[o + 3] = 255;
-                    } else if (k !== 0) {
-                        const da = ta[o + 3], ik = 255 - k;
-                        if (da === 255) {
-                            ta[o] = div255(c0 * k + ta[o] * ik);
-                            ta[o + 1] = div255(c1 * k + ta[o + 1] * ik);
-                            ta[o + 2] = div255(c2 * k + ta[o + 2] * ik);
-                        } else {
-                            // Straight-alpha source-over: weights in units of 1/65025.
-                            const sw = k * 255, dw = da * ik;
-                            const aw = sw + dw;
-                            ta[o + 3] = div255(aw);
-                            ta[o] = Math.floor((2 * (c0 * sw + ta[o] * dw) + aw) / (2 * aw));
-                            ta[o + 1] = Math.floor((2 * (c1 * sw + ta[o + 1] * dw) + aw) / (2 * aw));
-                            ta[o + 2] = Math.floor((2 * (c2 * sw + ta[o + 2] * dw) + aw) / (2 * aw));
-                        }
+                    // Premultiplied interpolation between destination and colour.
+                    const da = ta[o + 3], im = 255 - m;
+                    const sw = ca * m, dw = da * im;          // alpha weights, x255
+                    const aw = sw + dw;
+                    ta[o + 3] = div255(aw);
+                    if (aw === 0) {
+                        ta[o] = 0; ta[o + 1] = 0; ta[o + 2] = 0;
+                    } else {
+                        ta[o] = Math.floor((2 * (c0 * sw + ta[o] * dw) + aw) / (2 * aw));
+                        ta[o + 1] = Math.floor((2 * (c1 * sw + ta[o + 1] * dw) + aw) / (2 * aw));
+                        ta[o + 2] = Math.floor((2 * (c2 * sw + ta[o + 2] * dw) + aw) / (2 * aw));
                     }
                 }
             } else {
-                const k = replace || ca === 255 ? m : div255(m * ca);
-                if (k === 255) ta[o] = c0;
-                else if (k !== 0) ta[o] = div255(c0 * k + ta[o] * (255 - k));
+                const k = ca === 255 ? m : div255(m * ca);
+                if (k === 255) {
+                    ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2; ta[o + 3] = 255;
+                } else if (k !== 0) {
+                    const da = ta[o + 3], ik = 255 - k;
+                    if (da === 255) {
+                        ta[o] = div255(c0 * k + ta[o] * ik);
+                        ta[o + 1] = div255(c1 * k + ta[o + 1] * ik);
+                        ta[o + 2] = div255(c2 * k + ta[o + 2] * ik);
+                    } else {
+                        // Straight-alpha source-over: weights in units of 1/65025.
+                        const sw = k * 255, dw = da * ik;
+                        const aw = sw + dw;
+                        ta[o + 3] = div255(aw);
+                        ta[o] = Math.floor((2 * (c0 * sw + ta[o] * dw) + aw) / (2 * aw));
+                        ta[o + 1] = Math.floor((2 * (c1 * sw + ta[o + 1] * dw) + aw) / (2 * aw));
+                        ta[o + 2] = Math.floor((2 * (c2 * sw + ta[o + 2] * dw) + aw) / (2 * aw));
+                    }
+                }
+            }
+        } else {
+            const k = replace || ca === 255 ? m : div255(m * ca);
+            if (k === 255) ta[o] = c0;
+            else if (k !== 0) ta[o] = div255(c0 * k + ta[o] * (255 - k));
+        }
+    };
+
+    // Columns [from, to) all have running sum s.
+    const run = (row, from, to, s) => {
+        const abs = s < 0 ? -s : s;
+        let o = row + from * bypp;
+        if (abs >= FULL && solid) {
+            if (bypp === 3) {
+                for (let c = from; c < to; c++, o += 3) {
+                    ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2;
+                }
+            } else if (bypp === 4) {
+                for (let c = from; c < to; c++, o += 4) {
+                    ta[o] = c0; ta[o + 1] = c1; ta[o + 2] = c2; ta[o + 3] = solid_alpha;
+                }
+            } else {
+                for (let c = from; c < to; c++, o++) ta[o] = c0;
+            }
+            return;
+        }
+        // abs * 255 < 2^33 and FULL is a power of two: the division is exact.
+        const m = abs >= FULL ? 255 : ((abs * 255 + HALF_FULL) / FULL) | 0;
+        if (m === 0) return;
+        for (let c = from; c < to; c++, o += bypp) put(o, m);
+    };
+
+    for (let r = 0; r < rows; r++) {
+        const first = lo[r], last = hi[r];
+        if (last < 0) continue;
+        lo[r] = NONE;
+        hi[r] = -1;
+        const base = r * stride, bb = r * words;
+        const row = (wy0 + r) * bpr + wx0 * bypp;
+        let s = 0;
+        let c = first;                   // first column not yet composited
+        const wlast = last >> 5;
+        for (let wi = first >> 5; wi <= wlast; wi++) {
+            let bits = bm[bb + wi];
+            if (bits === 0) continue;
+            bm[bb + wi] = 0;
+            const cbase = wi << 5;
+            while (bits !== 0) {
+                const low = bits & -bits;
+                const cn = cbase + 31 - Math.clz32(low);
+                bits ^= low;
+                if (s !== 0 && cn > c) run(row, c, cn < w ? cn : w, s);
+                const v = a[base + cn];
+                if (v !== 0) {
+                    s += v;
+                    a[base + cn] = 0;
+                }
+                c = cn + 1;
+                if (cn < w && s !== 0) run(row, cn, c, s);
             }
         }
-        a[base + w] = 0;
-        a[base + w + 1] = 0;
+        if (s !== 0 && c < w) run(row, c, w, s);
     }
 };
 
@@ -491,13 +579,21 @@ const fill_polygons = (pb, polygons, color, options) => {
     const stride = w + 2;
     const strip_rows = Math.max(1, Math.min(wy1 - wy0, Math.floor(ACC_BUDGET / stride)));
     const need = stride * strip_rows;
-    if (acc.length < need) {
-        acc = new Float64Array(need);
-        acc_dirty = false;
-    } else if (acc_dirty) {
+    if (acc_dirty) {
+        // A previous call stopped part-way (it threw): clear its leftovers.
         acc.fill(0);
+        row_lo.fill(NONE);
+        row_hi.fill(-1);
+        touched.fill(0);
         acc_dirty = false;
     }
+    if (acc.length < need) acc = new Float64Array(need);
+    if (row_lo.length < strip_rows) {
+        row_lo = new Int32Array(strip_rows).fill(NONE);
+        row_hi = new Int32Array(strip_rows).fill(-1);
+    }
+    const words = (w + 1 + 31) >> 5;
+    if (touched.length < words * strip_rows) touched = new Uint32Array(words * strip_rows);
     const a = acc;
     const q = quantised;
     const {starts, counts} = shape;
@@ -514,12 +610,12 @@ const fill_polygons = (pb, polygons, color, options) => {
             let px = q[last] - sx, py = q[last + 1] - sy;
             for (let i = start; i <= last; i += 2) {
                 const x = q[i] - sx, y = q[i + 1] - sy;
-                accumulate_edge(a, stride, w, rows, px, py, x, y);
+                accumulate_edge(a, stride, w, rows, row_lo, row_hi, touched, words, px, py, x, y);
                 px = x;
                 py = y;
             }
         }
-        composite_strip(pb, a, stride, w, rows, wx0, top, rgba, blend);
+        composite_strip(pb, a, stride, w, rows, row_lo, row_hi, touched, words, wx0, top, rgba, blend);
     }
     acc_dirty = false;
     return pb;

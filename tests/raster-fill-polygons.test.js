@@ -110,7 +110,7 @@ const runRasterFillPolygonsTests = () => {
             for (const v of pb.ta) sum += v;
             const [ax, ay, bx, by, cx, cy] = flat;
             const area = Math.abs((bx - ax) * (cy - ay) - (cx - ax) * (by - ay)) / 2;
-            // Each pixel is rounded to 1/255 and each vertex to 1/256 px.
+            // Each pixel is rounded to 1/255 and each vertex to 1/4096 px.
             const edge_pixels = 2 * (Math.hypot(bx - ax, by - ay) + Math.hypot(cx - bx, cy - by) + Math.hypot(ax - cx, ay - cy));
             assert(Math.abs(sum / 255 - area) <= 0.5 / 255 * edge_pixels + 0.05, `area ${area} got ${sum / 255}`);
         }
@@ -156,7 +156,7 @@ const runRasterFillPolygonsTests = () => {
             const b = make(45, 45, 24, [9, 9, 9]);
             fill_polygons(b, [shifted], [200, 100, 50]);
             // Shifting the coordinates in floating point can move a vertex by one
-            // 1/256 step, so compare with the same shape drawn one pixel over in
+            // 1/4096 step, so compare with the same shape drawn one pixel over in
             // an offset window: both use exact integer offsets.
             const c = make(45, 45, 24, [9, 9, 9]);
             fill_polygons(c, [poly], [200, 100, 50], {offset: [ox + 1, oy]});
@@ -227,7 +227,7 @@ const runRasterFillPolygonsTests = () => {
     });
 
     test('edges millions of pixels long stay exact (wide-integer path)', () => {
-        // The long diagonal is y = x + 77/256 after quantisation in both
+        // The long diagonal is y = x + 1229/4096 after quantisation in both
         // shapes; the huge triangle's crossing products exceed 2^52.
         const huge = make(20, 20, 8);
         fill_polygons(huge, [[-1e6, -1e6 + 0.3, 1e6, 1e6 + 0.3, 1e6, -1e6]], 255);
