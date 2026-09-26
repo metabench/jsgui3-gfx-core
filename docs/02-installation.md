@@ -60,7 +60,7 @@ const pb = new Pixel_Buffer({
     size: [100, 80]
 });
 
-console.log(pb.size);    // Int16Array [ 100, 80 ]
+console.log(pb.size);    // [ 100, 80 ] (a plain Array)
 console.log(pb.bipp);    // 24
 console.log(pb.bypp);    // 3
 console.log(pb.bypr);    // 300  (100 pixels × 3 bytes)

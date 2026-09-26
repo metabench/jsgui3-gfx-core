@@ -25,12 +25,12 @@ new Pixel_Buffer(other_pixel_buffer)  // copy constructor
 
 ```
 .ta       Uint8Array     raw pixel data
-.size     Int16Array(2)  [width, height]
+.size     Array(2)       [width, height] (read-only; resize makes a new buffer)
 .bipp     Number         bits per pixel (1, 8, 24, 32)
 .bypp     Number         bytes per pixel (0.125, 1, 3, 4)
 .bypr     Number         bytes per row (width * bypp)
 .num_px   Number         total pixel count
-.pos      Int16Array(2)  cursor position
+.pos      Float64Array(2) cursor position
 ```
 
 ## Class Hierarchy (files → classes)

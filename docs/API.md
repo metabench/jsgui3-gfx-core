@@ -74,15 +74,15 @@ const pb_rgba = new Pixel_Buffer({
 |----------|------|-------------|
 | `ta` | `Uint8Array` | The underlying typed array buffer |
 | `buffer` | `Uint8Array` | Alias for `ta` |
-| `size` | `Int16Array[2]` | Dimensions `[width, height]` |
+| `size` | `Array[2]` | Dimensions `[width, height]` |
 | `bits_per_pixel` / `bipp` | `Number` | Bits per pixel |
 | `bytes_per_pixel` / `bypp` | `Number` | Bytes per pixel |
 | `bytes_per_row` / `bypr` | `Number` | Bytes per row |
 | `num_px` | `Number` | Total number of pixels |
 | `meta` | `Object` | Metadata object with size, bipp, bypp, bypr |
-| `pos_bounds` | `Int16Array[4]` | Position bounds for iteration |
-| `size_bounds` | `Int16Array[4]` | `[0, 0, width, height]` |
-| `bounds_within_source` | `Int16Array[4]` | Bounds when used as window |
+| `pos_bounds` | `Float64Array[4]` | Position bounds for iteration |
+| `size_bounds` | `Float64Array[4]` | `[0, 0, width, height]` |
+| `bounds_within_source` | `Float64Array[4]` | Bounds when used as window |
 
 #### Readable/Writable Properties
 

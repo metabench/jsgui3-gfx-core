@@ -90,7 +90,7 @@ painter.rect([50, 50], [100, 60], [255, 40, 40]);
 // Access raw pixel data
 console.log(pb.ta);        // Uint8Array(196608)
 console.log(pb.bipp);      // 24
-console.log(pb.size);       // Int16Array [256, 256]
+console.log(pb.size);       // [256, 256] (a plain Array)
 ```
 
 ---

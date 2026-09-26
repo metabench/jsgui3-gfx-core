@@ -1,5 +1,6 @@
 const Pixel_Buffer_Idiomatic_Enh = require('./pixel-buffer-5-idiomatic-enh');
 const {unsafeGetPixel} = require('./pixel-buffer-pixel-access');
+const {blend_over_row_32} = require('./raster/blend-over');
 
 const Pixel_Pos_List = require('./pixel-pos-list');
 const get_idx_movement_vectors = (f32a_convolution, bpp, bpr) => {
@@ -361,12 +362,32 @@ class Pixel_Buffer_Perf_Focus_Enh extends Pixel_Buffer_Idiomatic_Enh {
         if (!dest_pos || !Number.isInteger(dest_pos[0]) || !Number.isInteger(dest_pos[1])) {
             throw new TypeError('Destination position must contain two integers');
         }
+        // blend: 'replace' (the default opaque copy) or 'over' (source-over
+        // for 32bpp; formats without alpha are opaque, so 'over' copies).
+        const blend = options.blend;
+        if (blend !== undefined && blend !== 'replace' && blend !== 'over') {
+            throw new TypeError(`blend must be 'replace' or 'over', not ${String(blend)}`);
+        }
 
         const destX = dest_pos[0], destY = dest_pos[1];
         const sourceWidth = pixel_buffer.size[0], sourceHeight = pixel_buffer.size[1];
         // Snapshot only self-placement; row-at-a-time writes could otherwise
         // overwrite a later source row in an overlapping move.
         const sourceTa = pixel_buffer === this ? pixel_buffer.ta.slice() : pixel_buffer.ta;
+        if (blend === 'over' && this.bipp === 32) {
+            const sourceX = Math.max(0, -destX), sourceY = Math.max(0, -destY);
+            const targetX = Math.max(0, destX), targetY = Math.max(0, destY);
+            const width = Math.min(sourceWidth - sourceX, this.size[0] - targetX);
+            const height = Math.min(sourceHeight - sourceY, this.size[1] - targetY);
+            for (let y = 0; y < height; y++) {
+                blend_over_row_32(
+                    sourceTa, (sourceY + y) * pixel_buffer.bytes_per_row + sourceX * 4,
+                    this.ta, (targetY + y) * this.bytes_per_row + targetX * 4,
+                    width
+                );
+            }
+            return this;
+        }
         if (this.bipp !== 1 && destX >= 0 && destY >= 0 &&
             destX + sourceWidth <= this.size[0] && destY + sourceHeight <= this.size[1]) {
             const bytesPerPixel = this.bytes_per_pixel;

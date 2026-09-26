@@ -6,6 +6,7 @@ const {
 } = require('./ta-math');
 const {fill_polygons} = require('./raster/fill-polygons');
 const {fill_paint_op} = require('./raster/fill-paint-op');
+const {fill_polygon_aliased} = require('./raster/fill-polygon-aliased');
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
@@ -199,6 +200,11 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     // with stroke_polyline and everything is filled in one union pass.
     fill_paint_op(op, options) {
         return fill_paint_op(this, op, options);
+    }
+    // Hard-edged fill sampling pixel centres (non-zero rule, no outline,
+    // exact under integer translation): pick buffers and masks.
+    fill_polygon_aliased(polygon, color, options) {
+        return fill_polygon_aliased(this, polygon, color, options);
     }
     new_window(options = {}) {
         if (!options || typeof options !== 'object') {

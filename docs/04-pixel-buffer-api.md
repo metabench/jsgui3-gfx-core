@@ -35,13 +35,13 @@ const pb3 = new Pixel_Buffer({
 | Property | Type | Description | Mutable |
 |----------|------|-------------|---------|
 | `ta` | `Uint8Array` | Raw pixel data | Read/Write |
-| `size` | `Int16Array(2)` | `[width, height]` | Special* |
+| `size` | `Array(2)` | `[width, height]` | Special* |
 | `bipp` / `bits_per_pixel` | `Number` | Bits per pixel (1, 8, 24, 32) | Special* |
 | `bypp` | `Number` | Bytes per pixel (0.125, 1, 3, 4) | Read-only |
 | `bypr` | `Number` | Bytes per row | Read-only |
 | `num_px` | `Number` | Total pixel count (width × height) | Read-only |
-| `pos` | `Int16Array(2)` | Current position cursor | Read/Write |
-| `pos_bounds` | `Int16Array(4)` | Position bounds `[x1, y1, x2, y2]` | Read/Write |
+| `pos` | `Float64Array(2)` | Current position cursor | Read/Write |
+| `pos_bounds` | `Float64Array(4)` | Position bounds `[x1, y1, x2, y2]` | Read/Write |
 
 *Setting `bipp` triggers internal re-allocation. Setting `size` via the constructor only.
 
