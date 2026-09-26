@@ -4,6 +4,7 @@ const {
     get_ta_bits_that_differ_from_previous_as_1s,
     each_1_index
 } = require('./ta-math');
+const {fill_polygons} = require('./raster/fill-polygons');
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
@@ -187,6 +188,11 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
             console.trace();
             throw 'NYI';
         }
+    }
+    // Anti-aliased vector fill (core/raster/fill-polygons.js): the polygons
+    // are filled as one union with integer coverage accumulation.
+    fill_polygons(polygons, color, options) {
+        return fill_polygons(this, polygons, color, options);
     }
     new_window(options = {}) {
         if (!options || typeof options !== 'object') {
