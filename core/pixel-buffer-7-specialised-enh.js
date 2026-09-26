@@ -5,6 +5,7 @@ const {
     each_1_index
 } = require('./ta-math');
 const {fill_polygons} = require('./raster/fill-polygons');
+const {fill_paint_op} = require('./raster/fill-paint-op');
 class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     constructor(...a) {
         super(...a);
@@ -193,6 +194,11 @@ class Pixel_Buffer_Specialised_Enh extends Pixel_Buffer_Perf_Focus_Enh {
     // are filled as one union with integer coverage accumulation.
     fill_polygons(polygons, color, options) {
         return fill_polygons(this, polygons, color, options);
+    }
+    // One scene paint op {color, polygons, strokes}: strokes are expanded
+    // with stroke_polyline and everything is filled in one union pass.
+    fill_paint_op(op, options) {
+        return fill_paint_op(this, op, options);
     }
     new_window(options = {}) {
         if (!options || typeof options !== 'object') {
