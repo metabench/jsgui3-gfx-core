@@ -65,6 +65,11 @@
 
 
 const Rectangle = require('./shapes/Rectangle');
+const {fill_polygons} = require('./raster/fill-polygons');
+const {fill_paint_op} = require('./raster/fill-paint-op');
+const {fill_polygon_aliased} = require('./raster/fill-polygon-aliased');
+const {stroke_polyline} = require('./raster/stroke-polyline');
+const {encode_png, encode_png_async, Png_Row_Encoder} = require('./png-encoder');
 
 
 
@@ -75,7 +80,14 @@ const gfx_core = {
     convolution_kernels: require('./convolution-kernels/kernels'),
     ta_math: require('./ta-math'),
     Rectangle,
-    Rect: Rectangle
+    Rect: Rectangle,
+    // Vector rasterising (0.0.28): the fills as functions of a Pixel_Buffer.
+    // Each is also a Pixel_Buffer method: pb.fill_polygons(polygons, color, options).
+    raster: {fill_polygons, fill_paint_op, fill_polygon_aliased},
+    stroke_polyline,
+    encode_png,
+    encode_png_async,
+    Png_Row_Encoder
 }
 
 module.exports = gfx_core;
