@@ -21,36 +21,41 @@ let totalFiles = 0;
 let passedTests = 0;
 let failedTests = 0;
 
-// Run each test file
-testFiles.forEach(testFile => {
-    console.log(`${colors.blue}Running ${testFile}...${colors.reset}`);
-    try {
-        const testResults = require(path.join(testDir, testFile))();
-        if (!testResults || !Number.isInteger(testResults.passed) || !Number.isInteger(testResults.failed)) {
-            throw new TypeError(`${testFile} did not return integer passed/failed counts`);
+// Run each test file. A test file exports a function that returns
+// {passed, failed}, or a Promise of it for asynchronous tests.
+const runAll = async () => {
+    for (const testFile of testFiles) {
+        console.log(`${colors.blue}Running ${testFile}...${colors.reset}`);
+        try {
+            const testResults = await require(path.join(testDir, testFile))();
+            if (!testResults || !Number.isInteger(testResults.passed) || !Number.isInteger(testResults.failed)) {
+                throw new TypeError(`${testFile} did not return integer passed/failed counts`);
+            }
+            passedTests += testResults.passed;
+            failedTests += testResults.failed;
+            if (testResults.failed === 0) {
+                console.log(`${colors.green}✔ All tests passed in ${testFile}${colors.reset}`);
+            } else {
+                console.log(`${colors.red}✘ ${testResults.failed} test(s) failed in ${testFile}${colors.reset}`);
+            }
+        } catch (err) {
+            console.log(`${colors.red}✘ Tests failed in ${testFile}${colors.reset}`);
+            console.error(`${colors.red}${err}${colors.reset}`);
+            failedTests++;
         }
-        passedTests += testResults.passed;
-        failedTests += testResults.failed;
-        if (testResults.failed === 0) {
-            console.log(`${colors.green}✔ All tests passed in ${testFile}${colors.reset}`);
-        } else {
-            console.log(`${colors.red}✘ ${testResults.failed} test(s) failed in ${testFile}${colors.reset}`);
-        }
-    } catch (err) {
-        console.log(`${colors.red}✘ Tests failed in ${testFile}${colors.reset}`);
-        console.error(`${colors.red}${err}${colors.reset}`);
-        failedTests++;
+        totalFiles++;
     }
-    totalFiles++;
+};
+
+runAll().then(() => {
+    // Summary
+    console.log(`\n${colors.bold}Test Summary:${colors.reset}`);
+    console.log(`${colors.green}✔ Passed: ${passedTests}${colors.reset}`);
+    console.log(`${colors.red}✘ Failed: ${failedTests}${colors.reset}`);
+    console.log(`${colors.yellow}Cases: ${passedTests + failedTests}${colors.reset}`);
+    console.log(`${colors.yellow}Files: ${totalFiles}${colors.reset}`);
+
+    if (failedTests > 0) {
+        process.exit(1); // Exit with error code if any test fails
+    }
 });
-
-// Summary
-console.log(`\n${colors.bold}Test Summary:${colors.reset}`);
-console.log(`${colors.green}✔ Passed: ${passedTests}${colors.reset}`);
-console.log(`${colors.red}✘ Failed: ${failedTests}${colors.reset}`);
-console.log(`${colors.yellow}Cases: ${passedTests + failedTests}${colors.reset}`);
-console.log(`${colors.yellow}Files: ${totalFiles}${colors.reset}`);
-
-if (failedTests > 0) {
-    process.exit(1); // Exit with error code if any test fails
-}
