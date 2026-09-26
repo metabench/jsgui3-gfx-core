@@ -12,9 +12,10 @@
  *
  * Options: dpi (writes a pHYs chunk), srgb (true, false or a rendering
  * intent 0-3; default true writes an sRGB chunk with intent 0, perceptual),
- * filter ('adaptive' by default: per row, the filter with the smallest sum
- * of absolute signed residuals, as libpng does; or 'none', 'sub', 'up',
- * 'average', 'paeth'). encode_png also takes level (zlib 0-9, default 6).
+ * filter ('none' by default, as sharp writes it, smallest and fastest on
+ * flat-colour art; 'adaptive': per row, the filter with the smallest sum
+ * of absolute signed residuals, as libpng does; or 'sub', 'up', 'average',
+ * 'paeth'). encode_png also takes level (zlib 0-9, default 6).
  *
  * This module never loads node:zlib at the top level, so browser bundles of
  * gfx-core do not pull it in.
@@ -68,7 +69,7 @@ const read_options = (options, bits_per_pixel) => {
     if (!(bits_per_pixel in COLOUR_TYPES)) {
         throw new TypeError(`PNG encoding supports 8, 24 and 32bpp, not ${bits_per_pixel}bpp`);
     }
-    const filter = opts.filter === undefined ? 'adaptive' : opts.filter;
+    const filter = opts.filter === undefined ? 'none' : opts.filter;
     if (filter !== 'adaptive' && !(filter in FILTERS)) {
         throw new TypeError(`filter must be 'adaptive', 'none', 'sub', 'up', 'average' or 'paeth', not ${String(filter)}`);
     }
@@ -237,7 +238,7 @@ const node_zlib = () => {
 /**
  * Encode a Pixel_Buffer as PNG, synchronously (Node's zlib).
  * @param {Pixel_Buffer} pb 8, 24 or 32bpp.
- * @param {Object} [options] {dpi, srgb = true, filter = 'adaptive', level = 6}
+ * @param {Object} [options] {dpi, srgb = true, filter = 'none', level = 6}
  * @returns {Uint8Array}
  */
 const encode_png = (pb, options) => {
@@ -284,7 +285,7 @@ const deflate_async = async bytes => {
 /**
  * Encode a Pixel_Buffer as PNG with CompressionStream (browser, Worker, Node).
  * @param {Pixel_Buffer} pb 8, 24 or 32bpp.
- * @param {Object} [options] {dpi, srgb = true, filter = 'adaptive'}
+ * @param {Object} [options] {dpi, srgb = true, filter = 'none'}
  * @returns {Promise<Uint8Array>}
  */
 const encode_png_async = async (pb, options) => {

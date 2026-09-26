@@ -2,6 +2,17 @@
     "name": "jsgui3-gfx-core",
     "main": "core/gfx-core.js",
     "license": "MIT",
+    "files": [
+        "core/",
+        "docs/",
+        "examples/",
+        "benchmarks/",
+        "scripts/",
+        "tests/",
+        "!tests/fixtures/",
+        "AI-NOTES.md",
+        "RELEASE_NOTES_0.0.28.md"
+    ],
     "dependencies": {
         "fnl": "^0.0.37",
         "lang-mini": "^0.0.46",

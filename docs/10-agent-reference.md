@@ -135,7 +135,7 @@ fill_paint_op({color, polygons, strokes}, options)      strokes expanded, one un
 fill_polygon_aliased(polygon, color, {offset, clip})    pixel centres, non-zero, no outline, 1/8/24/32bpp
 place_image_from_pixel_buffer(src, pos, {blend: 'over'}) 32bpp source-over (default copy unchanged)
 stroke_polyline(points, {width, join: miter|bevel|round, miter_limit=4, cap: butt|square|round, closed})
-encode_png(pb, {dpi, srgb=true, filter='adaptive', level=6})   filter 'none' is smaller for flat art
+encode_png(pb, {dpi, srgb=true, filter='none', level=6})   'adaptive' (libpng heuristic) is opt-in
 ```
 
 ### Masks (1bipp)

@@ -21,7 +21,7 @@ gfx.stroke_polyline(points, {width, join, miter_limit, cap, closed}); // -> poly
 pb.fill_polygon_aliased(polygon, color, {offset, clip});
 pb.place_image_from_pixel_buffer(src, [x, y], {blend: 'over'});
 
-gfx.encode_png(pb, {dpi, srgb: true, filter: 'adaptive', level: 6}); // Node, sync
+gfx.encode_png(pb, {dpi, srgb: true, filter: 'none', level: 6});     // Node, sync
 await gfx.encode_png_async(pb, {dpi, srgb, filter});                // CompressionStream
 const enc = new gfx.Png_Row_Encoder({width, height, bits_per_pixel, dpi, srgb, filter, write});
 ```
@@ -80,9 +80,9 @@ there is no outline, and integer translation moves the filled set exactly: a
 - 8, 24 and 32bpp map to PNG colour types 0, 2 and 6 (8 bits per sample).
 - `sRGB` chunk by default (intent 0; `srgb: false` omits it, 0-3 sets the
   intent); `pHYs` when `dpi` is given.
-- Filters: `'adaptive'` (default: per row, the smallest sum of absolute signed
-  residuals, libpng's heuristic), or a fixed `'none'`, `'sub'`, `'up'`,
-  `'average'` or `'paeth'`.
+- Filters: `'none'` (the default, as sharp writes it), `'adaptive'` (per row,
+  the smallest sum of absolute signed residuals, libpng's heuristic), or a
+  fixed `'sub'`, `'up'`, `'average'` or `'paeth'`.
 - `encode_png` uses Node's zlib, looked up at call time, so browser bundles do
   not include it; in a browser it throws and points to `encode_png_async`.
 - `Png_Row_Encoder` takes rows one at a time (`write_row`, or `write_rows(pb)`
@@ -112,13 +112,13 @@ Node 25.2.1, sharp 0.34.5 with librsvg 2.61.2, Chromium 145.0.7632.6.
    fixtures' 2-decimal coordinates leave about 2 levels there; the float
    prototype also reaches 2. 1/4096 passes (max 2) and lowers the error
    against librsvg at every size. Determinism, exact translation and window
-   identity hold at any power-of-two step.
-2. **The PNG filter default.** The proposal chose `'adaptive'` "as sharp
-   does", but sharp's default writes filter 0 (none) on every row; its
-   adaptive mode is opt-in. The default stays `'adaptive'` as approved. For
-   flat-colour art, `filter: 'none'` is smaller (0.990 of sharp's size
-   against 1.256) and about three times faster (median 14.5-15.6 ms against
-   42.7-44.9 ms per tile). Switching the default is a one-line change.
+   identity hold at any power-of-two step. Accepted by the owner, 2026-09-26.
+2. **The PNG filter default is `'none'`, not `'adaptive'`.** The proposal
+   chose `'adaptive'` "as sharp does", but sharp's default writes filter 0
+   (none) on every row; its adaptive mode is opt-in. For flat-colour art,
+   `'none'` is smaller (0.990 of sharp's size against 1.256) and about three
+   times faster (median 14.5-15.6 ms against 42.7-44.9 ms per tile).
+   Switched by the owner's decision, 2026-09-26; `'adaptive'` stays available.
 3. **Round joins and caps** are included, not deferred.
 4. **`fill_polygon_aliased`** also accepts `{offset, clip}` and is in the
    `raster` namespace as a function.
@@ -143,6 +143,7 @@ test files that return a Promise. The pattern oracle (`tests/raster-pattern-orac
 compares against sharp/librsvg, which is a devDependency, and skips with a
 message when sharp is missing. Fixtures live in `tests/fixtures/patterns/`
 (162 files and a manifest from jsgui3-islamic-art's
-`tools/export-raster-fixtures.js`, 2.8 MB). The package has no `files` field,
-so they are published too: `npm pack` gives 1.9 MB packed and 5.8 MB unpacked
-(0.0.27: 1.5 MB and 3.1 MB).
+`tools/export-raster-fixtures.js`, 2.8 MB). The `files` field in
+`package.json` keeps them out of the published package, so
+`benchmarks/raster-benchmark.js`, `scripts/cross-runtime-check.js` and the
+pattern tests need a git checkout.
